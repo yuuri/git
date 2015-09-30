@@ -12,6 +12,7 @@
 #include "merge-recursive.h"
 #include "branch.h"
 #include "diff.h"
+#include "diffcore.h"
 #include "revision.h"
 #include "remote.h"
 #include "blob.h"
@@ -63,6 +64,7 @@ static int post_checkout_hook(struct commit *old, struct commit *new,
 
 }
 
+#if 0
 static int update_some(const unsigned char *sha1, struct strbuf *base,
 		const char *pathname, unsigned mode, int stage, void *context)
 {
@@ -101,16 +103,41 @@ static int update_some(const unsigned char *sha1, struct strbuf *base,
 	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 	return 0;
 }
+#endif
+
+static void collect_changes(struct diff_queue_struct *q,
+			    struct diff_options *options,
+			    void *data)
+{
+	int i;
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *pair = q->queue[i];
+
+		switch (pair->status) {
+		case 'D': /* removed */
+			break;
+		case 'A': /* added */
+		case 'M': /* modified */
+			break;
+		}
+	}
+}
 
 static int read_tree_some(struct tree *tree, const struct pathspec *pathspec)
 {
-	read_tree_recursive(tree, "", 0, 0, pathspec, update_some, NULL);
+	struct rev_info rev;
 
-	/* update the index with the given tree's info
-	 * for all args, expanding wildcards, and exit
-	 * with any non-zero return code.
-	 */
-	return 0;
+	init_revisions(&rev, NULL);
+	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
+	rev.diffopt.format_callback = collect_changes;
+	/* we want diff to go from the index to the tree */
+	DIFF_OPT_SET(&rev.diffopt, REVERSE_DIFF);
+	copy_pathspec(&rev.prune_data, pathspec);
+	copy_pathspec(&rev.diffopt.pathspec, pathspec);
+	diff_setup_done(&rev.diffopt);
+
+	add_pending_object(&rev, &tree->object, NULL);
+	return run_diff_index(&rev, 1);
 }
 
 static int skip_same_name(const struct cache_entry *ce, int pos)
@@ -359,6 +386,10 @@ static int checkout_paths(const struct checkout_opts *opts,
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
 		if (ce->ce_flags & CE_MATCHED) {
+			if (ce->ce_flags & CE_REMOVE) {
+				errs |= unlink_or_warn(ce->name);
+				continue;
+			}
 			if (!ce_stage(ce)) {
 				errs |= checkout_entry(ce, &state, NULL);
 				continue;
