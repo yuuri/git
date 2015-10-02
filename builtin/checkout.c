@@ -64,80 +64,67 @@ static int post_checkout_hook(struct commit *old, struct commit *new,
 
 }
 
-#if 0
-static int update_some(const unsigned char *sha1, struct strbuf *base,
-		const char *pathname, unsigned mode, int stage, void *context)
+static void mark_path_removed(const char *path)
 {
-	int len;
 	struct cache_entry *ce;
-	int pos;
+	int pos = cache_name_pos(path, strlen(path));
 
-	if (S_ISDIR(mode))
-		return READ_TREE_RECURSIVE;
+	if (pos < 0)
+		pos = -1 - pos; /* unmerged */
 
-	len = base->len + strlen(pathname);
-	ce = xcalloc(1, cache_entry_size(len));
-	hashcpy(ce->sha1, sha1);
-	memcpy(ce->name, base->buf, base->len);
-	memcpy(ce->name + base->len, pathname, len - base->len);
-	ce->ce_flags = create_ce_flags(0) | CE_UPDATE;
-	ce->ce_namelen = len;
-	ce->ce_mode = create_ce_mode(mode);
+	warning("future git will remove %s", path);
+	return;
 
-	/*
-	 * If the entry is the same as the current index, we can leave the old
-	 * entry in place. Whether it is UPTODATE or not, checkout_entry will
-	 * do the right thing.
-	 */
-	pos = cache_name_pos(ce->name, ce->ce_namelen);
-	if (pos >= 0) {
-		struct cache_entry *old = active_cache[pos];
-		if (ce->ce_mode == old->ce_mode &&
-		    !hashcmp(ce->sha1, old->sha1)) {
-			old->ce_flags |= CE_UPDATE;
-			free(ce);
-			return 0;
-		}
+	ce = active_cache[pos];
+	ce->ce_flags |= CE_REMOVE | CE_UPDATE;
+	if (ce_stage(ce)) {
+		/* mark the other stages, too */
+		while (++pos < active_nr && !strcmp(active_cache[pos]->name, path))
+			active_cache[pos]->ce_flags |= CE_REMOVE | CE_UPDATE;
 	}
-
-	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
-	return 0;
 }
-#endif
 
-static void collect_changes(struct diff_queue_struct *q,
-			    struct diff_options *options,
-			    void *data)
+static void update_path(struct diff_filespec *new)
+{
+	struct cache_entry *ce;
+
+	ce = make_cache_entry(new->mode, new->sha1, new->path, 0, 0);
+	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	ce->ce_flags |= CE_UPDATE;
+}
+
+static void update_from_diff(struct diff_queue_struct *q,
+			     struct diff_options *options,
+			     void *data)
 {
 	int i;
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *pair = q->queue[i];
 
-		switch (pair->status) {
-		case 'D': /* removed */
-			break;
-		case 'A': /* added */
-		case 'M': /* modified */
-			break;
-		}
+		if (pair->status == 'D')
+			mark_path_removed(pair->two->path);
+		else
+			update_path(pair->two);
 	}
 }
 
 static int read_tree_some(struct tree *tree, const struct pathspec *pathspec)
 {
-	struct rev_info rev;
+	struct diff_options opt;
 
-	init_revisions(&rev, NULL);
-	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
-	rev.diffopt.format_callback = collect_changes;
-	/* we want diff to go from the index to the tree */
-	DIFF_OPT_SET(&rev.diffopt, REVERSE_DIFF);
-	copy_pathspec(&rev.prune_data, pathspec);
-	copy_pathspec(&rev.diffopt.pathspec, pathspec);
-	diff_setup_done(&rev.diffopt);
+	memset(&opt, 0, sizeof(opt));
+	copy_pathspec(&opt.pathspec, pathspec);
+	/* we want a diff that goes from the index to the tree */
+	DIFF_OPT_SET(&opt, REVERSE_DIFF);
+	opt.output_format = DIFF_FORMAT_CALLBACK;
+	opt.format_callback = update_from_diff;
+	if (do_diff_cache(tree->object.sha1, &opt))
+		return 1;
+	diffcore_std(&opt);
+	diff_flush(&opt);
+	free_pathspec(&opt.pathspec);
 
-	add_pending_object(&rev, &tree->object, NULL);
-	return run_diff_index(&rev, 1);
+	return 0;
 }
 
 static int skip_same_name(const struct cache_entry *ce, int pos)
