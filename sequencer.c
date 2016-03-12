@@ -59,6 +59,8 @@ static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int len = sb->len - ignore_footer;
 	const char *buf = sb->buf;
 	int found_sob = 0;
+	int found_valid = 0;
+	int found_other = 0;
 
 	/* footer must end with newline */
 	if (!len || buf[len - 1] != '\n')
@@ -91,15 +93,18 @@ static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 		if (found_rfc2822 && sob &&
 		    !strncmp(buf + i, sob->buf, sob->len))
 			found_sob = k;
-
-		if (!(found_rfc2822 ||
-		      is_cherry_picked_from_line(buf + i, k - i - 1)))
-			return 0;
+		else if (found_rfc2822 ||
+			 is_cherry_picked_from_line(buf + i, k - i - 1))
+			found_valid = k;
+		else
+			found_other = k;
 	}
 	if (found_sob == i)
 		return 3;
-	if (found_sob)
+	if (found_sob > found_other)
 		return 2;
+	if (found_other > found_valid)
+		return 0;
 	return 1;
 }
 
