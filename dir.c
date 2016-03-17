@@ -1013,6 +1013,7 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 {
 	struct exclude *exc = NULL; /* undecided */
 	int i, maybe_descend = 0;
+	const char *stuck = "";
 
 	if (!el->nr)
 		return NULL;	/* undefined */
@@ -1032,6 +1033,7 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 			if (*dtype == DT_UNKNOWN)
 				*dtype = get_dtype(NULL, pathname, pathlen);
 			if (match_sticky(x, pathname, pathlen, *dtype)) {
+				stuck = " (stuck)";
 				exc = x;
 				break;
 			}
@@ -1101,7 +1103,7 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 	trace_printf_key(&trace_exclude, "exclude: %.*s vs %s at line %d => %s%s\n",
 			 pathlen, pathname, exc->pattern, exc->srcpos,
 			 exc->flags & EXC_FLAG_NEGATIVE ? "no" : "yes",
-			 exc->sticky_paths.nr ? " (stuck)" : "");
+			 stuck);
 	return exc;
 }
 

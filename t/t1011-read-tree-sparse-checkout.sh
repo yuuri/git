@@ -287,10 +287,14 @@ test_expect_success 'sparse checkout and dir.c sticky bits' '
 		!one/hideme
 		EOF
 		git config core.sparsecheckout true &&
-		git checkout &&
+		GIT_TRACE_EXCLUDE=2 git checkout 2>&1 | grep stuck >stuck-list &&
 		test_path_is_missing one/hideme &&
 		test_path_is_file    one/showme &&
-		test_path_is_file    two/showme
+		test_path_is_file    two/showme &&
+		cat >expected <<-\EOF &&
+		exclude: one/showme vs /* at line 1 => yes (stuck)
+		EOF
+		test_cmp expected stuck-list
 	)
 '
 
