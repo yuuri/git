@@ -274,4 +274,24 @@ test_expect_success 'checkout with --ignore-skip-worktree-bits' '
 	git diff --exit-code HEAD
 '
 
+test_expect_success 'sparse checkout and dir.c sticky bits' '
+	git init sticky &&
+	(
+		cd sticky &&
+		mkdir one two &&
+		touch one/hideme one/showme two/showme &&
+		git add . &&
+		git commit -m initial &&
+		cat >.git/info/sparse-checkout <<-\EOF &&
+		/*
+		!one/hideme
+		EOF
+		git config core.sparsecheckout true &&
+		git checkout &&
+		test_path_is_missing one/hideme &&
+		test_path_is_file    one/showme &&
+		test_path_is_file    two/showme
+	)
+'
+
 test_done

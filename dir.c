@@ -1035,7 +1035,6 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 				exc = x;
 				break;
 			}
-			continue;
 		}
 
 		if (x->flags & EXC_FLAG_MUSTBEDIR) {
