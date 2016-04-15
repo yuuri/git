@@ -1017,7 +1017,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (transport->smart_options && !option_depth)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
-	refs = transport_get_remote_refs(transport);
+	refs = transport_get_remote_refs(transport, NULL, 0);
 
 	if (refs) {
 		mapped_refs = wanted_peer_refs(refs, refspec);
