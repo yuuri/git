@@ -452,6 +452,7 @@ static void get_info_refs(char *arg)
 	if (service_name) {
 		struct argv_array argv = ARGV_ARRAY_INIT;
 		struct rpc_service *svc = select_service(service_name);
+		const char *refspec;
 
 		strbuf_addf(&buf, "application/x-git-%s-advertisement",
 			svc->name);
@@ -465,6 +466,14 @@ static void get_info_refs(char *arg)
 		argv_array_push(&argv, "--stateless-rpc");
 		argv_array_push(&argv, "--advertise-refs");
 
+		refspec = get_parameter("refspec");
+		if (refspec) {
+			struct strbuf interesting_refs = STRBUF_INIT;
+			strbuf_addstr(&interesting_refs, "--interesting-refs=");
+			strbuf_addstr(&interesting_refs, refspec);
+			argv_array_push(&argv, interesting_refs.buf);
+			strbuf_release(&interesting_refs);
+		}
 		argv_array_push(&argv, ".");
 		run_service(argv.argv, 0);
 		argv_array_clear(&argv);
