@@ -28,6 +28,7 @@ struct helper_data {
 		signed_tags : 1,
 		check_connectivity : 1,
 		no_disconnect_req : 1,
+		refspec : 1,
 		no_private_update : 1;
 	char *export_marks;
 	char *import_marks;
@@ -114,8 +115,15 @@ static struct child_process *get_helper(struct transport *transport, const struc
 	int code;
 	int i;
 
-	if (data->helper)
+	if (data->helper) {
+		if (!data->refspec && req_refspec_nr) {
+			for (i = 0; i < req_refspec_nr; i++)
+				set_helper_option(transport, "refspec",
+						  req_refspecs[i].src);
+			data->refspec = 1;
+		}
 		return data->helper;
+	}
 
 	helper = xmalloc(sizeof(*helper));
 	child_process_init(helper);
@@ -220,6 +228,8 @@ static struct child_process *get_helper(struct transport *transport, const struc
 
 	for (i = 0; i < req_refspec_nr; i++)
 		set_helper_option(transport, "refspec", req_refspecs[i].src);
+	if (req_refspec_nr)
+		data->refspec = 1;
 	standard_options(transport);
 	return data->helper;
 }

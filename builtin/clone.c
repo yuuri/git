@@ -1017,7 +1017,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (transport->smart_options && !option_depth)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
-	refs = transport_get_remote_refs(transport, NULL, 0);
+	if (option_single_branch && option_branch) {
+		struct refspec branch_refspec = {0};
+
+		if (starts_with(option_branch, "refs/")) {
+			branch_refspec.src = xstrdup(option_branch);
+		} else {
+			struct strbuf buf = STRBUF_INIT;
+			strbuf_addf(&buf, "refs/heads/%s", option_branch);
+			branch_refspec.src = strbuf_detach(&buf, NULL);
+		}
+		refs = transport_get_remote_refs(transport, &branch_refspec, 1);
+		free(branch_refspec.src);
+	} else {
+		refs = transport_get_remote_refs(transport, NULL, 0);
+	}
 
 	if (refs) {
 		mapped_refs = wanted_peer_refs(refs, refspec);
