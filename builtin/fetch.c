@@ -302,9 +302,27 @@ static struct ref *get_ref_map(struct transport *transport,
 
 	/* opportunistically-updated references: */
 	struct ref *orefs = NULL, **oref_tail = &orefs;
+	struct refspec *qualified_refspecs;
 	const struct ref *remote_refs;
 
-	remote_refs = transport_get_remote_refs(transport, NULL, 0);
+	qualified_refspecs = xcalloc(refspec_count, sizeof(*qualified_refspecs));
+	for (i = 0; i < refspec_count; i++) {
+		if (starts_with(refspecs[i].src, "refs/")) {
+			qualified_refspecs[i].src = xstrdup(refspecs[i].src);
+		} else {
+			struct strbuf buf = STRBUF_INIT;
+			strbuf_addf(&buf, "refs/heads/%s", refspecs[i].src);
+			qualified_refspecs[i].src = strbuf_detach(&buf, NULL);
+		}
+	}
+
+	remote_refs = transport_get_remote_refs(transport, qualified_refspecs,
+						refspec_count);
+
+	for (i = 0; i < refspec_count; i++) {
+		free(qualified_refspecs[i].src);
+	}
+	free(qualified_refspecs);
 
 	if (refspec_count) {
 		struct refspec *fetch_refspec;
