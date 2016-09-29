@@ -1236,6 +1236,11 @@ test_expect_success 'set up --show-origin tests' '
 		[user]
 			relative = include
 	EOF
+	cat >"$HOME"/etc-gitconfig <<-\EOF &&
+		[user]
+			system = true
+			override = system
+	EOF
 	cat >"$HOME"/.gitconfig <<-EOF &&
 		[user]
 			global = true
@@ -1254,6 +1259,8 @@ test_expect_success 'set up --show-origin tests' '
 
 test_expect_success '--show-origin with --list' '
 	cat >expect <<-EOF &&
+		file:$HOME/etc-gitconfig	user.system=true
+		file:$HOME/etc-gitconfig	user.override=system
 		file:$HOME/.gitconfig	user.global=true
 		file:$HOME/.gitconfig	user.override=global
 		file:$HOME/.gitconfig	include.path=$INCLUDE_DIR/absolute.include
@@ -1264,13 +1271,16 @@ test_expect_success '--show-origin with --list' '
 		file:.git/../include/relative.include	user.relative=include
 		command line:	user.cmdline=true
 	EOF
+	GIT_CONFIG_SYSTEM_PATH=$HOME/etc-gitconfig \
 	git -c user.cmdline=true config --list --show-origin >output &&
 	test_cmp expect output
 '
 
 test_expect_success '--show-origin with --list --null' '
 	cat >expect <<-EOF &&
-		file:$HOME/.gitconfigQuser.global
+		file:$HOME/etc-gitconfigQuser.system
+		trueQfile:$HOME/etc-gitconfigQuser.override
+		systemQfile:$HOME/.gitconfigQuser.global
 		trueQfile:$HOME/.gitconfigQuser.override
 		globalQfile:$HOME/.gitconfigQinclude.path
 		$INCLUDE_DIR/absolute.includeQfile:$INCLUDE_DIR/absolute.includeQuser.absolute
@@ -1281,6 +1291,7 @@ test_expect_success '--show-origin with --list --null' '
 		includeQcommand line:Quser.cmdline
 		trueQ
 	EOF
+	GIT_CONFIG_SYSTEM_PATH=$HOME/etc-gitconfig \
 	git -c user.cmdline=true config --null --list --show-origin >output.raw &&
 	nul_to_q <output.raw >output &&
 	# The here-doc above adds a newline that the --null output would not
@@ -1301,10 +1312,12 @@ test_expect_success '--show-origin with single file' '
 
 test_expect_success '--show-origin with --get-regexp' '
 	cat >expect <<-EOF &&
+		file:$HOME/etc-gitconfig	user.system true
 		file:$HOME/.gitconfig	user.global true
 		file:.git/config	user.local true
 	EOF
-	git config --show-origin --get-regexp "user\.[g|l].*" >output &&
+	GIT_CONFIG_SYSTEM_PATH=$HOME/etc-gitconfig \
+	git config --show-origin --get-regexp "user\.[gls].*" >output &&
 	test_cmp expect output
 '
 
@@ -1312,6 +1325,7 @@ test_expect_success '--show-origin getting a single key' '
 	cat >expect <<-\EOF &&
 		file:.git/config	local
 	EOF
+	GIT_CONFIG_SYSTEM_PATH=$HOME/etc-gitconfig \
 	git config --show-origin user.override >output &&
 	test_cmp expect output
 '
