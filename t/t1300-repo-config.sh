@@ -1093,6 +1093,7 @@ test_expect_success 'multiple git -c appends config' '
 	x.one 1
 	x.two 2
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	git -c x.one=1 x >actual &&
 	test_cmp expect actual
 '
