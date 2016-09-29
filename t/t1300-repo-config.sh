@@ -344,10 +344,11 @@ test_expect_success 'working --list' '
 	git config --list > output &&
 	test_cmp expect output
 '
-cat > expect << EOF
-EOF
 
-test_expect_success '--list without repo produces empty output' '
+test_expect_success '--list without repo shows only system-wide and global' '
+	# The global one aka $HOME/.gitconfig is missing,
+	# so we do not have to worry about it.
+	git config --system --list >expect &&
 	git --git-dir=nonexistent config --list >output &&
 	test_cmp expect output
 '
