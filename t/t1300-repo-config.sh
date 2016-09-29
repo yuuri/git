@@ -936,7 +936,7 @@ EOF
 
 test_expect_success 'value continued on next line' '
 	git config --list > result &&
-	test_cmp result expect
+	test_cmp expect result
 '
 
 cat > .git/config <<\EOF
