@@ -781,7 +781,9 @@ static int queue_has_nonstale(struct prio_queue *queue)
 }
 
 /* all input commits in one and twos[] must have been parsed! */
-static struct commit_list *paint_down_to_common(struct commit *one, int n, struct commit **twos)
+static struct commit_list *paint_down_to_common(struct commit *one,
+						int n, struct commit **twos,
+						unsigned opts)
 {
 	struct prio_queue queue = { compare_commits_by_commit_date };
 	struct commit_list *result = NULL;
@@ -793,9 +795,13 @@ static struct commit_list *paint_down_to_common(struct commit *one, int n, struc
 		return result;
 	}
 	prio_queue_put(&queue, one);
+	if (opts & MB_FPCHAIN)
+		one->object.flags |= FPCHAIN;
 
 	for (i = 0; i < n; i++) {
 		twos[i]->object.flags |= PARENT2;
+		if (opts & MB_FPCHAIN)
+			twos[i]->object.flags |= FPCHAIN;
 		prio_queue_put(&queue, twos[i]);
 	}
 
@@ -806,7 +812,8 @@ static struct commit_list *paint_down_to_common(struct commit *one, int n, struc
 		int nth_parent = 0;
 
 		flags = commit->object.flags & (PARENT1 | PARENT2 | STALE);
-		if (flags == (PARENT1 | PARENT2)) {
+		if ((flags == (PARENT1 | PARENT2)) &&
+		    (!(opts & MB_FPCHAIN) || (commit->object.flags & FPCHAIN))) {
 			if (!(commit->object.flags & RESULT)) {
 				commit->object.flags |= RESULT;
 				commit_list_insert_by_date(commit, &result);
@@ -824,7 +831,7 @@ static struct commit_list *paint_down_to_common(struct commit *one, int n, struc
 			if (parse_commit(p))
 				return NULL;
 			p->object.flags |= flags;
-			if (nth_parent == 1)
+			if (nth_parent == 1 && (commit->object.flags & FPCHAIN))
 				p->object.flags |= FPCHAIN;
 			prio_queue_put(&queue, p);
 		}
@@ -834,7 +841,9 @@ static struct commit_list *paint_down_to_common(struct commit *one, int n, struc
 	return result;
 }
 
-static struct commit_list *merge_bases_many(struct commit *one, int n, struct commit **twos)
+static struct commit_list *merge_bases_many(struct commit *one,
+					    int n, struct commit **twos,
+					    unsigned opts)
 {
 	struct commit_list *list = NULL;
 	struct commit_list *result = NULL;
@@ -856,7 +865,7 @@ static struct commit_list *merge_bases_many(struct commit *one, int n, struct co
 			return NULL;
 	}
 
-	list = paint_down_to_common(one, n, twos);
+	list = paint_down_to_common(one, n, twos, opts);
 
 	while (list) {
 		struct commit *commit = pop_commit(&list);
@@ -923,7 +932,7 @@ static void mark_redundant(struct commit **array, int cnt)
 			filled_index[filled] = j;
 			work[filled++] = array[j];
 		}
-		common = paint_down_to_common(array[i], filled, work);
+		common = paint_down_to_common(array[i], filled, work, 0);
 		if (array[i]->object.flags & PARENT2)
 			redundant[i] = 1;
 		for (j = 0; j < filled; j++)
@@ -949,17 +958,17 @@ static void mark_redundant(struct commit **array, int cnt)
 
 struct commit_list *get_merge_bases_opt(struct commit *one,
 					int n, struct commit **twos,
-					unsigned flags)
+					unsigned opts)
 {
 	struct commit_list *list;
 	struct commit **rslt;
 	struct commit_list *result;
 	int cnt, i;
-	int cleanup = !!(flags & MB_POSTCLEAN);
-	int fpchain = !!(flags & MB_FPCHAIN);
-	char *on_fpchain;
+	int cleanup = !!(opts & MB_POSTCLEAN);
+	int fpchain = !!(opts & MB_FPCHAIN);
+	char *on_fpchain = NULL;
 
-	result = merge_bases_many(one, n, twos);
+	result = merge_bases_many(one, n, twos, opts);
 
 	/*
 	 * The fast-path of 'one' being the merge-base; there is no
@@ -982,13 +991,15 @@ struct commit_list *get_merge_bases_opt(struct commit *one,
 	/* There are more than one */
 	cnt = commit_list_count(result);
 	rslt = xcalloc(cnt, sizeof(*rslt));
-	on_fpchain = xcalloc(cnt, sizeof(*on_fpchain));
 	for (list = result, i = 0; list; list = list->next)
 		rslt[i++] = list->item;
 	free_commit_list(result);
 
-	for (i = 0; i < cnt; i++)
-		on_fpchain[i] = !!(rslt[i]->object.flags & FPCHAIN);
+	if (fpchain) {
+		on_fpchain = xcalloc(cnt, sizeof(*on_fpchain));
+		for (i = 0; i < cnt; i++)
+			on_fpchain[i] = !!(rslt[i]->object.flags & FPCHAIN);
+	}
 
 	clear_commit_marks(one, all_flags);
 	clear_commit_marks_many(n, twos, all_flags);
@@ -997,7 +1008,7 @@ struct commit_list *get_merge_bases_opt(struct commit *one,
 	result = NULL;
 	for (i = 0; i < cnt; i++)
 		if (!(rslt[i]->object.flags & STALE) &&
-		    (!fpchain || on_fpchain[i]))
+		    (!on_fpchain || on_fpchain[i]))
 			commit_list_insert_by_date(rslt[i], &result);
 		else
 			rslt[i]->object.flags &= ~STALE;
@@ -1050,7 +1061,7 @@ int in_merge_bases_many(struct commit *commit, int nr_reference, struct commit *
 		if (parse_commit(reference[i]))
 			return ret;
 
-	bases = paint_down_to_common(commit, nr_reference, reference);
+	bases = paint_down_to_common(commit, nr_reference, reference, 0);
 	if (commit->object.flags & PARENT2)
 		ret = 1;
 	clear_commit_marks(commit, all_flags);
