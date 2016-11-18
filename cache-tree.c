@@ -220,20 +220,6 @@ static void discard_unused_subtrees(struct cache_tree *it)
 	}
 }
 
-int cache_tree_fully_valid(struct cache_tree *it)
-{
-	int i;
-	if (!it)
-		return 0;
-	if (it->entry_count < 0 || !has_sha1_file(it->sha1))
-		return 0;
-	for (i = 0; i < it->subtree_nr; i++) {
-		if (!cache_tree_fully_valid(it->down[i]->cache_tree))
-			return 0;
-	}
-	return 1;
-}
-
 static int update_one(struct cache_tree *it,
 		      struct cache_entry **cache,
 		      int entries,
@@ -592,7 +578,7 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 
 int write_index_as_tree(unsigned char *sha1, struct index_state *index_state, const char *index_path, int flags, const char *prefix)
 {
-	int entries, was_valid, newfd;
+	int entries, newfd;
 	struct lock_file *lock_file;
 
 	/*
@@ -612,21 +598,18 @@ int write_index_as_tree(unsigned char *sha1, struct index_state *index_state, co
 	if (!index_state->cache_tree)
 		index_state->cache_tree = cache_tree();
 
-	was_valid = cache_tree_fully_valid(index_state->cache_tree);
-	if (!was_valid) {
-		if (cache_tree_update(index_state, flags) < 0)
-			return WRITE_TREE_UNMERGED_INDEX;
-		if (0 <= newfd) {
-			if (!write_locked_index(index_state, lock_file, COMMIT_LOCK))
-				newfd = -1;
-		}
-		/* Not being able to write is fine -- we are only interested
-		 * in updating the cache-tree part, and if the next caller
-		 * ends up using the old index with unupdated cache-tree part
-		 * it misses the work we did here, but that is just a
-		 * performance penalty and not a big deal.
-		 */
+	if (cache_tree_update(index_state, flags) < 0)
+		return WRITE_TREE_UNMERGED_INDEX;
+	if (0 <= newfd) {
+		if (!write_locked_index(index_state, lock_file, COMMIT_LOCK))
+			newfd = -1;
 	}
+	/* Not being able to write is fine -- we are only interested
+	 * in updating the cache-tree part, and if the next caller
+	 * ends up using the old index with unupdated cache-tree part
+	 * it misses the work we did here, but that is just a
+	 * performance penalty and not a big deal.
+	 */
 
 	if (prefix) {
 		struct cache_tree *subtree;
