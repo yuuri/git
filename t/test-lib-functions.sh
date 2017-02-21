@@ -1550,6 +1550,6 @@ test_path_is_hidden () {
 	BUG "test_path_is_hidden can only be used on Windows"
 
 	# Use the output of `attrib`, ignore the absolute path
-	case "$(attrib "$1")" in *H*?:*) return 0;; esac
+	case "$("$SYSTEMROOT"/system32/attrib "$1")" in *H*?:*) return 0;; esac
 	return 1
 }
