@@ -1008,8 +1008,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage_with_options(update_index_usage, options);
+	check_help_option(argc, argv, update_index_usage, options);
 
 	git_config(git_default_config, NULL);
 

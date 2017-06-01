@@ -76,6 +76,8 @@ int cmd_upload_archive(int argc, const char **argv, const char *prefix)
 {
 	struct child_process writer = { argv };
 
+	check_help_option(argc, argv, upload_archive_usage, NULL);
+
 	/*
 	 * Set up sideband subprocess.
 	 *

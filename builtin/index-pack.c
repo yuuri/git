@@ -1640,8 +1640,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	unsigned foreign_nr = 1;	/* zero is a "good" value, assume bad */
 	int report_end_of_input = 0;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage(index_pack_usage);
+	check_help_option(argc, argv, index_pack_usage, NULL);
 
 	check_replace_refs = 0;
 	fsck_options.walk = mark_link;

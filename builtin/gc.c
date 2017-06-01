@@ -363,8 +363,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage_with_options(builtin_gc_usage, builtin_gc_options);
+	check_help_option(argc, argv, builtin_gc_usage, builtin_gc_options);
 
 	argv_array_pushl(&pack_refs_cmd, "pack-refs", "--all", "--prune", NULL);
 	argv_array_pushl(&reflog, "reflog", "expire", "--all", NULL);

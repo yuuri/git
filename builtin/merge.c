@@ -1110,8 +1110,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	void *branch_to_free;
 	int orig_argc = argc;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage_with_options(builtin_merge_usage, builtin_merge_options);
+	check_help_option(argc, argv, builtin_merge_usage, builtin_merge_options);
 
 	/*
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a

@@ -5,6 +5,7 @@
  */
 #include "git-compat-util.h"
 #include "cache.h"
+#include "parse-options.h"
 
 void vreportf(const char *prefix, const char *err, va_list params)
 {
@@ -225,3 +226,13 @@ NORETURN void BUG(const char *fmt, ...)
 	va_end(ap);
 }
 #endif
+
+void check_help_option(int argc, const char **argv, const void *help, struct option *opt)
+{
+	if (argc == 2 && !strcmp(argv[1], "-h")) {
+		if (opt)
+			usage_with_options((const char * const *)help, opt);
+		else
+			usage((const char *)help);
+	}
+}

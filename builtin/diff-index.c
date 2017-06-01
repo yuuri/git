@@ -17,8 +17,7 @@ int cmd_diff_index(int argc, const char **argv, const char *prefix)
 	int i;
 	int result;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage(diff_cache_usage);
+	check_help_option(argc, argv, diff_cache_usage, NULL);
 
 	init_revisions(&rev, prefix);
 	gitmodules_config();

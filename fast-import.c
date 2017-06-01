@@ -3449,8 +3449,7 @@ int cmd_main(int argc, const char **argv)
 {
 	unsigned int i;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage(fast_import_usage);
+	check_help_option(argc, argv, fast_import_usage, NULL);
 
 	setup_git_directory();
 	reset_pack_idx_option(&pack_idx_opts);

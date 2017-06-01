@@ -55,8 +55,7 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 	int flags = 0;
 	const char *refname;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage(builtin_check_ref_format_usage);
+	check_help_option(argc, argv, builtin_check_ref_format_usage, NULL);
 
 	if (argc == 3 && !strcmp(argv[1], "--branch"))
 		return check_ref_format_branch(argv[2]);

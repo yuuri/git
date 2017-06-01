@@ -20,8 +20,7 @@ static const char *diff_index_args[] = {
 
 int cmd_merge_ours(int argc, const char **argv, const char *prefix)
 {
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage(builtin_merge_ours_usage);
+	check_help_option(argc, argv, builtin_merge_ours_usage, NULL);
 
 	/*
 	 * We need to exit with 2 if the index does not match our HEAD tree,

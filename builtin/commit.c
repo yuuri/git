@@ -1364,8 +1364,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		OPT_END(),
 	};
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage_with_options(builtin_status_usage, builtin_status_options);
+	check_help_option(argc, argv, builtin_status_usage, builtin_status_options);
 
 	status_init_config(&s, git_status_config);
 	argc = parse_options(argc, argv, prefix,
@@ -1648,8 +1647,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct ref_transaction *transaction;
 	struct strbuf err = STRBUF_INIT;
 
-	if (argc == 2 && !strcmp(argv[1], "-h"))
-		usage_with_options(builtin_commit_usage, builtin_commit_options);
+	check_help_option(argc, argv, builtin_commit_usage, builtin_commit_options);
 
 	status_init_config(&s, git_commit_config);
 	status_format = STATUS_FORMAT_NONE; /* Ignore status.short */
