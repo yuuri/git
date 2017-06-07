@@ -919,6 +919,26 @@ char *apply_refspecs(struct refspec *refspecs, int nr_refspec,
 	return query.dst;
 }
 
+void strbuf_add_refspec(struct strbuf *sb, const struct refspec *refspec)
+{
+	if (refspec->force)
+		strbuf_addch(sb, '+');
+	if (refspec->src)
+		strbuf_addstr(sb, refspec->src);
+	if (refspec->dst) {
+		strbuf_addch(sb, ':');
+		strbuf_addstr(sb, refspec->dst);
+	} else if (!refspec->src)
+		strbuf_addch(sb, ':');
+}
+
+char *refspec_to_string(const struct refspec *refspec)
+{
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_add_refspec(&sb, refspec);
+	return strbuf_detach(&sb, NULL);
+}
+
 int remote_find_tracking(struct remote *remote, struct refspec *refspec)
 {
 	return query_refspecs(remote->fetch, remote->fetch_refspec_nr, refspec);

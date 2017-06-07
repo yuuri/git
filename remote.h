@@ -177,6 +177,8 @@ void free_refspec(int nr_refspec, struct refspec *refspec);
 extern int query_refspecs(struct refspec *specs, int nr, struct refspec *query);
 char *apply_refspecs(struct refspec *refspecs, int nr_refspec,
 		     const char *name);
+void strbuf_add_refspec(struct strbuf *sb, const struct refspec *refspec);
+char *refspec_to_string(const struct refspec *refspec);
 
 int check_push_refs(struct ref *src, int nr_refspec, const char **refspec);
 int match_push_refs(struct ref *src, struct ref **dst,
