@@ -11,6 +11,11 @@ enum {
 	REMOTE_BRANCHES
 };
 
+struct refspec_array {
+	struct refspec *rs;
+	int nr, alloc;
+};
+
 struct remote {
 	struct hashmap_entry ent;  /* must be first */
 
@@ -32,10 +37,10 @@ struct remote {
 	int push_refspec_nr;
 	int push_refspec_alloc;
 
-	const char **fetch_refspec;
-	struct refspec *fetch;
-	int fetch_refspec_nr;
-	int fetch_refspec_alloc;
+	struct refspec_array fetch;
+
+	/* Copy of the first bogus fetch refspec we couldn't parse */
+	const char *bogus_refspec;
 
 	/*
 	 * -1 to never fetch tags
@@ -169,8 +174,16 @@ struct ref *ref_remove_duplicates(struct ref *ref_map);
 
 int valid_fetch_refspec(const char *refspec);
 struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec);
+/*
+ * Add a fetch refspec to a remote.
+ * If the refspec cannot be parsed successfully and
+ *  - gently=0: die().
+ *  - gently=1: store the refspec in remote->bogus_refspec and return with -1.
+ *              If there are more than one bogus refspecs in the same remote,
+ *              then only the first one will be stored.
+ */
+int add_fetch_refspec(struct remote *remote, const char *refspec, int gently);
 extern struct refspec *parse_push_refspec(int nr_refspec, const char **refspec);
-void add_and_parse_fetch_refspec(struct remote *remote, const char *refspec);
 
 void free_refspec(int nr_refspec, struct refspec *refspec);
 

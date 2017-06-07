@@ -331,10 +331,10 @@ static int get_ref_states(const struct ref *remote_refs, struct ref_states *stat
 	struct ref *ref, *stale_refs;
 	int i;
 
-	for (i = 0; i < states->remote->fetch_refspec_nr; i++)
-		if (get_fetch_map(remote_refs, states->remote->fetch + i, &tail, 1))
+	for (i = 0; i < states->remote->fetch.nr; i++)
+		if (get_fetch_map(remote_refs, states->remote->fetch.rs + i, &tail, 1))
 			die(_("Could not get fetch map for refspec %s"),
-			      refspec_to_string(&states->remote->fetch[i]));
+			      refspec_to_string(&states->remote->fetch.rs[i]));
 
 	states->new.strdup_strings = 1;
 	states->tracked.strdup_strings = 1;
@@ -345,8 +345,8 @@ static int get_ref_states(const struct ref *remote_refs, struct ref_states *stat
 		else
 			string_list_append(&states->tracked, abbrev_branch(ref->name));
 	}
-	stale_refs = get_stale_heads(states->remote->fetch,
-				     states->remote->fetch_refspec_nr, fetch_map);
+	stale_refs = get_stale_heads(states->remote->fetch.rs,
+				     states->remote->fetch.nr, fetch_map);
 	for (ref = stale_refs; ref; ref = ref->next) {
 		struct string_list_item *item =
 			string_list_append(&states->stale, abbrev_branch(ref->name));
@@ -591,8 +591,8 @@ static int migrate_file(struct remote *remote)
 	}
 	strbuf_reset(&buf);
 	strbuf_addf(&buf, "remote.%s.fetch", remote->name);
-	for (i = 0; i < remote->fetch_refspec_nr; i++) {
-		strbuf_add_refspec(&refspec, &remote->fetch[i]);
+	for (i = 0; i < remote->fetch.nr; i++) {
+		strbuf_add_refspec(&refspec, &remote->fetch.rs[i]);
 		git_config_set_multivar(buf.buf, refspec.buf, "^$", 0);
 		strbuf_reset(&refspec);
 	}
@@ -651,11 +651,11 @@ static int mv(int argc, const char **argv)
 	strbuf_addf(&buf, "remote.%s.fetch", rename.new);
 	git_config_set_multivar(buf.buf, NULL, NULL, 1);
 	strbuf_addf(&old_remote_context, ":refs/remotes/%s/", rename.old);
-	for (i = 0; i < oldremote->fetch_refspec_nr; i++) {
+	for (i = 0; i < oldremote->fetch.nr; i++) {
 		char *ptr;
 
 		strbuf_reset(&buf2);
-		strbuf_add_refspec(&buf2, &oldremote->fetch[i]);
+		strbuf_add_refspec(&buf2, &oldremote->fetch.rs[i]);
 		ptr = strstr(buf2.buf, old_remote_context.buf);
 		if (ptr) {
 			refspec_updated = 1;
