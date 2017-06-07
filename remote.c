@@ -484,123 +484,136 @@ static void read_config(void)
 	alias_all_urls();
 }
 
+static int parse_one_refspec(struct refspec *rs, const char *refspec,
+			     int fetch, int gently)
+{
+	size_t llen;
+	int is_glob;
+	const char *lhs, *rhs;
+	int flags;
+
+	memset(rs, 0, sizeof(*rs));
+
+	is_glob = 0;
+
+	lhs = refspec;
+	if (*lhs == '+') {
+		rs->force = 1;
+		lhs++;
+	}
+
+	rhs = strrchr(lhs, ':');
+
+	/*
+	 * Before going on, special case ":" (or "+:") as a refspec
+	 * for pushing matching refs.
+	 */
+	if (!fetch && rhs == lhs && rhs[1] == '\0') {
+		rs->matching = 1;
+		return 0;
+	}
+
+	if (rhs) {
+		size_t rlen = strlen(++rhs);
+		is_glob = (1 <= rlen && strchr(rhs, '*'));
+		rs->dst = xstrndup(rhs, rlen);
+	}
+
+	llen = (rhs ? (rhs - lhs - 1) : strlen(lhs));
+	if (1 <= llen && memchr(lhs, '*', llen)) {
+		if ((rhs && !is_glob) || (!rhs && fetch))
+			goto invalid;
+		is_glob = 1;
+	} else if (rhs && is_glob) {
+		goto invalid;
+	}
+
+	rs->pattern = is_glob;
+	rs->src = xstrndup(lhs, llen);
+	flags = REFNAME_ALLOW_ONELEVEL | (is_glob ? REFNAME_REFSPEC_PATTERN : 0);
+
+	if (fetch) {
+		struct object_id unused;
+
+		/* LHS */
+		if (!*rs->src)
+			; /* empty is ok; it means "HEAD" */
+		else if (llen == GIT_SHA1_HEXSZ && !get_oid_hex(rs->src, &unused))
+			rs->exact_sha1 = 1; /* ok */
+		else if (!check_refname_format(rs->src, flags))
+			; /* valid looking ref is ok */
+		else
+			goto invalid;
+		/* RHS */
+		if (!rs->dst)
+			; /* missing is ok; it is the same as empty */
+		else if (!*rs->dst)
+			; /* empty is ok; it means "do not store" */
+		else if (!check_refname_format(rs->dst, flags))
+			; /* valid looking ref is ok */
+		else
+			goto invalid;
+	} else {
+		/*
+		 * LHS
+		 * - empty is allowed; it means delete.
+		 * - when wildcarded, it must be a valid looking ref.
+		 * - otherwise, it must be an extended SHA-1, but
+		 *   there is no existing way to validate this.
+		 */
+		if (!*rs->src)
+			; /* empty is ok */
+		else if (is_glob) {
+			if (check_refname_format(rs->src, flags))
+				goto invalid;
+		}
+		else
+			; /* anything goes, for now */
+		/*
+		 * RHS
+		 * - missing is allowed, but LHS then must be a
+		 *   valid looking ref.
+		 * - empty is not allowed.
+		 * - otherwise it must be a valid looking ref.
+		 */
+		if (!rs->dst) {
+			if (check_refname_format(rs->src, flags))
+				goto invalid;
+		} else if (!*rs->dst) {
+			goto invalid;
+		} else {
+			if (check_refname_format(rs->dst, flags))
+				goto invalid;
+		}
+	}
+
+	return 0;
+
+ invalid:
+	if (gently) {
+		free(rs->src);
+		free(rs->dst);
+		return -1;
+	}
+	die("Invalid refspec '%s'", refspec);
+}
+
 static struct refspec *parse_refspec_internal(int nr_refspec, const char **refspec, int fetch, int verify)
 {
 	int i;
-	struct refspec *rs = xcalloc(nr_refspec, sizeof(*rs));
+	struct refspec *rs;
+
+	ALLOC_ARRAY(rs, nr_refspec);
 
 	for (i = 0; i < nr_refspec; i++) {
-		size_t llen;
-		int is_glob;
-		const char *lhs, *rhs;
-		int flags;
-
-		is_glob = 0;
-
-		lhs = refspec[i];
-		if (*lhs == '+') {
-			rs[i].force = 1;
-			lhs++;
-		}
-
-		rhs = strrchr(lhs, ':');
-
-		/*
-		 * Before going on, special case ":" (or "+:") as a refspec
-		 * for pushing matching refs.
-		 */
-		if (!fetch && rhs == lhs && rhs[1] == '\0') {
-			rs[i].matching = 1;
-			continue;
-		}
-
-		if (rhs) {
-			size_t rlen = strlen(++rhs);
-			is_glob = (1 <= rlen && strchr(rhs, '*'));
-			rs[i].dst = xstrndup(rhs, rlen);
-		}
-
-		llen = (rhs ? (rhs - lhs - 1) : strlen(lhs));
-		if (1 <= llen && memchr(lhs, '*', llen)) {
-			if ((rhs && !is_glob) || (!rhs && fetch))
-				goto invalid;
-			is_glob = 1;
-		} else if (rhs && is_glob) {
-			goto invalid;
-		}
-
-		rs[i].pattern = is_glob;
-		rs[i].src = xstrndup(lhs, llen);
-		flags = REFNAME_ALLOW_ONELEVEL | (is_glob ? REFNAME_REFSPEC_PATTERN : 0);
-
-		if (fetch) {
-			struct object_id unused;
-
-			/* LHS */
-			if (!*rs[i].src)
-				; /* empty is ok; it means "HEAD" */
-			else if (llen == GIT_SHA1_HEXSZ && !get_oid_hex(rs[i].src, &unused))
-				rs[i].exact_sha1 = 1; /* ok */
-			else if (!check_refname_format(rs[i].src, flags))
-				; /* valid looking ref is ok */
-			else
-				goto invalid;
-			/* RHS */
-			if (!rs[i].dst)
-				; /* missing is ok; it is the same as empty */
-			else if (!*rs[i].dst)
-				; /* empty is ok; it means "do not store" */
-			else if (!check_refname_format(rs[i].dst, flags))
-				; /* valid looking ref is ok */
-			else
-				goto invalid;
-		} else {
-			/*
-			 * LHS
-			 * - empty is allowed; it means delete.
-			 * - when wildcarded, it must be a valid looking ref.
-			 * - otherwise, it must be an extended SHA-1, but
-			 *   there is no existing way to validate this.
-			 */
-			if (!*rs[i].src)
-				; /* empty is ok */
-			else if (is_glob) {
-				if (check_refname_format(rs[i].src, flags))
-					goto invalid;
-			}
-			else
-				; /* anything goes, for now */
-			/*
-			 * RHS
-			 * - missing is allowed, but LHS then must be a
-			 *   valid looking ref.
-			 * - empty is not allowed.
-			 * - otherwise it must be a valid looking ref.
-			 */
-			if (!rs[i].dst) {
-				if (check_refname_format(rs[i].src, flags))
-					goto invalid;
-			} else if (!*rs[i].dst) {
-				goto invalid;
-			} else {
-				if (check_refname_format(rs[i].dst, flags))
-					goto invalid;
-			}
+		if (parse_one_refspec(&rs[i], refspec[i], fetch, verify) < 0) {
+			/* verify != 0 here, because parse_one_refspec()
+			 * would have already die()d otherwise. */
+			free_refspec(i, rs);
+			return NULL;
 		}
 	}
 	return rs;
-
- invalid:
-	if (verify) {
-		/*
-		 * nr_refspec must be greater than zero and i must be valid
-		 * since it is only possible to reach this point from within
-		 * the for loop above.
-		 */
-		free_refspec(i+1, rs);
-		return NULL;
-	}
-	die("Invalid refspec '%s'", refspec[i]);
 }
 
 int valid_fetch_refspec(const char *fetch_refspec_str)
