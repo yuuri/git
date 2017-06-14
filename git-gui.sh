@@ -202,7 +202,11 @@ proc gitdir {args} {
 	if {$args eq {}} {
 		return $_gitdir
 	}
-	return [eval [list file join $_gitdir] $args]
+	if {[package vcompare $::_git_version 2.5.0] >= 0} {
+		return [git rev-parse --git-path [eval [list file join] $args]]
+	} else {
+		return [eval [list file join $_gitdir] $args]
+	}
 }
 
 proc gitexec {args} {
