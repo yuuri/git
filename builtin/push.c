@@ -47,11 +47,11 @@ static const char *map_refspec(const char *ref,
 	if (count_refspec_match(ref, local_refs, &matched) != 1)
 		return ref;
 
-	if (remote->push) {
+	if (remote->push.rs) {
 		struct refspec query;
 		memset(&query, 0, sizeof(struct refspec));
 		query.src = matched->name;
-		if (!query_refspecs(remote->push, remote->push_refspec_nr, &query) &&
+		if (!query_refspecs(remote->push.rs, remote->push.nr, &query) &&
 		    query.dst) {
 			struct strbuf buf = STRBUF_INIT;
 			strbuf_addf(&buf, "%s%s:%s",
@@ -401,9 +401,11 @@ static int do_push(const char *repo, int flags,
 	}
 
 	if (!refspec && !(flags & TRANSPORT_PUSH_ALL)) {
-		if (remote->push_refspec_nr) {
-			refspec = remote->push_refspec;
-			refspec_nr = remote->push_refspec_nr;
+		if (remote->push.nr) {
+			ALLOC_ARRAY(refspec, remote->push.nr);
+			for (i = 0; i < remote->push.nr; i++)
+				refspec[i] = refspec_to_string(&remote->push.rs[i]);
+			refspec_nr = remote->push.nr;
 		} else if (!(flags & TRANSPORT_PUSH_MIRROR))
 			setup_default_push_refspecs(remote);
 	}

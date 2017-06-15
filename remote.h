@@ -32,14 +32,10 @@ struct remote {
 	int pushurl_nr;
 	int pushurl_alloc;
 
-	const char **push_refspec;
-	struct refspec *push;
-	int push_refspec_nr;
-	int push_refspec_alloc;
-
+	struct refspec_array push;
 	struct refspec_array fetch;
 
-	/* Copy of the first bogus fetch refspec we couldn't parse */
+	/* Copy of the first bogus refspec we couldn't parse */
 	const char *bogus_refspec;
 
 	/*
@@ -184,6 +180,8 @@ struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec);
  */
 int add_fetch_refspec(struct remote *remote, const char *refspec, int gently);
 extern struct refspec *parse_push_refspec(int nr_refspec, const char **refspec);
+/* The same as add_fetch_refspec() above, but for push refspecs. */
+int add_push_refspec(struct remote *remote, const char *refspec, int gently);
 
 void free_refspec(int nr_refspec, struct refspec *refspec);
 

@@ -380,14 +380,19 @@ static int get_push_ref_states(const struct ref *remote_refs,
 {
 	struct remote *remote = states->remote;
 	struct ref *ref, *local_refs, *push_map;
+	const char **refspec;
+	int i;
 	if (remote->mirror)
 		return 0;
 
 	local_refs = get_local_heads();
 	push_map = copy_ref_list(remote_refs);
 
-	match_push_refs(local_refs, &push_map, remote->push_refspec_nr,
-			remote->push_refspec, MATCH_REFS_NONE);
+	ALLOC_ARRAY(refspec, remote->push.nr);
+	for (i = 0; i < remote->push.nr; i++)
+		refspec[i] = refspec_to_string(&remote->push.rs[i]);
+	match_push_refs(local_refs, &push_map, remote->push.nr,
+			refspec, MATCH_REFS_NONE);
 
 	states->push.strdup_strings = 1;
 	for (ref = push_map; ref; ref = ref->next) {
@@ -433,14 +438,14 @@ static int get_push_ref_states_noquery(struct ref_states *states)
 		return 0;
 
 	states->push.strdup_strings = 1;
-	if (!remote->push_refspec_nr) {
+	if (!remote->push.nr) {
 		item = string_list_append(&states->push, _("(matching)"));
 		info = item->util = xcalloc(1, sizeof(struct push_info));
 		info->status = PUSH_STATUS_NOTQUERIED;
 		info->dest = xstrdup(item->string);
 	}
-	for (i = 0; i < remote->push_refspec_nr; i++) {
-		struct refspec *spec = remote->push + i;
+	for (i = 0; i < remote->push.nr; i++) {
+		struct refspec *spec = remote->push.rs + i;
 		if (spec->matching)
 			item = string_list_append(&states->push, _("(matching)"));
 		else if (strlen(spec->src))
@@ -584,8 +589,8 @@ static int migrate_file(struct remote *remote)
 		git_config_set_multivar(buf.buf, remote->url[i], "^$", 0);
 	strbuf_reset(&buf);
 	strbuf_addf(&buf, "remote.%s.push", remote->name);
-	for (i = 0; i < remote->push_refspec_nr; i++) {
-		strbuf_add_refspec(&refspec, &remote->push[i]);
+	for (i = 0; i < remote->push.nr; i++) {
+		strbuf_add_refspec(&refspec, &remote->push.rs[i]);
 		git_config_set_multivar(buf.buf, refspec.buf, "^$", 0);
 		strbuf_reset(&refspec);
 	}

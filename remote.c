@@ -86,14 +86,6 @@ static const char *alias_url(const char *url, struct rewrites *r)
 	return xstrfmt("%s%s", r->rewrite[longest_i]->base, url + longest->len);
 }
 
-static void add_push_refspec(struct remote *remote, const char *ref)
-{
-	ALLOC_GROW(remote->push_refspec,
-		   remote->push_refspec_nr + 1,
-		   remote->push_refspec_alloc);
-	remote->push_refspec[remote->push_refspec_nr++] = strdup(ref);
-}
-
 static void add_url(struct remote *remote, const char *url)
 {
 	ALLOC_GROW(remote->url, remote->url_nr + 1, remote->url_alloc);
@@ -257,7 +249,7 @@ static void read_remotes_file(struct remote *remote)
 		if (skip_prefix(buf.buf, "URL:", &v))
 			add_url_alias(remote, xstrdup(skip_spaces(v)));
 		else if (skip_prefix(buf.buf, "Push:", &v))
-			add_push_refspec(remote, skip_spaces(v));
+			add_push_refspec(remote, skip_spaces(v), 1);
 		else if (skip_prefix(buf.buf, "Pull:", &v))
 			add_fetch_refspec(remote, skip_spaces(v), 1);
 	}
@@ -308,7 +300,7 @@ static void read_branches_file(struct remote *remote)
 	 * (master if missing)
 	 */
 	strbuf_addf(&buf, "HEAD:refs/heads/%s", frag);
-	add_push_refspec(remote, buf.buf);
+	add_push_refspec(remote, buf.buf, 1);
 	remote->fetch_tags = 1; /* always auto-follow */
 
 	strbuf_release(&buf);
@@ -394,7 +386,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
-		add_push_refspec(remote, v);
+		add_push_refspec(remote, v, 1);
 		free((char*)v);
 	} else if (!strcmp(subkey, "fetch")) {
 		const char *v;
@@ -625,7 +617,7 @@ struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec)
 static int add_refspec(struct remote *remote, const char *refspec,
 		       int fetch, int gently)
 {
-	struct refspec_array *rsa = fetch ? &remote->fetch : NULL;
+	struct refspec_array *rsa = fetch ? &remote->fetch : &remote->push;
 
 	ALLOC_GROW(rsa->rs, rsa->nr + 1, rsa->alloc);
 
@@ -649,6 +641,11 @@ int add_fetch_refspec(struct remote *remote, const char *refspec, int gently)
 struct refspec *parse_push_refspec(int nr_refspec, const char **refspec)
 {
 	return parse_refspec_internal(nr_refspec, refspec, 0, 0);
+}
+
+int add_push_refspec(struct remote *remote, const char *refspec, int gently)
+{
+	return add_refspec(remote, refspec, 0, gently);
 }
 
 void free_refspec(int nr_refspec, struct refspec *refspec)
@@ -730,7 +727,6 @@ static struct remote *remote_get_1(const char *name,
 		return NULL;
 	if (ret->bogus_refspec)
 		die("Invalid refspec '%s'", ret->bogus_refspec);
-	ret->push = parse_push_refspec(ret->push_refspec_nr, ret->push_refspec);
 	return ret;
 }
 
@@ -763,9 +759,6 @@ int for_each_remote(each_remote_fn fn, void *priv)
 			continue;
 		if (r->bogus_refspec)
 			die("Invalid refspec '%s'", r->bogus_refspec);
-		if (!r->push)
-			r->push = parse_push_refspec(r->push_refspec_nr,
-						     r->push_refspec);
 		result = fn(r, priv);
 	}
 	return result;
@@ -1777,11 +1770,11 @@ static const char *branch_get_push_1(struct branch *branch, struct strbuf *err)
 				 _("branch '%s' has no remote for pushing"),
 				 branch->name);
 
-	if (remote->push_refspec_nr) {
+	if (remote->push.nr) {
 		char *dst;
 		const char *ret;
 
-		dst = apply_refspecs(remote->push, remote->push_refspec_nr,
+		dst = apply_refspecs(remote->push.rs, remote->push.nr,
 				     branch->refname);
 		if (!dst)
 			return error_buf(err,
