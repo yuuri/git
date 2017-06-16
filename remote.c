@@ -91,7 +91,7 @@ static void add_push_refspec(struct remote *remote, const char *ref)
 	ALLOC_GROW(remote->push_refspec,
 		   remote->push_refspec_nr + 1,
 		   remote->push_refspec_alloc);
-	remote->push_refspec[remote->push_refspec_nr++] = ref;
+	remote->push_refspec[remote->push_refspec_nr++] = strdup(ref);
 }
 
 static void add_fetch_refspec(struct remote *remote, const char *ref)
@@ -99,7 +99,7 @@ static void add_fetch_refspec(struct remote *remote, const char *ref)
 	ALLOC_GROW(remote->fetch_refspec,
 		   remote->fetch_refspec_nr + 1,
 		   remote->fetch_refspec_alloc);
-	remote->fetch_refspec[remote->fetch_refspec_nr++] = ref;
+	remote->fetch_refspec[remote->fetch_refspec_nr++] = strdup(ref);
 }
 
 static void add_url(struct remote *remote, const char *url)
@@ -265,9 +265,9 @@ static void read_remotes_file(struct remote *remote)
 		if (skip_prefix(buf.buf, "URL:", &v))
 			add_url_alias(remote, xstrdup(skip_spaces(v)));
 		else if (skip_prefix(buf.buf, "Push:", &v))
-			add_push_refspec(remote, xstrdup(skip_spaces(v)));
+			add_push_refspec(remote, skip_spaces(v));
 		else if (skip_prefix(buf.buf, "Pull:", &v))
-			add_fetch_refspec(remote, xstrdup(skip_spaces(v)));
+			add_fetch_refspec(remote, skip_spaces(v));
 	}
 	strbuf_release(&buf);
 	fclose(f);
@@ -306,15 +306,20 @@ static void read_branches_file(struct remote *remote)
 		frag = "master";
 
 	add_url_alias(remote, strbuf_detach(&buf, NULL));
-	add_fetch_refspec(remote, xstrfmt("refs/heads/%s:refs/heads/%s",
-					  frag, remote->name));
+
+	strbuf_addf(&buf, "refs/heads/%s:refs/heads/%s", frag, remote->name);
+	add_fetch_refspec(remote, buf.buf);
+	strbuf_reset(&buf);
 
 	/*
 	 * Cogito compatible push: push current HEAD to remote #branch
 	 * (master if missing)
 	 */
-	add_push_refspec(remote, xstrfmt("HEAD:refs/heads/%s", frag));
+	strbuf_addf(&buf, "HEAD:refs/heads/%s", frag);
+	add_push_refspec(remote, buf.buf);
 	remote->fetch_tags = 1; /* always auto-follow */
+
+	strbuf_release(&buf);
 }
 
 static int handle_config(const char *key, const char *value, void *cb)
@@ -398,11 +403,13 @@ static int handle_config(const char *key, const char *value, void *cb)
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_push_refspec(remote, v);
+		free((char*)v);
 	} else if (!strcmp(subkey, "fetch")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_fetch_refspec(remote, v);
+		free((char*)v);
 	} else if (!strcmp(subkey, "receivepack")) {
 		const char *v;
 		if (git_config_string(&v, key, value))

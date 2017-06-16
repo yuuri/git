@@ -1054,8 +1054,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	remote = remote_get(option_origin);
 	strbuf_addf(&default_refspec, "+%s*:%s*", src_ref_prefix,
 		    branch_top.buf);
-	add_and_parse_fetch_refspec(remote,
-				    strbuf_detach(&default_refspec, NULL));
+	add_and_parse_fetch_refspec(remote, default_refspec.buf);
 
 	transport = transport_get(remote, remote->url[0]);
 	transport_set_verbosity(transport, option_verbosity, option_progress);
