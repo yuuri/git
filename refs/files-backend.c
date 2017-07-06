@@ -23,6 +23,7 @@ struct ref_lock {
 struct files_ref_store {
 	struct ref_store base;
 	unsigned int store_flags;
+	int encode_names;
 
 	char *gitdir;
 	char *gitcommondir;
@@ -53,6 +54,9 @@ static struct ref_store *files_ref_store_create(const char *gitdir,
 
 	base_ref_store_init(ref_store, &refs_be_files);
 	refs->store_flags = flags;
+
+	/* git_config_get_bool("core.escapeLooseRefNames", &refs->encode_names); */
+	refs->encode_names = 1;
 
 	refs->gitdir = xstrdup(gitdir);
 	get_common_dir_noenv(&sb, gitdir);
@@ -102,6 +106,29 @@ static struct files_ref_store *files_downcast(struct ref_store *ref_store,
 	return refs;
 }
 
+static void files_path_encode(struct files_ref_store *refs,
+			      struct strbuf *sb, const char *refname)
+{
+	if (!refs->encode_names) {
+		strbuf_addstr(sb, refname);
+	} else {
+		/* NEEDSWORK obviously */
+		strbuf_addstr(sb, refname);
+	}
+}
+
+static int files_path_decode(struct files_ref_store *refs,
+			     struct strbuf *sb, const char *name, int namelen)
+{
+	if (!refs->encode_names) {
+		strbuf_add(sb, name, namelen);
+	} else {
+		/* NEEDSWORK obviously */
+		strbuf_add(sb, name, namelen);
+	}
+	return 0;
+}
+
 static void files_reflog_path(struct files_ref_store *refs,
 			      struct strbuf *sb,
 			      const char *refname)
@@ -118,15 +145,16 @@ static void files_reflog_path(struct files_ref_store *refs,
 	switch (ref_type(refname)) {
 	case REF_TYPE_PER_WORKTREE:
 	case REF_TYPE_PSEUDOREF:
-		strbuf_addf(sb, "%s/logs/%s", refs->gitdir, refname);
+		strbuf_addf(sb, "%s/logs/", refs->gitdir);
 		break;
 	case REF_TYPE_NORMAL:
-		strbuf_addf(sb, "%s/logs/%s", refs->gitcommondir, refname);
+		strbuf_addf(sb, "%s/logs/", refs->gitcommondir);
 		break;
 	default:
 		die("BUG: unknown ref type %d of ref %s",
 		    ref_type(refname), refname);
 	}
+	files_path_encode(refs, sb, refname);
 }
 
 static void files_ref_path(struct files_ref_store *refs,
@@ -136,15 +164,16 @@ static void files_ref_path(struct files_ref_store *refs,
 	switch (ref_type(refname)) {
 	case REF_TYPE_PER_WORKTREE:
 	case REF_TYPE_PSEUDOREF:
-		strbuf_addf(sb, "%s/%s", refs->gitdir, refname);
+		strbuf_addf(sb, "%s/", refs->gitdir);
 		break;
 	case REF_TYPE_NORMAL:
-		strbuf_addf(sb, "%s/%s", refs->gitcommondir, refname);
+		strbuf_addf(sb, "%s/", refs->gitcommondir);
 		break;
 	default:
 		die("BUG: unknown ref type %d of ref %s",
 		    ref_type(refname), refname);
 	}
+	files_path_encode(refs, sb, refname);
 }
 
 /*
@@ -174,7 +203,7 @@ static void loose_fill_ref_dir(struct ref_store *ref_store,
 	}
 
 	strbuf_init(&refname, dirnamelen + 257);
-	strbuf_add(&refname, dirname, dirnamelen);
+	files_path_decode(refs, &refname, dirname, dirnamelen);
 
 	while ((de = readdir(d)) != NULL) {
 		struct object_id oid;
@@ -185,7 +214,8 @@ static void loose_fill_ref_dir(struct ref_store *ref_store,
 			continue;
 		if (ends_with(de->d_name, ".lock"))
 			continue;
-		strbuf_addstr(&refname, de->d_name);
+		if (files_path_decode(refs, &refname, de->d_name, strlen(de->d_name)))
+			continue;
 		strbuf_addstr(&path, de->d_name);
 		if (stat(path.buf, &st) < 0) {
 			; /* silently ignore */
