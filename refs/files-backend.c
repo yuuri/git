@@ -109,11 +109,18 @@ static struct files_ref_store *files_downcast(struct ref_store *ref_store,
 static void files_path_encode(struct files_ref_store *refs,
 			      struct strbuf *sb, const char *refname)
 {
-	if (!refs->encode_names) {
+	if (!refs->encode_names || !strcmp(refname, "HEAD")) {
 		strbuf_addstr(sb, refname);
 	} else {
-		/* NEEDSWORK obviously */
-		strbuf_addstr(sb, refname);
+		const char *cp;
+
+		for (cp = refname; *cp; cp++) {
+			int ch = *cp;
+			if (('A' <= ch && ch <= 'Z') || (ch == '%'))
+				strbuf_addf(sb, "%%%02x", ch);
+			else
+				strbuf_addch(sb, ch);
+		}
 	}
 }
 
@@ -123,8 +130,21 @@ static int files_path_decode(struct files_ref_store *refs,
 	if (!refs->encode_names) {
 		strbuf_add(sb, name, namelen);
 	} else {
-		/* NEEDSWORK obviously */
-		strbuf_add(sb, name, namelen);
+		size_t origlen = sb->len;
+
+		while (namelen--) {
+			int ch = *name++;
+
+			if (ch == '%') {
+				if (namelen < 2 || (ch = hex2chr(name)) < 0) {
+					strbuf_setlen(sb, origlen);
+					return -1;
+				}
+				namelen -= 2;
+				name += 2;
+			}
+			strbuf_addch(sb, ch);
+		}
 	}
 	return 0;
 }
