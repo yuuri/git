@@ -475,11 +475,10 @@ test_expect_success 'same, but with CR-LF line endings && cr-at-eol unset' '
 	cp one save-one &&
 	printf "                 \r\n" >>one &&
 	git add one &&
-	cp one expect &&
 	printf "d\r\n" >>one &&
+	cp one expect &&
 	git diff -- one >patch &&
 	mv save-one one &&
-	echo d >>expect &&
 
 	git apply --ignore-space-change --whitespace=fix patch &&
 	test_cmp one expect
