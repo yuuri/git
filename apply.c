@@ -2282,6 +2282,8 @@ static void show_stats(struct apply_state *state, struct patch *patch)
 		add, pluses, del, minuses);
 }
 
+#define APPLY_FLAGS_CR_AT_EOL   (1<<0)
+
 static int read_old_data(struct stat *st, const char *path, struct strbuf *buf, int flags)
 {
 	enum safe_crlf safe_crlf = flags & APPLY_FLAGS_CR_AT_EOL ?
