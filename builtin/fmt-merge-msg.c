@@ -464,7 +464,7 @@ static void fmt_merge_msg_title(struct strbuf *out,
 static void fmt_tag_signature(struct strbuf *tagbuf,
 			      struct strbuf *sig,
 			      const char *buf,
-			      unsigned long len)
+			      size_t len)
 {
 	const char *tag_body = strstr(buf, "\n\n");
 	if (tag_body) {

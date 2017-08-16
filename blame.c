@@ -1621,7 +1621,7 @@ static const char *get_next_line(const char *start, const char *end)
 static int prepare_lines(struct blame_scoreboard *sb)
 {
 	const char *buf = sb->final_buf;
-	unsigned long len = sb->final_buf_size;
+	size_t len = sb->final_buf_size;
 	const char *end = buf + len;
 	const char *p;
 	int *lineno;

@@ -34,7 +34,7 @@ static int verify_object(const unsigned char *sha1, const char *expected_type)
 	return ret;
 }
 
-static int verify_tag(char *buffer, unsigned long size)
+static int verify_tag(char *buffer, size_t size)
 {
 	int typelen;
 	char type[20];
