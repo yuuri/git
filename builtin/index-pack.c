@@ -435,7 +435,7 @@ static int is_delta_type(enum object_type type)
 	return (type == OBJ_REF_DELTA || type == OBJ_OFS_DELTA);
 }
 
-static void *unpack_entry_data(off_t offset, unsigned long size,
+static void *unpack_entry_data(off_t offset, size_t size,
 			       enum object_type type, unsigned char *sha1)
 {
 	static char fixed_buf[8192];
@@ -444,10 +444,10 @@ static void *unpack_entry_data(off_t offset, unsigned long size,
 	void *buf;
 	git_SHA_CTX c;
 	char hdr[32];
-	int hdrlen;
+	size_t hdrlen;
 
 	if (!is_delta_type(type)) {
-		hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(type), size) + 1;
+		hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %" PRIuMAX, typename(type), (uintmax_t)size) + 1;
 		git_SHA1_Init(&c);
 		git_SHA1_Update(&c, hdr, hdrlen);
 	} else
@@ -489,7 +489,7 @@ static void *unpack_raw_entry(struct object_entry *obj,
 			      unsigned char *sha1)
 {
 	unsigned char *p;
-	unsigned long size, c;
+	size_t size, c;
 	off_t base_offset;
 	unsigned shift;
 	void *data;
@@ -551,11 +551,11 @@ static void *unpack_raw_entry(struct object_entry *obj,
 }
 
 static void *unpack_data(struct object_entry *obj,
-			 int (*consume)(const unsigned char *, unsigned long, void *),
+			 int (*consume)(const unsigned char *, size_t, void *),
 			 void *cb_data)
 {
 	off_t from = obj[0].idx.offset + obj[0].hdr_size;
-	off_t len = obj[1].idx.offset - from;
+	size_t len = obj[1].idx.offset - from;
 	unsigned char *data, *inbuf;
 	git_zstream stream;
 	int status;
@@ -728,10 +728,10 @@ struct compare_data {
 	struct object_entry *entry;
 	struct git_istream *st;
 	unsigned char *buf;
-	unsigned long buf_size;
+	size_t buf_size;
 };
 
-static int compare_objects(const unsigned char *buf, unsigned long size,
+static int compare_objects(const unsigned char *buf, size_t size,
 			   void *cb_data)
 {
 	struct compare_data *data = cb_data;
@@ -783,7 +783,7 @@ static int check_collison(struct object_entry *entry)
 }
 
 static void sha1_object(const void *data, struct object_entry *obj_entry,
-			unsigned long size, enum object_type type,
+			size_t size, enum object_type type,
 			const struct object_id *oid)
 {
 	void *new_data = NULL;
@@ -1311,11 +1311,11 @@ static int write_compressed(struct sha1file *f, void *in, unsigned int size)
 
 static struct object_entry *append_obj_to_pack(struct sha1file *f,
 			       const unsigned char *sha1, void *buf,
-			       unsigned long size, enum object_type type)
+			       size_t size, enum object_type type)
 {
 	struct object_entry *obj = &objects[nr_objects++];
 	unsigned char header[10];
-	unsigned long s = size;
+	size_t s = size;
 	int n = 0;
 	unsigned char c = (type << 4) | (s & 15);
 	s >>= 4;
@@ -1585,10 +1585,10 @@ static void show_pack_info(int stat_only)
 			chain_histogram[obj_stat[i].delta_depth - 1]++;
 		if (stat_only)
 			continue;
-		printf("%s %-6s %" PRIuMAX " %lu %" PRIuMAX,
+		printf("%s %-6s %" PRIuMAX " %" PRIuMAX " %" PRIuMAX,
 		       oid_to_hex(&obj->idx.oid),
 		       typename(obj->real_type), (uintmax_t)obj->size,
-		       (unsigned long)(obj[1].idx.offset - obj->idx.offset),
+		       (uintmax_t)(obj[1].idx.offset - obj->idx.offset),
 		       (uintmax_t)obj->idx.offset);
 		if (is_delta_type(obj->type)) {
 			struct object_entry *bobj = &objects[obj_stat[i].base_object_no];
