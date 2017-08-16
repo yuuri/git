@@ -1631,7 +1631,7 @@ static const struct packed_git *has_packed_and_bad(const unsigned char *sha1)
  * the streaming interface and rehash it to do the same.
  */
 int check_sha1_signature(const unsigned char *sha1, void *map,
-			 unsigned long size, const char *type)
+			 size_t size, const char *type)
 {
 	unsigned char real_sha1[20];
 	enum object_type obj_type;
@@ -1650,7 +1650,8 @@ int check_sha1_signature(const unsigned char *sha1, void *map,
 		return -1;
 
 	/* Generate the header */
-	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(obj_type), size) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %" PRIuMAX,
+			   typename(obj_type), (uintmax_t)size) + 1;
 
 	/* Sha1.. */
 	git_SHA1_Init(&c);
@@ -1795,11 +1796,11 @@ void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 }
 
 unsigned long unpack_object_header_buffer(const unsigned char *buf,
-		unsigned long len, enum object_type *type, unsigned long *sizep)
+		unsigned long len, enum object_type *type, size_t *sizep)
 {
 	unsigned shift;
-	unsigned long size, c;
-	unsigned long used = 0;
+	size_t size, c;
+	size_t used = 0;
 
 	c = buf[used++];
 	*type = (c >> 4) & 7;
@@ -1997,7 +1998,7 @@ static int parse_sha1_header_extended(const char *hdr, struct object_info *oi,
 	return *hdr ? -1 : type;
 }
 
-int parse_sha1_header(const char *hdr, unsigned long *sizep)
+int parse_sha1_header(const char *hdr, size_t *sizep)
 {
 	struct object_info oi = OBJECT_INFO_INIT;
 
@@ -2118,7 +2119,7 @@ static const unsigned char *get_delta_base_sha1(struct packed_git *p,
 int unpack_object_header(struct packed_git *p,
 			 struct pack_window **w_curs,
 			 off_t *curpos,
-			 unsigned long *sizep)
+			 size_t *sizep)
 {
 	unsigned char *base;
 	unsigned long left;
@@ -2171,7 +2172,7 @@ static enum object_type packed_to_object_type(struct packed_git *p,
 
 	while (type == OBJ_OFS_DELTA || type == OBJ_REF_DELTA) {
 		off_t base_offset;
-		unsigned long size;
+		size_t size;
 		/* Push the object we're going to leave behind */
 		if (poi_stack_nr >= poi_stack_alloc && poi_stack == small_poi_stack) {
 			poi_stack_alloc = alloc_nr(poi_stack_nr);
@@ -2306,7 +2307,7 @@ static void detach_delta_base_cache_entry(struct delta_base_cache_entry *ent)
 }
 
 static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
-	unsigned long *base_size, enum object_type *type)
+	size_t *base_size, enum object_type *type)
 {
 	struct delta_base_cache_entry *ent;
 
@@ -2370,7 +2371,7 @@ int packed_object_info(struct packed_git *p, off_t obj_offset,
 		       struct object_info *oi)
 {
 	struct pack_window *w_curs = NULL;
-	unsigned long size;
+	size_t size;
 	off_t curpos = obj_offset;
 	enum object_type type;
 
@@ -2484,7 +2485,7 @@ static void *unpack_compressed_entry(struct packed_git *p,
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
-			 unsigned long *size);
+			 size_t *size);
 
 static void write_pack_access_log(struct packed_git *p, off_t obj_offset)
 {
@@ -2503,12 +2504,12 @@ struct unpack_entry_stack_ent {
 };
 
 void *unpack_entry(struct packed_git *p, off_t obj_offset,
-		   enum object_type *final_type, unsigned long *final_size)
+		   enum object_type *final_type, size_t *final_size)
 {
 	struct pack_window *w_curs = NULL;
 	off_t curpos = obj_offset;
 	void *data = NULL;
-	unsigned long size;
+	size_t size;
 	enum object_type type;
 	struct unpack_entry_stack_ent small_delta_stack[UNPACK_ENTRY_STACK_PREALLOC];
 	struct unpack_entry_stack_ent *delta_stack = small_delta_stack;
@@ -2608,7 +2609,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		void *delta_data;
 		void *base = data;
 		void *external_base = NULL;
-		unsigned long delta_size, base_size = size;
+		size_t delta_size, base_size = size;
 		int i;
 
 		data = NULL;
@@ -2913,7 +2914,7 @@ static int sha1_loose_object_info(const unsigned char *sha1,
 	git_zstream stream;
 	char hdr[32];
 	struct strbuf hdrbuf = STRBUF_INIT;
-	unsigned long size_scratch;
+	size_t size_scratch;
 
 	if (oi->delta_base_sha1)
 		hashclr(oi->delta_base_sha1);
@@ -3050,7 +3051,7 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi,
 }
 
 /* returns enum object_type or negative */
-int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+int sha1_object_info(const unsigned char *sha1, size_t *sizep)
 {
 	enum object_type type;
 	struct object_info oi = OBJECT_INFO_INIT;
@@ -3064,7 +3065,7 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
-			      enum object_type *type, unsigned long *size)
+			      enum object_type *type, size_t *size)
 {
 	struct pack_entry e;
 	void *data;
@@ -3106,7 +3107,7 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
-			 unsigned long *size)
+			 size_t *size)
 {
 	struct object_info oi = OBJECT_INFO_INIT;
 	void *content;
@@ -3126,7 +3127,7 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
  */
 void *read_sha1_file_extended(const unsigned char *sha1,
 			      enum object_type *type,
-			      unsigned long *size,
+			      size_t *size,
 			      int lookup_replace)
 {
 	void *data;
@@ -3162,12 +3163,12 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 
 void *read_object_with_reference(const unsigned char *sha1,
 				 const char *required_type_name,
-				 unsigned long *size,
+				 size_t *size,
 				 unsigned char *actual_sha1_return)
 {
 	enum object_type type, required_type;
 	void *buffer;
-	unsigned long isize;
+	size_t isize;
 	unsigned char actual_sha1[20];
 
 	required_type = type_from_string(required_type_name);
@@ -3461,7 +3462,7 @@ cleanup:
 int force_object_loose(const unsigned char *sha1, time_t mtime)
 {
 	void *buf;
-	unsigned long len;
+	size_t len;
 	enum object_type type;
 	char hdr[32];
 	int hdrlen;
@@ -3472,7 +3473,8 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	buf = read_packed_sha1(sha1, &type, &len);
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
-	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(type), len) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %" PRIuMAX,
+			   typename(type), (uintmax_t)len) + 1;
 	ret = write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
 	free(buf);
 
@@ -3985,7 +3987,7 @@ static int check_stream_sha1(git_zstream *stream,
 int read_loose_object(const char *path,
 		      const unsigned char *expected_sha1,
 		      enum object_type *type,
-		      unsigned long *size,
+		      size_t *size,
 		      void **contents)
 {
 	int ret = -1;

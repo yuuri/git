@@ -65,7 +65,7 @@ struct filtered_istream {
 
 struct git_istream {
 	const struct stream_vtbl *vtbl;
-	unsigned long size; /* inflated size of full object */
+	size_t size; /* inflated size of full object */
 	git_zstream z;
 	enum { z_unused, z_used, z_done, z_error } z_state;
 
@@ -108,7 +108,7 @@ static enum input_source istream_source(const unsigned char *sha1,
 					enum object_type *type,
 					struct object_info *oi)
 {
-	unsigned long size;
+	size_t size;
 	int status;
 
 	oi->typep = type;
@@ -131,7 +131,7 @@ static enum input_source istream_source(const unsigned char *sha1,
 
 struct git_istream *open_istream(const unsigned char *sha1,
 				 enum object_type *type,
-				 unsigned long *size,
+				 size_t *size,
 				 struct stream_filter *filter)
 {
 	struct git_istream *st;
@@ -502,7 +502,7 @@ int stream_blob_to_fd(int fd, const struct object_id *oid, struct stream_filter 
 {
 	struct git_istream *st;
 	enum object_type type;
-	unsigned long sz;
+	size_t sz;
 	ssize_t kept = 0;
 	int result = -1;
 

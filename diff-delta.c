@@ -123,14 +123,14 @@ struct unpacked_index_entry {
 };
 
 struct delta_index {
-	unsigned long memsize;
+	size_t memsize;
 	const void *src_buf;
-	unsigned long src_size;
+	size_t src_size;
 	unsigned int hash_mask;
 	struct index_entry *hash[FLEX_ARRAY];
 };
 
-struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
+struct delta_index * create_delta_index(const void *buf, size_t bufsize)
 {
 	unsigned int i, hsize, hmask, entries, prev_val, *hash_count;
 	const unsigned char *data, *buffer = buf;
@@ -138,7 +138,7 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
 	struct unpacked_index_entry *entry, **hash;
 	struct index_entry *packed_entry, **packed_hash;
 	void *mem;
-	unsigned long memsize;
+	size_t memsize;
 
 	if (!buf || !bufsize)
 		return NULL;
@@ -300,7 +300,7 @@ void free_delta_index(struct delta_index *index)
 	free(index);
 }
 
-unsigned long sizeof_delta_index(struct delta_index *index)
+size_t sizeof_delta_index(struct delta_index *index)
 {
 	if (index)
 		return index->memsize;
@@ -316,8 +316,8 @@ unsigned long sizeof_delta_index(struct delta_index *index)
 
 void *
 create_delta(const struct delta_index *index,
-	     const void *trg_buf, unsigned long trg_size,
-	     unsigned long *delta_size, unsigned long max_size)
+	     const void *trg_buf, size_t trg_size,
+	     size_t *delta_size, size_t max_size)
 {
 	unsigned int i, val;
 	size_t l, outpos, moff, outsize, msize;
@@ -406,7 +406,7 @@ create_delta(const struct delta_index *index,
 			}
 			msize = 0;
 		} else {
-			unsigned int left;
+			size_t left;
 			unsigned char *op;
 
 			if (inscnt) {

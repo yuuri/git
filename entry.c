@@ -80,7 +80,7 @@ static int create_file(const char *path, unsigned int mode)
 	return open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
 }
 
-static void *read_blob_entry(const struct cache_entry *ce, unsigned long *size)
+static void *read_blob_entry(const struct cache_entry *ce, size_t *size)
 {
 	enum object_type type;
 	void *new = read_sha1_file(ce->oid.hash, &type, size);
@@ -243,7 +243,7 @@ static int write_entry(struct cache_entry *ce,
 	int fd, ret, fstat_done = 0;
 	char *new;
 	struct strbuf buf = STRBUF_INIT;
-	unsigned long size;
+	size_t size;
 	size_t wrote, newsize = 0;
 	struct stat st;
 	const struct submodule *sub;

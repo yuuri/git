@@ -486,7 +486,7 @@ static void fmt_merge_msg_sigs(struct strbuf *out)
 	for (i = 0; i < origins.nr; i++) {
 		unsigned char *sha1 = origins.items[i].util;
 		enum object_type type;
-		unsigned long size, len;
+		size_t size, len;
 		char *buf = read_sha1_file(sha1, &type, &size);
 		struct strbuf sig = STRBUF_INIT;
 

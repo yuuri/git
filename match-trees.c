@@ -52,7 +52,7 @@ static void *fill_tree_desc_strict(struct tree_desc *desc,
 {
 	void *buffer;
 	enum object_type type;
-	unsigned long size;
+	size_t size;
 
 	buffer = read_sha1_file(hash->hash, &type, &size);
 	if (!buffer)
@@ -169,7 +169,7 @@ static int splice_tree(const unsigned char *hash1,
 	char *subpath;
 	int toplen;
 	char *buf;
-	unsigned long sz;
+	size_t sz;
 	struct tree_desc desc;
 	unsigned char *rewrite_here;
 	const unsigned char *rewrite_with;

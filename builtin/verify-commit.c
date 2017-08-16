@@ -38,7 +38,7 @@ static int verify_commit(const char *name, unsigned flags)
 	enum object_type type;
 	struct object_id oid;
 	char *buf;
-	unsigned long size;
+	size_t size;
 	int ret;
 
 	if (get_oid(name, &oid))

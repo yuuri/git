@@ -1170,8 +1170,8 @@ extern char *xdg_cache_home(const char *filename);
 
 extern void *read_sha1_file_extended(const unsigned char *sha1,
 				     enum object_type *type,
-				     unsigned long *size, int lookup_replace);
-static inline void *read_sha1_file(const unsigned char *sha1, enum object_type *type, unsigned long *size)
+				     size_t *size, int lookup_replace);
+static inline void *read_sha1_file(const unsigned char *sha1, enum object_type *type, size_t *size)
 {
 	return read_sha1_file_extended(sha1, type, size, 1);
 }
@@ -1196,7 +1196,7 @@ static inline const unsigned char *lookup_replace_object(const unsigned char *sh
 }
 
 /* Read and unpack a sha1 file into memory, write memory to a sha1 file */
-extern int sha1_object_info(const unsigned char *, unsigned long *);
+extern int sha1_object_info(const unsigned char *, size_t *);
 extern int hash_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *sha1);
 extern int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *return_sha1);
 extern int hash_sha1_file_literally(const void *buf, unsigned long len, const char *type, unsigned char *sha1, unsigned flags);
@@ -1206,12 +1206,12 @@ extern int git_open_cloexec(const char *name, int flags);
 #define git_open(name) git_open_cloexec(name, O_RDONLY)
 extern void *map_sha1_file(const unsigned char *sha1, unsigned long *size);
 extern int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz);
-extern int parse_sha1_header(const char *hdr, unsigned long *sizep);
+extern int parse_sha1_header(const char *hdr, size_t *sizep);
 
 /* global flag to enable extra checks when accessing packed objects */
 extern int do_check_packed_object_crc;
 
-extern int check_sha1_signature(const unsigned char *sha1, void *buf, unsigned long size, const char *type);
+extern int check_sha1_signature(const unsigned char *sha1, void *buf, size_t size, const char *type);
 
 extern int finalize_object_file(const char *tmpfile, const char *filename);
 
@@ -1227,7 +1227,7 @@ extern int has_sha1_pack(const unsigned char *sha1);
 int read_loose_object(const char *path,
 		      const unsigned char *expected_sha1,
 		      enum object_type *type,
-		      unsigned long *size,
+		      size_t *size,
 		      void **contents);
 
 /*
@@ -1405,7 +1405,7 @@ extern int cache_name_stage_compare(const char *name1, int len1, int stage1, con
 
 extern void *read_object_with_reference(const unsigned char *sha1,
 					const char *required_type,
-					unsigned long *size,
+					size_t *size,
 					unsigned char *sha1_ret);
 
 extern struct object *peel_to_type(const char *name, int namelen,
@@ -1730,10 +1730,10 @@ extern off_t nth_packed_object_offset(const struct packed_git *, uint32_t n);
 extern off_t find_pack_entry_one(const unsigned char *sha1, struct packed_git *);
 
 extern int is_pack_valid(struct packed_git *);
-extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, unsigned long *);
-extern unsigned long unpack_object_header_buffer(const unsigned char *buf, unsigned long len, enum object_type *type, unsigned long *sizep);
+extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, size_t *);
+extern unsigned long unpack_object_header_buffer(const unsigned char *buf, unsigned long len, enum object_type *type, size_t *sizep);
 extern unsigned long get_size_from_delta(struct packed_git *, struct pack_window **, off_t);
-extern int unpack_object_header(struct packed_git *, struct pack_window **, off_t *, unsigned long *);
+extern int unpack_object_header(struct packed_git *, struct pack_window **, off_t *, size_t *);
 
 /*
  * Iterate over the files in the loose-object parts of the object
@@ -1799,7 +1799,7 @@ extern int for_each_packed_object(each_packed_object_fn, void *, unsigned flags)
 struct object_info {
 	/* Request */
 	enum object_type *typep;
-	unsigned long *sizep;
+	size_t *sizep;
 	off_t *disk_sizep;
 	unsigned char *delta_base_sha1;
 	struct strbuf *typename;

@@ -692,7 +692,7 @@ int verify_ref_format(struct ref_format *format)
  * by the "struct object" representation, set *eaten as well---it is a
  * signal from parse_object_buffer to us not to free the buffer.
  */
-static void *get_obj(const struct object_id *oid, struct object **obj, unsigned long *sz, int *eaten)
+static void *get_obj(const struct object_id *oid, struct object **obj, size_t *sz, int *eaten)
 {
 	enum object_type type;
 	void *buf = read_sha1_file(oid->hash, &type, sz);
@@ -1311,7 +1311,7 @@ static void populate_value(struct ref_array_item *ref)
 	void *buf;
 	struct object *obj;
 	int eaten, i;
-	unsigned long size;
+	size_t size;
 	const struct object_id *tagged;
 
 	ref->value = xcalloc(used_atom_cnt, sizeof(struct atom_value));

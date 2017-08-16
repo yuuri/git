@@ -323,7 +323,7 @@ static void write_note_to_worktree(const struct object_id *obj,
 				   const struct object_id *note)
 {
 	enum object_type type;
-	unsigned long size;
+	size_t size;
 	void *buf = read_sha1_file(note->hash, &type, &size);
 
 	if (!buf)

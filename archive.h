@@ -42,6 +42,6 @@ const char *archive_format_from_filename(const char *filename);
 extern void *sha1_file_to_archive(const struct archiver_args *args,
 				  const char *path, const unsigned char *sha1,
 				  unsigned int mode, enum object_type *type,
-				  unsigned long *sizep);
+				  size_t *sizep);
 
 #endif	/* ARCHIVE_H */

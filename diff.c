@@ -2200,8 +2200,8 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 }
 
 static unsigned char *deflate_it(char *data,
-				 unsigned long size,
-				 unsigned long *result_size)
+				 size_t size,
+				 size_t *result_size)
 {
 	int bound;
 	unsigned char *deflated;
@@ -2229,10 +2229,10 @@ static void emit_binary_diff_body(FILE *file, mmfile_t *one, mmfile_t *two,
 	void *delta;
 	void *deflated;
 	void *data;
-	unsigned long orig_size;
-	unsigned long delta_size;
-	unsigned long deflate_size;
-	unsigned long data_size;
+	size_t orig_size;
+	size_t delta_size;
+	size_t deflate_size;
+	size_t data_size;
 
 	/* We could do deflated delta, or we could do just deflated two,
 	 * whichever is smaller.
@@ -2252,13 +2252,13 @@ static void emit_binary_diff_body(FILE *file, mmfile_t *one, mmfile_t *two,
 	}
 
 	if (delta && delta_size < deflate_size) {
-		fprintf(file, "%sdelta %lu\n", prefix, orig_size);
+		fprintf(file, "%sdelta %" PRIuMAX "\n", prefix, (uintmax_t)orig_size);
 		free(deflated);
 		data = delta;
 		data_size = delta_size;
 	}
 	else {
-		fprintf(file, "%sliteral %lu\n", prefix, two->size);
+		fprintf(file, "%sliteral %" PRIuMAX "\n", prefix, (uintmax_t)two->size);
 		free(delta);
 		data = deflated;
 		data_size = deflate_size;
@@ -5267,7 +5267,7 @@ int textconv_object(const char *path,
 		    const struct object_id *oid,
 		    int oid_valid,
 		    char **buf,
-		    unsigned long *buf_size)
+		    size_t *buf_size)
 {
 	struct diff_filespec *df;
 	struct userdiff_driver *textconv;

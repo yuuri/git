@@ -974,7 +974,7 @@ static int handle_cache(const char *path, unsigned char *sha1, const char *outpu
 
 	while (pos < active_nr) {
 		enum object_type type;
-		unsigned long size;
+		size_t size;
 
 		ce = active_cache[pos++];
 		if (ce_namelen(ce) != len || memcmp(ce->name, path, len))

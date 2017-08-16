@@ -3,6 +3,6 @@
 
 #include "blob.h"
 
-extern void *merge_blobs(const char *, struct blob *, struct blob *, struct blob *, unsigned long *);
+extern void *merge_blobs(const char *, struct blob *, struct blob *, struct blob *, size_t *);
 
 #endif /* MERGE_BLOBS_H */

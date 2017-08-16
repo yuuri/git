@@ -80,7 +80,7 @@ int init_tree_desc_gently(struct tree_desc *desc, const void *buffer, unsigned l
 
 void *fill_tree_descriptor(struct tree_desc *desc, const unsigned char *sha1)
 {
-	unsigned long size = 0;
+	size_t size = 0;
 	void *buf = NULL;
 
 	if (sha1) {
@@ -530,7 +530,7 @@ int get_tree_entry(const unsigned char *tree_sha1, const char *name, unsigned ch
 {
 	int retval;
 	void *tree;
-	unsigned long size;
+	size_t size;
 	unsigned char root[20];
 
 	tree = read_object_with_reference(tree_sha1, tree_type, &size, root);
@@ -600,7 +600,7 @@ enum follow_symlinks_result get_tree_entry_follow_symlinks(unsigned char *tree_s
 		if (!t.buffer) {
 			void *tree;
 			unsigned char root[20];
-			unsigned long size;
+			size_t size;
 			tree = read_object_with_reference(current_tree_sha1,
 							  tree_type, &size,
 							  root);
@@ -696,7 +696,7 @@ enum follow_symlinks_result get_tree_entry_follow_symlinks(unsigned char *tree_s
 			goto done;
 		} else if (S_ISLNK(*mode)) {
 			/* Follow a symlink */
-			unsigned long link_len;
+			size_t link_len;
 			size_t len;
 			char *contents, *contents_start;
 			struct dir_state *parent;

@@ -3,7 +3,7 @@
 
 struct object_entry {
 	struct pack_idx_entry idx;
-	unsigned long size;	/* uncompressed size */
+	size_t size;	/* uncompressed size */
 	struct packed_git *in_pack;	/* already in pack */
 	off_t in_pack_offset;
 	struct object_entry *delta;	/* delta base object */
@@ -12,8 +12,8 @@ struct object_entry {
 					     * uses the same base as me
 					     */
 	void *delta_data;	/* cached delta (uncompressed) */
-	unsigned long delta_size;	/* delta data size (uncompressed) */
-	unsigned long z_delta_size;	/* delta data size (compressed) */
+	size_t delta_size;	/* delta data size (uncompressed) */
+	size_t z_delta_size;	/* delta data size (compressed) */
 	enum object_type type;
 	enum object_type in_pack_type;	/* could be delta */
 	uint32_t hash;			/* name hint hash */

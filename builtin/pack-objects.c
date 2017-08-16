@@ -103,7 +103,7 @@ static void index_commit_for_bitmap(struct commit *commit)
 
 static void *get_delta(struct object_entry *entry)
 {
-	unsigned long size, base_size, delta_size;
+	size_t size, base_size, delta_size;
 	void *buf, *base_buf, *delta_buf;
 	enum object_type type;
 
@@ -241,7 +241,7 @@ static void copy_pack_data(struct sha1file *f,
 static unsigned long write_no_reuse_object(struct sha1file *f, struct object_entry *entry,
 					   unsigned long limit, int usable_delta)
 {
-	unsigned long size, datalen;
+	size_t size, datalen;
 	unsigned char header[MAX_PACK_OBJECT_HEADER],
 		      dheader[MAX_PACK_OBJECT_HEADER];
 	unsigned hdrlen;
@@ -1147,7 +1147,7 @@ static struct pbase_tree_cache *pbase_tree_get(const unsigned char *sha1)
 {
 	struct pbase_tree_cache *ent, *nent;
 	void *data;
-	unsigned long size;
+	size_t size;
 	enum object_type type;
 	int neigh;
 	int my_ix = pbase_tree_cache_ix(sha1);
@@ -1330,7 +1330,7 @@ static void add_preferred_base(unsigned char *sha1)
 {
 	struct pbase_tree *it;
 	void *data;
-	unsigned long size;
+	size_t size;
 	unsigned char tree_sha1[20];
 
 	if (window <= num_preferred_base++)
@@ -1805,7 +1805,7 @@ static int try_delta(struct unpacked *trg, struct unpacked *src,
 {
 	struct object_entry *trg_entry = trg->entry;
 	struct object_entry *src_entry = src->entry;
-	unsigned long trg_size, src_size, delta_size, sizediff, max_size, sz;
+	size_t trg_size, src_size, delta_size, sizediff, max_size, sz;
 	unsigned ref_depth;
 	enum object_type type;
 	void *delta_buf;
@@ -1863,9 +1863,10 @@ static int try_delta(struct unpacked *trg, struct unpacked *src,
 			die("object %s cannot be read",
 			    oid_to_hex(&trg_entry->idx.oid));
 		if (sz != trg_size)
-			die("object %s inconsistent object length (%lu vs %lu)",
-			    oid_to_hex(&trg_entry->idx.oid), sz,
-			    trg_size);
+			die("object %s inconsistent object length (%" PRIuMAX
+			    " vs %" PRIuMAX ")",
+			    oid_to_hex(&trg_entry->idx.oid), (uintmax_t)sz,
+			    (uintmax_t)trg_size);
 		*mem_usage += sz;
 	}
 	if (!src->data) {
@@ -1891,9 +1892,10 @@ static int try_delta(struct unpacked *trg, struct unpacked *src,
 			    oid_to_hex(&src_entry->idx.oid));
 		}
 		if (sz != src_size)
-			die("object %s inconsistent object length (%lu vs %lu)",
-			    oid_to_hex(&src_entry->idx.oid), sz,
-			    src_size);
+			die("object %s inconsistent object length (%" PRIuMAX
+			    " vs %" PRIuMAX ")",
+			    oid_to_hex(&src_entry->idx.oid), (uintmax_t)sz,
+			    (uintmax_t)src_size);
 		*mem_usage += sz;
 	}
 	if (!src->index) {

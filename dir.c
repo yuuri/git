@@ -605,7 +605,7 @@ static void *read_skip_worktree_file_from_index(const struct index_state *istate
 						struct sha1_stat *sha1_stat)
 {
 	int pos, len;
-	unsigned long sz;
+	size_t sz;
 	enum object_type type;
 	void *data;
 
