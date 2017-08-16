@@ -11,7 +11,7 @@ struct blob *lookup_blob(const struct object_id *oid)
 	return object_as_type(obj, OBJ_BLOB, 0);
 }
 
-int parse_blob_buffer(struct blob *item, void *buffer, unsigned long size)
+int parse_blob_buffer(struct blob *item, void *buffer, size_t size)
 {
 	item->object.parsed = 1;
 	return 0;

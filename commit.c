@@ -310,7 +310,7 @@ const void *detach_commit_buffer(struct commit *commit, unsigned long *sizep)
 	return ret;
 }
 
-int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size)
+int parse_commit_buffer(struct commit *item, const void *buffer, size_t size)
 {
 	const char *tail = buffer;
 	const char *bufptr = buffer;

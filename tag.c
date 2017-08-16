@@ -7,7 +7,7 @@
 
 const char *tag_type = "tag";
 
-static int run_gpg_verify(const char *buf, unsigned long size, unsigned flags)
+static int run_gpg_verify(const char *buf, size_t size, unsigned flags)
 {
 	struct signature_check sigc;
 	size_t payload_size;
@@ -114,7 +114,7 @@ static timestamp_t parse_tag_date(const char *buf, const char *tail)
 	return parse_timestamp(dateptr, NULL, 10);
 }
 
-int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
+int parse_tag_buffer(struct tag *item, const void *data, size_t size)
 {
 	struct object_id oid;
 	char type[20];

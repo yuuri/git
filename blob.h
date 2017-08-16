@@ -11,7 +11,7 @@ struct blob {
 
 struct blob *lookup_blob(const struct object_id *oid);
 
-int parse_blob_buffer(struct blob *item, void *buffer, unsigned long size);
+int parse_blob_buffer(struct blob *item, void *buffer, size_t size);
 
 /**
  * Blobs do not contain references to other objects and do not have
