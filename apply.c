@@ -220,7 +220,7 @@ struct patch {
 	unsigned int recount:1;
 	unsigned int conflicted_threeway:1;
 	unsigned int direct_to_threeway:1;
-	unsigned int has_crlf:1;
+	unsigned int crlf_in_old:1;
 	struct fragment *fragments;
 	char *result;
 	size_t resultsize;
@@ -1663,13 +1663,15 @@ static void check_whitespace(struct apply_state *state,
 	record_ws_error(state, result, line + 1, len - 2, state->linenr);
 }
 
-/* Check if the patch has context lines with CRLF or
-   the patch wants to remove lines with CRLF */
+/*
+ * Check if the patch has context lines with CRLF or
+ * the patch wants to remove lines with CRLF.
+ */
 static void check_old_for_crlf(struct patch *patch, const char *line, int len)
 {
 	if (len >= 2 && line[len-1] == '\n' && line[len-2] == '\r') {
 		patch->ws_rule |= WS_CR_AT_EOL;
-		patch->has_crlf = 1;
+		patch->crlf_in_old = 1;
 	}
 }
 
@@ -1730,7 +1732,8 @@ static int parse_fragment(struct apply_state *state,
 				check_whitespace(state, line, len, patch->ws_rule);
 			break;
 		case '-':
-			check_old_for_crlf(patch, line, len);
+			if (!state->apply_in_reverse)
+				check_old_for_crlf(patch, line, len);
 			if (state->apply_in_reverse &&
 			    state->ws_error_action != nowarn_ws_error)
 				check_whitespace(state, line, len, patch->ws_rule);
@@ -1739,6 +1742,8 @@ static int parse_fragment(struct apply_state *state,
 			trailing = 0;
 			break;
 		case '+':
+			if (state->apply_in_reverse)
+				check_old_for_crlf(patch, line, len);
 			if (!state->apply_in_reverse &&
 			    state->ws_error_action != nowarn_ws_error)
 				check_whitespace(state, line, len, patch->ws_rule);
@@ -3442,7 +3447,7 @@ static int load_preimage(struct apply_state *state,
 	char *img;
 	struct patch *previous;
 	int status;
-	int flags = patch->has_crlf ? APPLY_FLAGS_CR_AT_EOL : 0;
+	int flags = patch->crlf_in_old ? APPLY_FLAGS_CR_AT_EOL : 0;
 
 	previous = previous_patch(state, patch, &status);
 	if (status)
