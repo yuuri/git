@@ -49,11 +49,13 @@ extern int config_with_options(config_fn_t fn, void *,
 			       struct git_config_source *config_source,
 			       const struct config_options *opts);
 extern int git_parse_ulong(const char *, unsigned long *);
+extern int git_parse_size_t(const char *, size_t *);
 extern int git_parse_maybe_bool(const char *);
 extern int git_config_int(const char *, const char *);
 extern int64_t git_config_int64(const char *, const char *);
 extern unsigned long git_config_ulong(const char *, const char *);
 extern ssize_t git_config_ssize_t(const char *, const char *);
+extern size_t git_config_size_t(const char *, const char *);
 extern int git_config_bool_or_int(const char *, const char *, int *);
 extern int git_config_bool(const char *, const char *);
 extern int git_config_maybe_bool(const char *, const char *);
