@@ -406,7 +406,7 @@ static struct diff_tempfile {
 	struct tempfile tempfile;
 } diff_temp[2];
 
-typedef unsigned long (*sane_truncate_fn)(char *line, unsigned long len);
+typedef size_t (*sane_truncate_fn)(char *line, size_t len);
 
 struct emit_callback {
 	int color_diff;
@@ -461,7 +461,7 @@ static int fill_mmfile(mmfile_t *mf, struct diff_filespec *one)
 }
 
 /* like fill_mmfile, but only for size, so we can avoid retrieving blob */
-static unsigned long diff_filespec_size(struct diff_filespec *one)
+static size_t diff_filespec_size(struct diff_filespec *one)
 {
 	if (!DIFF_FILE_VALID(one))
 		return 0;
@@ -832,7 +832,7 @@ struct diff_words_buffer {
 	int orig_nr, orig_alloc;
 };
 
-static void diff_words_append(char *line, unsigned long len,
+static void diff_words_append(char *line, size_t len,
 		struct diff_words_buffer *buffer)
 {
 	ALLOC_GROW(buffer->text.ptr, buffer->text.size + len, buffer->alloc);
@@ -949,7 +949,7 @@ static int color_words_output_graph_prefix(struct diff_words_data *diff_words)
 	}
 }
 
-static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
+static void fn_out_diff_words_aux(void *priv, char *line, size_t len)
 {
 	struct diff_words_data *diff_words = priv;
 	struct diff_words_style *style = diff_words->style;
@@ -1237,10 +1237,10 @@ const char *diff_line_prefix(struct diff_options *opt)
 	return msgbuf->buf;
 }
 
-static unsigned long sane_truncate_line(struct emit_callback *ecb, char *line, unsigned long len)
+static size_t sane_truncate_line(struct emit_callback *ecb, char *line, size_t len)
 {
 	const char *cp;
-	unsigned long allot;
+	size_t allot;
 	size_t l = len;
 
 	if (ecb->truncate)
@@ -1270,7 +1270,7 @@ static void find_lno(const char *line, struct emit_callback *ecbdata)
 	ecbdata->lno_in_postimage = strtol(p + 1, NULL, 10);
 }
 
-static void fn_out_consume(void *priv, char *line, unsigned long len)
+static void fn_out_consume(void *priv, char *line, size_t len)
 {
 	struct emit_callback *ecbdata = priv;
 	const char *meta = diff_get_color(ecbdata->color_diff, DIFF_METAINFO);
@@ -1492,7 +1492,7 @@ static struct diffstat_file *diffstat_add(struct diffstat_t *diffstat,
 	return x;
 }
 
-static void diffstat_consume(void *priv, char *line, unsigned long len)
+static void diffstat_consume(void *priv, char *line, size_t len)
 {
 	struct diffstat_t *diffstat = priv;
 	struct diffstat_file *x = diffstat->files[diffstat->nr - 1];
@@ -2132,7 +2132,7 @@ struct checkdiff_t {
 	unsigned status;
 };
 
-static int is_conflict_marker(const char *line, int marker_size, unsigned long len)
+static int is_conflict_marker(const char *line, int marker_size, size_t len)
 {
 	char firstchar;
 	int cnt;
@@ -2155,7 +2155,7 @@ static int is_conflict_marker(const char *line, int marker_size, unsigned long l
 	return 1;
 }
 
-static void checkdiff_consume(void *priv, char *line, unsigned long len)
+static void checkdiff_consume(void *priv, char *line, size_t len)
 {
 	struct checkdiff_t *data = priv;
 	int marker_size = data->conflict_marker_size;
@@ -2953,7 +2953,7 @@ void diff_free_filespec_data(struct diff_filespec *s)
 
 static void prep_temp_blob(const char *path, struct diff_tempfile *temp,
 			   void *blob,
-			   unsigned long size,
+			   size_t size,
 			   const struct object_id *oid,
 			   int mode)
 {
@@ -4536,7 +4536,7 @@ struct patch_id_t {
 	int patchlen;
 };
 
-static int remove_space(char *line, int len)
+static size_t remove_space(char *line, size_t len)
 {
 	int i;
 	char *dst = line;
@@ -4549,10 +4549,10 @@ static int remove_space(char *line, int len)
 	return dst - line;
 }
 
-static void patch_id_consume(void *priv, char *line, unsigned long len)
+static void patch_id_consume(void *priv, char *line, size_t len)
 {
 	struct patch_id_t *data = priv;
-	int new_len;
+	size_t new_len;
 
 	/* Ignore line numbers when computing the SHA1 of the patch */
 	if (starts_with(line, "@@ -"))

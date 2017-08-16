@@ -26,7 +26,7 @@ static int parse_num(char **cp_p, int *num_p)
 	return 0;
 }
 
-int parse_hunk_header(char *line, int len,
+int parse_hunk_header(char *line, size_t len,
 		      int *ob, int *on,
 		      int *nb, int *nn)
 {
@@ -57,12 +57,12 @@ int parse_hunk_header(char *line, int len,
 	return -!!memcmp(cp, " @@", 3);
 }
 
-static void consume_one(void *priv_, char *s, unsigned long size)
+static void consume_one(void *priv_, char *s, size_t size)
 {
 	struct xdiff_emit_state *priv = priv_;
 	char *ep;
 	while (size) {
-		unsigned long this_size;
+		size_t this_size;
 		ep = memchr(s, '\n', size);
 		this_size = (ep == NULL) ? size : (ep - s + 1);
 		priv->consume(priv->consume_callback_data, s, this_size);
@@ -197,7 +197,7 @@ void read_mmblob(mmfile_t *ptr, const struct object_id *oid)
 }
 
 #define FIRST_FEW_BYTES 8000
-int buffer_is_binary(const char *ptr, unsigned long size)
+int buffer_is_binary(const char *ptr, size_t size)
 {
 	if (FIRST_FEW_BYTES < size)
 		size = FIRST_FEW_BYTES;
