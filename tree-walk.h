@@ -32,8 +32,8 @@ static inline int tree_entry_len(const struct name_entry *ne)
 
 void update_tree_entry(struct tree_desc *);
 int update_tree_entry_gently(struct tree_desc *);
-void init_tree_desc(struct tree_desc *desc, const void *buf, unsigned long size);
-int init_tree_desc_gently(struct tree_desc *desc, const void *buf, unsigned long size);
+void init_tree_desc(struct tree_desc *desc, const void *buf, size_t size);
+int init_tree_desc_gently(struct tree_desc *desc, const void *buf, size_t size);
 
 /*
  * Helper function that does both tree_entry_extract() and update_tree_entry()

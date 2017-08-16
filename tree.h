@@ -9,7 +9,7 @@ struct strbuf;
 struct tree {
 	struct object object;
 	void *buffer;
-	unsigned long size;
+	size_t size;
 };
 
 struct tree *lookup_tree(const struct object_id *oid);
