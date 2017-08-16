@@ -96,6 +96,11 @@ static inline size_t get_delta_hdr_size(const unsigned char **datap,
 		cmd = *data++;
 		size |= (cmd & 0x7f) << i;
 		i += 7;
+		if (bitsizeof(size_t) <= i) {
+			die("too large object size");
+			size = 0;
+			break;
+		}
 	} while (cmd & 0x80 && data < top);
 	*datap = data;
 	return size;
