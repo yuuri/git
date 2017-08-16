@@ -2287,12 +2287,12 @@ static void show_stats(struct apply_state *state, struct patch *patch)
 		add, pluses, del, minuses);
 }
 
-#define APPLY_FLAGS_CR_AT_EOL   (1<<0)
-
-static int read_old_data(struct stat *st, const char *path, struct strbuf *buf, int flags)
+static int read_old_data(struct stat *st, const char *path, struct strbuf *buf,
+			 struct patch *patch)
 {
-	enum safe_crlf safe_crlf = flags & APPLY_FLAGS_CR_AT_EOL ?
-		SAFE_CRLF_KEEP_CRLF : SAFE_CRLF_FALSE;
+	enum safe_crlf safe_crlf = (patch->crlf_in_old
+				    ? SAFE_CRLF_KEEP_CRLF : SAFE_CRLF_FALSE);
+
 	switch (st->st_mode & S_IFMT) {
 	case S_IFLNK:
 		if (strbuf_readlink(buf, path, st->st_size) < 0)
@@ -3407,9 +3407,9 @@ static int load_patch_target(struct apply_state *state,
 			     struct strbuf *buf,
 			     const struct cache_entry *ce,
 			     struct stat *st,
+			     struct patch *patch,
 			     const char *name,
-			     unsigned expected_mode,
-			     int flags)
+			     unsigned expected_mode)
 {
 	if (state->cached || state->check_index) {
 		if (read_file_or_gitlink(ce, buf))
@@ -3423,7 +3423,7 @@ static int load_patch_target(struct apply_state *state,
 		} else if (has_symlink_leading_path(name, strlen(name))) {
 			return error(_("reading from '%s' beyond a symbolic link"), name);
 		} else {
-			if (read_old_data(st, name, buf, flags))
+			if (read_old_data(st, name, buf, patch))
 				return error(_("failed to read %s"), name);
 		}
 	}
@@ -3447,7 +3447,6 @@ static int load_preimage(struct apply_state *state,
 	char *img;
 	struct patch *previous;
 	int status;
-	int flags = patch->crlf_in_old ? APPLY_FLAGS_CR_AT_EOL : 0;
 
 	previous = previous_patch(state, patch, &status);
 	if (status)
@@ -3457,8 +3456,8 @@ static int load_preimage(struct apply_state *state,
 		/* We have a patched copy in memory; use that. */
 		strbuf_add(&buf, previous->result, previous->resultsize);
 	} else {
-		status = load_patch_target(state, &buf, ce, st,
-					   patch->old_name, patch->old_mode, flags);
+		status = load_patch_target(state, &buf, ce, st, patch,
+					   patch->old_name, patch->old_mode);
 		if (status < 0)
 			return status;
 		else if (status == SUBMODULE_PATCH_WITHOUT_INDEX) {
@@ -3518,8 +3517,7 @@ static int three_way_merge(struct image *image,
  */
 static int load_current(struct apply_state *state,
 			struct image *image,
-			struct patch *patch,
-			int flags)
+			struct patch *patch)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int status, pos;
@@ -3546,7 +3544,7 @@ static int load_current(struct apply_state *state,
 	if (verify_index_match(ce, &st))
 		return error(_("%s: does not match index"), name);
 
-	status = load_patch_target(state, &buf, ce, &st, name, mode, flags);
+	status = load_patch_target(state, &buf, ce, &st, patch, name, mode);
 	if (status < 0)
 		return status;
 	else if (status)
@@ -3597,8 +3595,7 @@ static int try_threeway(struct apply_state *state,
 
 	/* our_oid is ours */
 	if (patch->is_new) {
-		int flags = 0;
-		if (load_current(state, &tmp_image, patch, flags))
+		if (load_current(state, &tmp_image, patch))
 			return error(_("cannot read the current contents of '%s'"),
 				     patch->new_name);
 	} else {
@@ -3644,6 +3641,7 @@ static int apply_data(struct apply_state *state, struct patch *patch,
 		      struct stat *st, const struct cache_entry *ce)
 {
 	struct image image;
+
 	if (load_preimage(state, &image, patch, st, ce) < 0)
 		return -1;
 
