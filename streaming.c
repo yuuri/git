@@ -77,7 +77,7 @@ struct git_istream {
 
 		struct {
 			void *mapped;
-			unsigned long mapsize;
+			size_t mapsize;
 			char hdr[32];
 			int hdr_avail;
 			int hdr_used;
