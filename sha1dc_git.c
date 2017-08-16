@@ -11,7 +11,7 @@ void git_SHA1DCFinal(unsigned char hash[20], SHA1_CTX *ctx)
 	    sha1_to_hex(hash));
 }
 
-void git_SHA1DCUpdate(SHA1_CTX *ctx, const void *vdata, unsigned long len)
+void git_SHA1DCUpdate(SHA1_CTX *ctx, const void *vdata, size_t len)
 {
 	const char *data = vdata;
 	/* We expect an unsigned long, but sha1dc only takes an int */
