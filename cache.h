@@ -667,7 +667,7 @@ extern int chmod_index_entry(struct index_state *, struct cache_entry *ce, char 
 extern int ce_same_name(const struct cache_entry *a, const struct cache_entry *b);
 extern void set_object_name_for_intent_to_add_entry(struct cache_entry *ce);
 extern int index_name_is_other(const struct index_state *, const char *, int);
-extern void *read_blob_data_from_index(const struct index_state *, const char *, unsigned long *);
+extern void *read_blob_data_from_index(const struct index_state *, const char *, size_t *);
 
 /* do stat comparison even if CE_VALID is true */
 #define CE_MATCH_IGNORE_VALID		01
@@ -743,8 +743,8 @@ extern int pack_compression_level;
 extern size_t packed_git_window_size;
 extern size_t packed_git_limit;
 extern size_t delta_base_cache_limit;
-extern unsigned long big_file_threshold;
-extern unsigned long pack_size_limit_cfg;
+extern size_t big_file_threshold;
+extern size_t pack_size_limit_cfg;
 
 /*
  * Accessors for the core.sharedrepository config which lazy-load the value

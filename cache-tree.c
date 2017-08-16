@@ -485,10 +485,10 @@ void cache_tree_write(struct strbuf *sb, struct cache_tree *root)
 	write_one(sb, root, "", 0);
 }
 
-static struct cache_tree *read_one(const char **buffer, unsigned long *size_p)
+static struct cache_tree *read_one(const char **buffer, size_t *size_p)
 {
 	const char *buf = *buffer;
-	unsigned long size = *size_p;
+	size_t size = *size_p;
 	const char *cp;
 	char *ep;
 	struct cache_tree *it;
@@ -568,7 +568,7 @@ static struct cache_tree *read_one(const char **buffer, unsigned long *size_p)
 	return NULL;
 }
 
-struct cache_tree *cache_tree_read(const char *buffer, unsigned long size)
+struct cache_tree *cache_tree_read(const char *buffer, size_t size)
 {
 	if (buffer[0])
 		return NULL; /* not the whole tree */
