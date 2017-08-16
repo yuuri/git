@@ -632,18 +632,18 @@ static int fsck_tree(struct tree *item, struct fsck_options *options)
 	return retval;
 }
 
-static int verify_headers(const void *data, unsigned long size,
+static int verify_headers(const void *data, size_t size,
 			  struct object *obj, struct fsck_options *options)
 {
 	const char *buffer = (const char *)data;
-	unsigned long i;
+	size_t i;
 
 	for (i = 0; i < size; i++) {
 		switch (buffer[i]) {
 		case '\0':
 			return report(options, obj,
 				FSCK_MSG_NUL_IN_HEADER,
-				"unterminated header: NUL at offset %ld", i);
+				"unterminated header: NUL at offset %" PRIuMAX, (uintmax_t)i);
 		case '\n':
 			if (i + 1 < size && buffer[i + 1] == '\n')
 				return 0;
@@ -708,7 +708,7 @@ static int fsck_ident(const char **ident, struct object *obj, struct fsck_option
 }
 
 static int fsck_commit_buffer(struct commit *commit, const char *buffer,
-	unsigned long size, struct fsck_options *options)
+	size_t size, struct fsck_options *options)
 {
 	unsigned char tree_sha1[20], sha1[20];
 	struct commit_graft *graft;
@@ -786,7 +786,7 @@ static int fsck_commit_buffer(struct commit *commit, const char *buffer,
 }
 
 static int fsck_commit(struct commit *commit, const char *data,
-	unsigned long size, struct fsck_options *options)
+	size_t size, struct fsck_options *options)
 {
 	const char *buffer = data ?  data : get_commit_buffer(commit, &size);
 	int ret = fsck_commit_buffer(commit, buffer, size, options);
@@ -890,7 +890,7 @@ done:
 }
 
 static int fsck_tag(struct tag *tag, const char *data,
-	unsigned long size, struct fsck_options *options)
+	size_t size, struct fsck_options *options)
 {
 	struct object *tagged = tag->tagged;
 
@@ -900,7 +900,7 @@ static int fsck_tag(struct tag *tag, const char *data,
 	return fsck_tag_buffer(tag, data, size, options);
 }
 
-int fsck_object(struct object *obj, void *data, unsigned long size,
+int fsck_object(struct object *obj, void *data, size_t size,
 	struct fsck_options *options)
 {
 	if (!obj)
