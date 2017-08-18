@@ -1289,4 +1289,26 @@ test_expect_success 'init properly sets the config' '
 	test_must_fail git -C multisuper_clone config --get submodule.sub1.active
 '
 
+test_expect_success 'submodule update and git pull with disabled submodule' '
+	test_when_finished "rm -rf multisuper_clone" &&
+	pwd=$(pwd) &&
+	cat <<-\EOF >expect &&
+	-sub0
+	 sub1 (test2)
+	 sub2 (test2)
+	 sub3 (test2)
+	 sub4 (test2)
+	 sub5 (test2)
+	EOF
+	git clone file://"$pwd"/multisuper multisuper_clone &&
+	(
+		cd multisuper_clone &&
+		git config --local submodule.sub0.update none &&
+		git submodule update --init --recursive &&
+		git pull --recurse-submodules &&
+		git submodule status | cut -c 1,43- >actual
+	) &&
+	test_cmp expect multisuper_clone/actual
+'
+
 test_done

@@ -511,6 +511,7 @@ fetch_in_submodule () (
 cmd_update()
 {
 	# parse $args after "submodule ... update".
+	default_update="checkout"
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -551,6 +552,10 @@ cmd_update()
 			;;
 		--checkout)
 			update="checkout"
+			;;
+		--default-update)
+			default_update="$2"
+			shift
 			;;
 		--recommend-shallow)
 			recommend_shallow="--recommend-shallow"
@@ -619,7 +624,7 @@ cmd_update()
 			update_module=$(git config submodule."$name".update)
 			if test -z "$update_module"
 			then
-				update_module="checkout"
+				update_module="$default_update"
 			fi
 		fi
 

@@ -553,7 +553,8 @@ static int rebase_submodules(void)
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 	argv_array_pushl(&cp.args, "submodule", "update",
-				   "--recursive", "--rebase", NULL);
+				   "--recursive", "--default-update",
+				   "rebase", NULL);
 
 	return run_command(&cp);
 }
@@ -565,7 +566,8 @@ static int update_submodules(void)
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 	argv_array_pushl(&cp.args, "submodule", "update",
-				   "--recursive", "--checkout", NULL);
+				   "--recursive", "--default-update",
+				   "checkout", NULL);
 
 	return run_command(&cp);
 }
