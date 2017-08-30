@@ -62,6 +62,8 @@ struct packed_git {
  */
 #define sha1_file_name(r, s) sha1_file_name_##r(s)
 extern const char *sha1_file_name_the_repository(const unsigned char *sha1);
+#define map_sha1_file(r, s, sz) map_sha1_file_##r(s, sz)
+extern void *map_sha1_file_the_repository(const unsigned char *sha1, unsigned long *size);
 
 #define prepare_alt_odb(r) prepare_alt_odb_##r()
 extern void prepare_alt_odb_the_repository(void);
