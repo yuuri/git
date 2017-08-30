@@ -7,6 +7,7 @@
 #include "sideband.h"
 #include "run-command.h"
 #include "exec_cmd.h"
+#include "object-store.h"
 #include "commit.h"
 #include "object.h"
 #include "remote.h"

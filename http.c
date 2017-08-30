@@ -1,6 +1,7 @@
 #include "git-compat-util.h"
 #include "http.h"
 #include "config.h"
+#include "object-store.h"
 #include "pack.h"
 #include "sideband.h"
 #include "run-command.h"

@@ -7,6 +7,8 @@
 #include "cache.h"
 #include "config.h"
 #include "dir.h"
+#include "repository.h"
+#include "object-store.h"
 #include "builtin.h"
 #include "parse-options.h"
 #include "quote.h"
@@ -120,9 +122,9 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 		struct strbuf loose_buf = STRBUF_INIT;
 		struct strbuf pack_buf = STRBUF_INIT;
 		struct strbuf garbage_buf = STRBUF_INIT;
-		if (!packed_git)
+		if (!the_repository->objects.packed_git)
 			prepare_packed_git();
-		for (p = packed_git; p; p = p->next) {
+		for (p = the_repository->objects.packed_git; p; p = p->next) {
 			if (!p->pack_local)
 				continue;
 			if (open_pack_index(p))

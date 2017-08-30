@@ -1,6 +1,8 @@
 #include "builtin.h"
 #include "cache.h"
+#include "repository.h"
 #include "config.h"
+#include "object-store.h"
 #include "attr.h"
 #include "object.h"
 #include "blob.h"
@@ -1012,7 +1014,8 @@ static int want_object_in_pack(const unsigned char *sha1,
 			return want;
 	}
 
-	for (entry = packed_git_mru.head; entry; entry = entry->next) {
+	for (entry = the_repository->objects.packed_git_mru.head; entry;
+	     entry = entry->next) {
 		struct packed_git *p = entry->item;
 		off_t offset;
 
@@ -1030,7 +1033,8 @@ static int want_object_in_pack(const unsigned char *sha1,
 			}
 			want = want_found_object(exclude, p);
 			if (!exclude && want > 0)
-				mru_mark(&packed_git_mru, entry);
+				mru_mark(&the_repository->objects.packed_git_mru,
+					 entry);
 			if (want != -1)
 				return want;
 		}
@@ -2594,7 +2598,7 @@ static void add_objects_in_unpacked_packs(struct rev_info *revs)
 
 	memset(&in_pack, 0, sizeof(in_pack));
 
-	for (p = packed_git; p; p = p->next) {
+	for (p = the_repository->objects.packed_git; p; p = p->next) {
 		const unsigned char *sha1;
 		struct object *o;
 
@@ -2657,7 +2661,8 @@ static int has_sha1_pack_kept_or_nonlocal(const unsigned char *sha1)
 	static struct packed_git *last_found = (void *)1;
 	struct packed_git *p;
 
-	p = (last_found != (void *)1) ? last_found : packed_git;
+	p = (last_found != (void *)1) ? last_found :
+					the_repository->objects.packed_git;
 
 	while (p) {
 		if ((!p->pack_local || p->pack_keep) &&
@@ -2666,7 +2671,7 @@ static int has_sha1_pack_kept_or_nonlocal(const unsigned char *sha1)
 			return 1;
 		}
 		if (p == last_found)
-			p = packed_git;
+			p = the_repository->objects.packed_git;
 		else
 			p = p->next;
 		if (p == last_found)
@@ -2702,7 +2707,7 @@ static void loosen_unused_packed_objects(struct rev_info *revs)
 	uint32_t i;
 	struct object_id oid;
 
-	for (p = packed_git; p; p = p->next) {
+	for (p = the_repository->objects.packed_git; p; p = p->next) {
 		if (!p->pack_local || p->pack_keep)
 			continue;
 
@@ -3050,7 +3055,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	prepare_packed_git();
 	if (ignore_packed_keep) {
 		struct packed_git *p;
-		for (p = packed_git; p; p = p->next)
+		for (p = the_repository->objects.packed_git; p; p = p->next)
 			if (p->pack_local && p->pack_keep)
 				break;
 		if (!p) /* no keep-able packs found */
@@ -3063,7 +3068,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		 * also covers non-local objects
 		 */
 		struct packed_git *p;
-		for (p = packed_git; p; p = p->next) {
+		for (p = the_repository->objects.packed_git; p; p = p->next) {
 			if (!p->pack_local) {
 				have_non_local_packs = 1;
 				break;

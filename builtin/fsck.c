@@ -2,6 +2,7 @@
 #include "cache.h"
 #include "repository.h"
 #include "config.h"
+#include "object-store.h"
 #include "commit.h"
 #include "tree.h"
 #include "blob.h"
@@ -712,7 +713,8 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 			prepare_packed_git();
 
 			if (show_progress) {
-				for (p = packed_git; p; p = p->next) {
+				for (p = the_repository->objects.packed_git; p;
+				     p = p->next) {
 					if (open_pack_index(p))
 						continue;
 					total += p->num_objects;
@@ -720,7 +722,8 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 
 				progress = start_progress(_("Checking objects"), total);
 			}
-			for (p = packed_git; p; p = p->next) {
+			for (p = the_repository->objects.packed_git; p;
+			     p = p->next) {
 				/* verify gives error messages itself */
 				if (verify_pack(p, fsck_obj_buffer,
 						progress, count))
