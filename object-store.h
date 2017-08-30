@@ -15,8 +15,14 @@ struct object_store {
 
 	struct alternate_object_database *alt_odb_list;
 	struct alternate_object_database **alt_odb_tail;
+
+	/*
+	 * Whether packed_git has already been populated with this repository's
+	 * packs.
+	 */
+	unsigned packed_git_initialized : 1;
 };
-#define OBJECT_STORE_INIT { NULL, MRU_INIT, NULL, NULL }
+#define OBJECT_STORE_INIT { NULL, MRU_INIT, NULL, NULL, 0 }
 
 struct packed_git {
 	struct packed_git *next;
