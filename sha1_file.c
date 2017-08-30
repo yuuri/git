@@ -1209,7 +1209,7 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi,
 		if (flags & OBJECT_INFO_QUICK) {
 			return -1;
 		} else {
-			reprepare_packed_git();
+			reprepare_packed_git(the_repository);
 			if (!find_pack_entry(real, &e))
 				return -1;
 		}
