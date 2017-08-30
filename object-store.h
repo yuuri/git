@@ -17,12 +17,20 @@ struct object_store {
 	struct alternate_object_database **alt_odb_tail;
 
 	/*
+	 * A fast, rough count of the number of objects in the repository.
+	 * These two fields are not meant for direct access. Use
+	 * approximate_object_count() instead.
+	 */
+	unsigned long approximate_object_count;
+	unsigned approximate_object_count_valid : 1;
+
+	/*
 	 * Whether packed_git has already been populated with this repository's
 	 * packs.
 	 */
 	unsigned packed_git_initialized : 1;
 };
-#define OBJECT_STORE_INIT { NULL, MRU_INIT, NULL, NULL, 0 }
+#define OBJECT_STORE_INIT { NULL, MRU_INIT, NULL, NULL, 0, 0, 0 }
 
 struct packed_git {
 	struct packed_git *next;
