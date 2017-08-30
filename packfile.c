@@ -857,14 +857,13 @@ static void rearrange_packed_git(struct repository *r)
 		set_next_packed_git, sort_pack);
 }
 
-#define prepare_packed_git_mru(r) prepare_packed_git_mru_##r()
-static void prepare_packed_git_mru_the_repository(void)
+static void prepare_packed_git_mru(struct repository *r)
 {
 	struct packed_git *p;
 
-	mru_clear(&the_repository->objects.packed_git_mru);
-	for (p = the_repository->objects.packed_git; p; p = p->next)
-		mru_append(&the_repository->objects.packed_git_mru, p);
+	mru_clear(&r->objects.packed_git_mru);
+	for (p = r->objects.packed_git; p; p = p->next)
+		mru_append(&r->objects.packed_git_mru, p);
 }
 
 void prepare_packed_git_the_repository(void)
