@@ -1,5 +1,6 @@
 #include "git-compat-util.h"
 #include "http.h"
+#include "repository.h"
 #include "config.h"
 #include "object-store.h"
 #include "pack.h"
@@ -2049,7 +2050,7 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		return -1;
 	}
 
-	install_packed_git(p);
+	install_packed_git(the_repository, p);
 	free(tmp_idx);
 	return 0;
 }
