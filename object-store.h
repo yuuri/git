@@ -54,6 +54,15 @@ struct packed_git {
 	char pack_name[FLEX_ARRAY]; /* more */
 };
 
+/*
+ * Return the name of the file in a repository's local object database
+ * that would be used to store a loose object with the specified sha1.
+ * The return value is a pointer to a statically allocated buffer that
+ * is overwritten each time the function is called.
+ */
+#define sha1_file_name(r, s) sha1_file_name_##r(s)
+extern const char *sha1_file_name_the_repository(const unsigned char *sha1);
+
 #define prepare_alt_odb(r) prepare_alt_odb_##r()
 extern void prepare_alt_odb_the_repository(void);
 

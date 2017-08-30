@@ -253,7 +253,7 @@ static void fill_sha1_path(struct strbuf *buf, const unsigned char *sha1)
 	}
 }
 
-const char *sha1_file_name(const unsigned char *sha1)
+const char *sha1_file_name_the_repository(const unsigned char *sha1)
 {
 	static struct strbuf buf = STRBUF_INIT;
 
@@ -664,7 +664,8 @@ int check_and_freshen_file(const char *fn, int freshen)
 
 static int check_and_freshen_local(const unsigned char *sha1, int freshen)
 {
-	return check_and_freshen_file(sha1_file_name(sha1), freshen);
+	return check_and_freshen_file(sha1_file_name(the_repository, sha1),
+				      freshen);
 }
 
 static int check_and_freshen_nonlocal(const unsigned char *sha1, int freshen)
@@ -822,7 +823,7 @@ static int stat_sha1_file_the_repository(const unsigned char *sha1,
 {
 	struct alternate_object_database *alt;
 
-	*path = sha1_file_name(sha1);
+	*path = sha1_file_name(the_repository, sha1);
 	if (!lstat(*path, st))
 		return 0;
 
@@ -849,7 +850,7 @@ static int open_sha1_file_the_repository(const unsigned char *sha1,
 	struct alternate_object_database *alt;
 	int most_interesting_errno;
 
-	*path = sha1_file_name(sha1);
+	*path = sha1_file_name(the_repository, sha1);
 	fd = git_open(*path);
 	if (fd >= 0)
 		return fd;
@@ -1509,7 +1510,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_SHA_CTX c;
 	unsigned char parano_sha1[20];
 	static struct strbuf tmp_file = STRBUF_INIT;
-	const char *filename = sha1_file_name(sha1);
+	const char *filename = sha1_file_name(the_repository, sha1);
 
 	fd = create_tmpfile(&tmp_file, filename);
 	if (fd < 0) {
