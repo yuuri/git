@@ -1,6 +1,8 @@
 #ifndef REPOSITORY_H
 #define REPOSITORY_H
 
+#include "object-store.h"
+
 struct config_set;
 struct index_state;
 struct submodule_cache;
@@ -24,6 +26,11 @@ struct repository {
 	 * Cannot be NULL after initialization.
 	 */
 	char *objectdir;
+
+	/*
+	 * Holds any information related to the object store.
+	 */
+	struct object_store objects;
 
 	/*
 	 * Path to the repository's graft file.
