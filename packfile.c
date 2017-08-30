@@ -664,13 +664,13 @@ struct packed_git *add_packed_git(const char *path, size_t path_len, int local)
 	return p;
 }
 
-void install_packed_git_the_repository(struct packed_git *pack)
+void install_packed_git(struct repository *r, struct packed_git *pack)
 {
 	if (pack->pack_fd != -1)
 		pack_open_fds++;
 
-	pack->next = the_repository->objects.packed_git;
-	the_repository->objects.packed_git = pack;
+	pack->next = r->objects.packed_git;
+	r->objects.packed_git = pack;
 }
 
 void (*report_garbage)(unsigned seen_bits, const char *path);

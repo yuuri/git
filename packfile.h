@@ -36,8 +36,7 @@ extern void (*report_garbage)(unsigned seen_bits, const char *path);
 extern void prepare_packed_git_the_repository(void);
 #define reprepare_packed_git(r) reprepare_packed_git_##r()
 extern void reprepare_packed_git_the_repository(void);
-#define install_packed_git(r, p) install_packed_git_##r(p)
-extern void install_packed_git_the_repository(struct packed_git *pack);
+extern void install_packed_git(struct repository *r, struct packed_git *pack);
 
 /*
  * Give a rough count of objects in the repository. This sacrifices accuracy
