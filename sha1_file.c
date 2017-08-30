@@ -606,7 +606,7 @@ out:
 	return ref_git;
 }
 
-int foreach_alt_odb(alt_odb_fn fn, void *cb)
+int foreach_alt_odb_the_repository(alt_odb_fn fn, void *cb)
 {
 	struct alternate_object_database *ent;
 	int r = 0;
@@ -2031,7 +2031,7 @@ int for_each_loose_object(each_loose_object_fn cb, void *data, unsigned flags)
 
 	alt.cb = cb;
 	alt.data = data;
-	return foreach_alt_odb(loose_from_alt_odb, &alt);
+	return foreach_alt_odb(the_repository, loose_from_alt_odb, &alt);
 }
 
 static int check_stream_sha1(git_zstream *stream,

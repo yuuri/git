@@ -57,4 +57,8 @@ struct packed_git {
 #define prepare_alt_odb(r) prepare_alt_odb_##r()
 extern void prepare_alt_odb_the_repository(void);
 
+typedef int alt_odb_fn(struct alternate_object_database *, void *);
+#define foreach_alt_odb(r, fn, cb) foreach_alt_odb_##r(fn, cb)
+extern int foreach_alt_odb_the_repository(alt_odb_fn, void*);
+
 #endif /* OBJECT_STORE_H */
