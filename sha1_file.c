@@ -401,8 +401,12 @@ static const char *parse_alt_odb_entry(const char *string,
 	return end;
 }
 
-static void link_alt_odb_entries(const char *alt, int len, int sep,
-				 const char *relative_base, int depth)
+#define link_alt_odb_entries(r, a, l, s, rb, d) \
+	link_alt_odb_entries_##r(a, l, s, rb, d)
+static void link_alt_odb_entries_the_repository(const char *alt, int len,
+						int sep,
+						const char *relative_base,
+						int depth)
 {
 	struct strbuf objdirbuf = STRBUF_INIT;
 	struct strbuf entry = STRBUF_INIT;
@@ -451,7 +455,7 @@ static void read_info_alternates_the_repository(const char *relative_base,
 	map = xmmap(NULL, mapsz, PROT_READ, MAP_PRIVATE, fd, 0);
 	close(fd);
 
-	link_alt_odb_entries(map, mapsz, '\n', relative_base, depth);
+	link_alt_odb_entries(the_repository, map, mapsz, '\n', relative_base, depth);
 
 	munmap(map, mapsz);
 }
@@ -508,7 +512,8 @@ void add_to_alternates_file(const char *reference)
 		if (commit_lock_file(lock))
 			die_errno("unable to move new alternates file into place");
 		if (the_repository->objects.alt_odb_tail)
-			link_alt_odb_entries(reference, strlen(reference), '\n', NULL, 0);
+			link_alt_odb_entries(the_repository, reference,
+					     strlen(reference), '\n', NULL, 0);
 	}
 	free(alts);
 }
@@ -521,7 +526,8 @@ void add_to_alternates_memory(const char *reference)
 	 */
 	prepare_alt_odb();
 
-	link_alt_odb_entries(reference, strlen(reference), '\n', NULL, 0);
+	link_alt_odb_entries(the_repository, reference, strlen(reference),
+			     '\n', NULL, 0);
 }
 
 /*
@@ -625,7 +631,8 @@ void prepare_alt_odb(void)
 
 	the_repository->objects.alt_odb_tail =
 			&the_repository->objects.alt_odb_list;
-	link_alt_odb_entries(alt, strlen(alt), PATH_SEP, NULL, 0);
+	link_alt_odb_entries(the_repository, alt, strlen(alt),
+			     PATH_SEP, NULL, 0);
 
 	read_info_alternates(the_repository, get_object_directory(), 0);
 }
