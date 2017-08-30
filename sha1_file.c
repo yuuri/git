@@ -25,6 +25,7 @@
 #include "repository.h"
 #include "object-store.h"
 #include "streaming.h"
+#include "path.h"
 #include "dir.h"
 #include "mru.h"
 #include "list.h"
@@ -281,17 +282,18 @@ static const char *alt_sha1_path(struct alternate_object_database *alt,
 /*
  * Return non-zero iff the path is usable as an alternate object database.
  */
-#define alt_odb_usable(r, p, n) alt_odb_usable_##r(p, n)
-static int alt_odb_usable_the_repository(struct strbuf *path,
-					 const char *normalized_objdir)
+static int alt_odb_usable(struct repository *r, struct strbuf *path,
+			  const char *normalized_objdir)
 {
 	struct alternate_object_database *alt;
 
 	/* Detect cases where alternate disappeared */
 	if (!is_directory(path->buf)) {
-		error("object directory %s does not exist; "
-		      "check .git/objects/info/alternates.",
-		      path->buf);
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_repo_git_path(&sb, r, "objects/info/alternates");
+		error("object directory %s does not exist; check %s",
+		      path->buf, sb.buf);
+		strbuf_release(&sb);
 		return 0;
 	}
 
@@ -299,7 +301,7 @@ static int alt_odb_usable_the_repository(struct strbuf *path,
 	 * Prevent the common mistake of listing the same
 	 * thing twice, or object directory itself.
 	 */
-	for (alt = the_repository->objects.alt_odb_list; alt; alt = alt->next) {
+	for (alt = r->objects.alt_odb_list; alt; alt = alt->next) {
 		if (!fspathcmp(path->buf, alt->path))
 			return 0;
 	}
