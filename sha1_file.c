@@ -604,18 +604,18 @@ out:
 	return ref_git;
 }
 
-int foreach_alt_odb_the_repository(alt_odb_fn fn, void *cb)
+int foreach_alt_odb(struct repository *r, alt_odb_fn fn, void *cb)
 {
 	struct alternate_object_database *ent;
-	int r = 0;
+	int ret = 0;
 
-	prepare_alt_odb(the_repository);
-	for (ent = the_repository->objects.alt_odb_list; ent; ent = ent->next) {
-		r = fn(ent, cb);
-		if (r)
+	prepare_alt_odb(r);
+	for (ent = r->objects.alt_odb_list; ent; ent = ent->next) {
+		ret = fn(ent, cb);
+		if (ret)
 			break;
 	}
-	return r;
+	return ret;
 }
 
 void prepare_alt_odb(struct repository *r)

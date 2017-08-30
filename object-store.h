@@ -68,7 +68,6 @@ extern void *map_sha1_file_the_repository(const unsigned char *sha1, unsigned lo
 extern void prepare_alt_odb(struct repository *r);
 
 typedef int alt_odb_fn(struct alternate_object_database *, void *);
-#define foreach_alt_odb(r, fn, cb) foreach_alt_odb_##r(fn, cb)
-extern int foreach_alt_odb_the_repository(alt_odb_fn, void*);
+extern int foreach_alt_odb(struct repository *r, alt_odb_fn, void*);
 
 #endif /* OBJECT_STORE_H */
