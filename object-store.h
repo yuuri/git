@@ -60,8 +60,7 @@ struct packed_git {
  * The return value is a pointer to a statically allocated buffer that
  * is overwritten each time the function is called.
  */
-#define sha1_file_name(r, s) sha1_file_name_##r(s)
-extern const char *sha1_file_name_the_repository(const unsigned char *sha1);
+extern const char *sha1_file_name(struct repository *r, const unsigned char *sha1);
 #define map_sha1_file(r, s, sz) map_sha1_file_##r(s, sz)
 extern void *map_sha1_file_the_repository(const unsigned char *sha1, unsigned long *size);
 

@@ -254,12 +254,12 @@ static void fill_sha1_path(struct strbuf *buf, const unsigned char *sha1)
 	}
 }
 
-const char *sha1_file_name_the_repository(const unsigned char *sha1)
+const char *sha1_file_name(struct repository *r, const unsigned char *sha1)
 {
 	static struct strbuf buf = STRBUF_INIT;
 
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, "%s/", get_object_directory());
+	strbuf_addf(&buf, "%s/", r->objectdir);
 
 	fill_sha1_path(&buf, sha1);
 	return buf.buf;
