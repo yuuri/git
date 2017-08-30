@@ -850,7 +850,8 @@ static int sort_pack(const void *a_, const void *b_)
 	return -1;
 }
 
-static void rearrange_packed_git(void)
+#define rearrange_packed_git(r) rearrange_packed_git_##r()
+static void rearrange_packed_git_the_repository(void)
 {
 	the_repository->objects.packed_git = llist_mergesort(
 		the_repository->objects.packed_git, get_next_packed_git,
@@ -876,7 +877,7 @@ void prepare_packed_git(void)
 	prepare_alt_odb(the_repository);
 	for (alt = the_repository->objects.alt_odb_list; alt; alt = alt->next)
 		prepare_packed_git_one(the_repository, alt->path, 0);
-	rearrange_packed_git();
+	rearrange_packed_git(the_repository);
 	prepare_packed_git_mru();
 	the_repository->objects.packed_git_initialized = 1;
 }
