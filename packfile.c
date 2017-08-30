@@ -850,11 +850,10 @@ static int sort_pack(const void *a_, const void *b_)
 	return -1;
 }
 
-#define rearrange_packed_git(r) rearrange_packed_git_##r()
-static void rearrange_packed_git_the_repository(void)
+static void rearrange_packed_git(struct repository *r)
 {
-	the_repository->objects.packed_git = llist_mergesort(
-		the_repository->objects.packed_git, get_next_packed_git,
+	r->objects.packed_git = llist_mergesort(
+		r->objects.packed_git, get_next_packed_git,
 		set_next_packed_git, sort_pack);
 }
 
