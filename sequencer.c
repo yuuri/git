@@ -18,7 +18,7 @@
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
-const char sign_off_header[] = "Signed-off-by: ";
+static const char sign_off_header[] = "Signed-off-by: ";
 static const char cherry_picked_prefix[] = "(cherry picked from commit ";
 
 static GIT_PATH_FUNC(git_path_todo_file, SEQ_TODO_FILE)
