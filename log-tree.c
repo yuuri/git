@@ -84,8 +84,10 @@ void add_name_decoration(enum decoration_type type, const char *name, struct obj
 	res->next = add_decoration(&name_decoration, obj, res);
 }
 
+static void maybe_load_ref_decorations();
 const struct name_decoration *get_name_decoration(const struct object *obj)
 {
+	maybe_load_ref_decorations();
 	return lookup_decoration(&name_decoration, obj);
 }
 
@@ -150,10 +152,13 @@ static int add_graft_decoration(const struct commit_graft *graft, void *cb_data)
 
 void load_ref_decorations(int flags)
 {
-	if (!decoration_loaded) {
+	decoration_flags = flags;
+}
 
+static void maybe_load_ref_decorations()
+{
+	if (!decoration_loaded) {
 		decoration_loaded = 1;
-		decoration_flags = flags;
 		for_each_ref(add_ref_decoration, NULL);
 		head_ref(add_ref_decoration, NULL);
 		for_each_commit_graft(add_graft_decoration, NULL);
