@@ -84,7 +84,7 @@ void add_name_decoration(enum decoration_type type, const char *name, struct obj
 	res->next = add_decoration(&name_decoration, obj, res);
 }
 
-static void maybe_load_ref_decorations();
+static void maybe_load_ref_decorations(void);
 const struct name_decoration *get_name_decoration(const struct object *obj)
 {
 	maybe_load_ref_decorations();
@@ -155,7 +155,7 @@ void load_ref_decorations(int flags)
 	decoration_flags = flags;
 }
 
-static void maybe_load_ref_decorations()
+static void maybe_load_ref_decorations(void)
 {
 	if (!decoration_loaded) {
 		decoration_loaded = 1;
