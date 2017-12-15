@@ -102,11 +102,9 @@ test_expect_success 'reset --soft with unmerged index should fail' '
 '
 
 test_expect_success \
-	'giving paths with options different than --mixed should fail' '
+	'giving paths with options different than --mixed/--hard should fail' '
 	test_must_fail git reset --soft -- first &&
-	test_must_fail git reset --hard -- first &&
 	test_must_fail git reset --soft HEAD^ -- first &&
-	test_must_fail git reset --hard HEAD^ -- first &&
 	check_changes $head5
 '
 

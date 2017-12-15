@@ -42,7 +42,8 @@ static inline int is_merge(void)
 	return !access(git_path_merge_head(), F_OK);
 }
 
-static int reset_index(const struct object_id *oid, int reset_type, int quiet)
+static int reset_index(struct pathspec *pathspec,
+		       const struct object_id *oid, int reset_type, int quiet)
 {
 	int i, nr = 0;
 	struct tree_desc desc[2];
@@ -56,6 +57,7 @@ static int reset_index(const struct object_id *oid, int reset_type, int quiet)
 	opts.dst_index = &the_index;
 	opts.fn = oneway_merge;
 	opts.merge = 1;
+	opts.pathspec = pathspec;
 	if (!quiet)
 		opts.verbose_update = 1;
 	switch (reset_type) {
@@ -353,6 +355,8 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	if (pathspec.nr) {
 		if (reset_type == MIXED)
 			warning(_("--mixed with paths is deprecated; use 'git reset -- <paths>' instead."));
+		else if (reset_type == HARD)
+			; /* let's try this */
 		else if (reset_type != NONE)
 			die(_("Cannot do %s reset with paths."),
 					_(reset_type_names[reset_type]));
@@ -387,9 +391,9 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 				refresh_index(&the_index, flags, NULL, NULL,
 					      _("Unstaged changes after reset:"));
 		} else {
-			int err = reset_index(&oid, reset_type, quiet);
+			int err = reset_index(&pathspec, &oid, reset_type, quiet);
 			if (reset_type == KEEP && !err)
-				err = reset_index(&oid, MIXED, quiet);
+				err = reset_index(&pathspec, &oid, MIXED, quiet);
 			if (err)
 				die(_("Could not reset index file to revision '%s'."), rev);
 		}
