@@ -2396,10 +2396,9 @@ static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
 	int ret = 0, original_len = path->len, len, kept_down = 0;
 	int only_empty = !!(flags & REMOVE_DIR_EMPTY_ONLY);
 	int keep_toplevel = !!(flags & REMOVE_DIR_KEEP_TOPLEVEL);
-	struct object_id submodule_head;
 
 	if ((flags & REMOVE_DIR_KEEP_NESTED_GIT) &&
-	    !resolve_gitlink_ref(path->buf, "HEAD", &submodule_head)) {
+	    is_nonbare_repository_dir(path)) {
 		/* Do not descend and nuke a nested git work tree. */
 		if (kept_up)
 			*kept_up = 1;
