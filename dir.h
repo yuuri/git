@@ -302,6 +302,11 @@ extern void setup_standard_excludes(struct dir_struct *dir);
 /* Remove the contents of path, but leave path itself. */
 #define REMOVE_DIR_KEEP_TOPLEVEL 04
 
+/* Verbosity levels (2 bits at 060) */
+#define REMOVE_DIR_VERBOSITY_MASK 060
+#define REMOVE_DIR_WITH_WARNING 020
+#define REMOVE_DIR_VERBOSELY    040
+
 /*
  * Remove path and its contents, recursively. flags is a combination
  * of the above REMOVE_DIR_* constants. Return 0 on success.
@@ -309,7 +314,11 @@ extern void setup_standard_excludes(struct dir_struct *dir);
  * This function uses path as temporary scratch space, but restores it
  * before returning.
  */
-extern int remove_dir_recursively(struct strbuf *path, unsigned flags);
+#define remove_dir_recursively(path, flags) remove_dir_re((path), NULL, (flags))
+
+/* The same as above, but paths are reported relative to prefix */
+extern int remove_dir_re(struct strbuf *path, const char *prefix, unsigned flags);
+
 
 /* tries to remove the path with empty directories along it, ignores ENOENT */
 extern int remove_path(const char *path);

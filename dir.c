@@ -15,6 +15,7 @@
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
+#include "quote.h"
 #include "utf8.h"
 #include "varint.h"
 #include "ewah/ewok.h"
@@ -2389,17 +2390,44 @@ int is_empty_dir(const char *path)
 	return ret;
 }
 
-static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
+static void report_path(const char *msg, const char *pathbuf, const char *prefix)
+{
+	struct strbuf quoted = STRBUF_INIT;
+
+	quote_path_relative(pathbuf, prefix, &quoted);
+	printf(_(msg), quoted.buf);
+	strbuf_release(&quoted);
+}
+
+static const char *msg_skip_git_dir = N_("Skipping repository %s\n");
+static const char *msg_warn_remove_failed = N_("failed to remove %s");
+
+static void warn_path(const char *msg, const char *pathbuf, const char *prefix)
+{
+	struct strbuf quoted = STRBUF_INIT;
+	int saved_errno = errno;
+
+	quote_path_relative(pathbuf, prefix, &quoted);
+	errno = saved_errno;
+	warning_errno(_(msg), quoted.buf);
+	strbuf_release(&quoted);
+}
+
+static int remove_dir_recurse(struct strbuf *path, const char *prefix,
+			      unsigned flags, int *kept_up)
 {
 	DIR *dir;
 	struct dirent *e;
 	int ret = 0, original_len = path->len, len, kept_down = 0;
 	int only_empty = !!(flags & REMOVE_DIR_EMPTY_ONLY);
 	int keep_toplevel = !!(flags & REMOVE_DIR_KEEP_TOPLEVEL);
+	unsigned verbosity = (flags &  REMOVE_DIR_VERBOSITY_MASK);
 
 	if ((flags & REMOVE_DIR_KEEP_NESTED_GIT) &&
 	    is_nonbare_repository_dir(path)) {
 		/* Do not descend and nuke a nested git work tree. */
+		if (REMOVE_DIR_VERBOSELY <= verbosity)
+			report_path(msg_skip_git_dir, path->buf, prefix);
 		if (kept_up)
 			*kept_up = 1;
 		return 0;
@@ -2408,16 +2436,19 @@ static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
 	flags &= ~REMOVE_DIR_KEEP_TOPLEVEL;
 	dir = opendir(path->buf);
 	if (!dir) {
-		if (errno == ENOENT)
+		if (errno == ENOENT) {
 			return keep_toplevel ? -1 : 0;
-		else if (errno == EACCES && !keep_toplevel)
+		} else if (errno == EACCES && !keep_toplevel) {
 			/*
 			 * An empty dir could be removable even if it
 			 * is unreadable:
 			 */
-			return rmdir(path->buf);
-		else
-			return -1;
+			if (!rmdir(path->buf))
+				return 0;
+		}
+		if (REMOVE_DIR_WITH_WARNING <= verbosity)
+			warn_path(msg_warn_remove_failed, path->buf, prefix);
+		return -1;
 	}
 	strbuf_complete(path, '/');
 
@@ -2438,7 +2469,7 @@ static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
 				continue;
 			/* fall thru */
 		} else if (S_ISDIR(st.st_mode)) {
-			if (!remove_dir_recurse(path, flags, &kept_down))
+			if (!remove_dir_recurse(path, prefix, flags, &kept_down))
 				continue; /* happy */
 		} else if (!only_empty &&
 			   (!unlink(path->buf) || errno == ENOENT)) {
@@ -2446,26 +2477,31 @@ static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
 		}
 
 		/* path too long, stat fails, or non-directory still exists */
+		if (REMOVE_DIR_WITH_WARNING <= verbosity)
+			warn_path(msg_warn_remove_failed, path->buf, prefix);
 		ret = -1;
 		break;
 	}
 	closedir(dir);
 
 	strbuf_setlen(path, original_len);
-	if (!ret && !keep_toplevel && !kept_down)
+	if (!ret && !keep_toplevel && !kept_down) {
 		ret = (!rmdir(path->buf) || errno == ENOENT) ? 0 : -1;
-	else if (kept_up)
+		if (ret && (REMOVE_DIR_WITH_WARNING <= verbosity))
+			warn_path(msg_warn_remove_failed, path->buf, prefix);
+	} else if (kept_up) {
 		/*
 		 * report the uplevel that it is not an error that we
 		 * did not rmdir() our directory.
 		 */
 		*kept_up = !ret;
+	}
 	return ret;
 }
 
-int remove_dir_recursively(struct strbuf *path, unsigned flags)
+int remove_dir_re(struct strbuf *path, const char *prefix, unsigned flags)
 {
-	return remove_dir_recurse(path, flags, NULL);
+	return remove_dir_recurse(path, prefix, flags, NULL);
 }
 
 static GIT_PATH_FUNC(git_path_info_exclude, "info/exclude")
