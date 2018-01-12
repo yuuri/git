@@ -2389,16 +2389,16 @@ int is_empty_dir(const char *path)
 	return ret;
 }
 
-static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
+static int remove_dir_recurse(struct strbuf *path, unsigned flags, int *kept_up)
 {
 	DIR *dir;
 	struct dirent *e;
 	int ret = 0, original_len = path->len, len, kept_down = 0;
-	int only_empty = (flag & REMOVE_DIR_EMPTY_ONLY);
-	int keep_toplevel = (flag & REMOVE_DIR_KEEP_TOPLEVEL);
+	int only_empty = !!(flags & REMOVE_DIR_EMPTY_ONLY);
+	int keep_toplevel = !!(flags & REMOVE_DIR_KEEP_TOPLEVEL);
 	struct object_id submodule_head;
 
-	if ((flag & REMOVE_DIR_KEEP_NESTED_GIT) &&
+	if ((flags & REMOVE_DIR_KEEP_NESTED_GIT) &&
 	    !resolve_gitlink_ref(path->buf, "HEAD", &submodule_head)) {
 		/* Do not descend and nuke a nested git work tree. */
 		if (kept_up)
@@ -2406,7 +2406,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 		return 0;
 	}
 
-	flag &= ~REMOVE_DIR_KEEP_TOPLEVEL;
+	flags &= ~REMOVE_DIR_KEEP_TOPLEVEL;
 	dir = opendir(path->buf);
 	if (!dir) {
 		if (errno == ENOENT)
@@ -2439,7 +2439,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 				continue;
 			/* fall thru */
 		} else if (S_ISDIR(st.st_mode)) {
-			if (!remove_dir_recurse(path, flag, &kept_down))
+			if (!remove_dir_recurse(path, flags, &kept_down))
 				continue; /* happy */
 		} else if (!only_empty &&
 			   (!unlink(path->buf) || errno == ENOENT)) {
@@ -2464,9 +2464,9 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 	return ret;
 }
 
-int remove_dir_recursively(struct strbuf *path, int flag)
+int remove_dir_recursively(struct strbuf *path, unsigned flags)
 {
-	return remove_dir_recurse(path, flag, NULL);
+	return remove_dir_recurse(path, flags, NULL);
 }
 
 static GIT_PATH_FUNC(git_path_info_exclude, "info/exclude")

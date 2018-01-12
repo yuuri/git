@@ -309,7 +309,7 @@ extern void setup_standard_excludes(struct dir_struct *dir);
  * This function uses path as temporary scratch space, but restores it
  * before returning.
  */
-extern int remove_dir_recursively(struct strbuf *path, int flag);
+extern int remove_dir_recursively(struct strbuf *path, unsigned flags);
 
 /* tries to remove the path with empty directories along it, ignores ENOENT */
 extern int remove_path(const char *path);
