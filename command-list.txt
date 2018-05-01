@@ -19,6 +19,7 @@ git-archive                             mainporcelain
 git-bisect                              mainporcelain           info
 git-blame                               ancillaryinterrogators
 git-branch                              mainporcelain           history
+git-branch-diff                         mainporcelain           info
 git-bundle                              mainporcelain
 git-cat-file                            plumbinginterrogators
 git-check-attr                          purehelpers
