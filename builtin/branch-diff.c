@@ -9,6 +9,8 @@
 #include "hungarian.h"
 #include "diff.h"
 #include "diffcore.h"
+#include "commit.h"
+#include "pretty.h"
 
 static const char * const builtin_branch_diff_usage[] = {
 N_("git branch-diff [<options>] <old-base>..<old-tip> <new-base>..<new-tip>"),
@@ -270,9 +272,57 @@ static int get_correspondences(struct string_list *a, struct string_list *b,
 	return res;
 }
 
-static const char *short_oid(struct patch_util *util)
+static void output_pair_header(struct strbuf *buf,
+			       int i, struct patch_util *a_util,
+			       int j, struct patch_util *b_util)
 {
-	return find_unique_abbrev(&util->oid, DEFAULT_ABBREV);
+	static char *dashes;
+	struct object_id *oid = a_util ? &a_util->oid : &b_util->oid;
+	struct commit *commit;
+
+	if (!dashes) {
+		char *p;
+
+		dashes = xstrdup(find_unique_abbrev(oid, DEFAULT_ABBREV));
+		for (p = dashes; *p; p++)
+			*p = '-';
+	}
+
+	strbuf_reset(buf);
+	if (i < 0)
+		strbuf_addf(buf, "-:  %s ", dashes);
+	else
+		strbuf_addf(buf, "%d:  %s ", i + 1,
+			    find_unique_abbrev(&a_util->oid, DEFAULT_ABBREV));
+
+	if (i < 0)
+		strbuf_addch(buf, '>');
+	else if (j < 0)
+		strbuf_addch(buf, '<');
+	else if (strcmp(a_util->patch, b_util->patch))
+		strbuf_addch(buf, '!');
+	else
+		strbuf_addch(buf, '=');
+
+	if (j < 0)
+		strbuf_addf(buf, " -:  %s", dashes);
+	else
+		strbuf_addf(buf, " %d:  %s", j + 1,
+			    find_unique_abbrev(&b_util->oid, DEFAULT_ABBREV));
+
+	commit = lookup_commit_reference(oid);
+	if (commit) {
+		const char *commit_buffer = get_commit_buffer(commit, NULL);
+		const char *subject;
+
+		find_commit_subject(commit_buffer, &subject);
+		strbuf_addch(buf, ' ');
+		format_subject(buf, subject, " ");
+		unuse_commit_buffer(commit, commit_buffer);
+	}
+	strbuf_addch(buf, '\n');
+
+	fwrite(buf->buf, buf->len, 1, stdout);
 }
 
 static struct strbuf *output_prefix_cb(struct diff_options *opt, void *data)
@@ -306,6 +356,7 @@ static void patch_diff(const char *a, const char *b,
 static void output(struct string_list *a, struct string_list *b,
 		   struct diff_options *diffopt)
 {
+	struct strbuf buf = STRBUF_INIT;
 	int i = 0, j = 0;
 
 	/*
@@ -327,25 +378,22 @@ static void output(struct string_list *a, struct string_list *b,
 
 		/* Show unmatched LHS commit whose predecessors were shown. */
 		if (i < a->nr && a_util->matching < 0) {
-			printf("%d: %s < -: --------\n",
-			       i + 1, short_oid(a_util));
+			output_pair_header(&buf, i, a_util, -1, NULL);
 			i++;
 			continue;
 		}
 
 		/* Show unmatched RHS commits. */
 		while (j < b->nr && b_util->matching < 0) {
-			printf("-: -------- > %d: %s\n",
-			       j + 1, short_oid(b_util));
+			output_pair_header(&buf, -1, NULL, j, b_util);
 			b_util = ++j < b->nr ? b->items[j].util : NULL;
 		}
 
 		/* Show matching LHS/RHS pair. */
 		if (j < b->nr) {
 			a_util = a->items[b_util->matching].util;
-			printf("%d: %s ! %d: %s\n",
-			       b_util->matching + 1, short_oid(a_util),
-			       j + 1, short_oid(b_util));
+			output_pair_header(&buf,
+					   b_util->matching, a_util, j, b_util);
 			if (!(diffopt->output_format & DIFF_FORMAT_NO_OUTPUT))
 				patch_diff(a->items[b_util->matching].string,
 					   b->items[j].string, diffopt);
@@ -353,6 +401,7 @@ static void output(struct string_list *a, struct string_list *b,
 			j++;
 		}
 	}
+	strbuf_release(&buf);
 }
 
 int cmd_branch_diff(int argc, const char **argv, const char *prefix)
