@@ -10,6 +10,7 @@
 #include "diffcore.h"
 #include "commit.h"
 #include "pretty.h"
+#include "userdiff.h"
 
 static const char * const builtin_branch_diff_usage[] = {
 	N_("git rebase--helper [<options>] ( A..B C..D | A...B | base A B )"),
@@ -327,6 +328,10 @@ static struct strbuf *output_prefix_cb(struct diff_options *opt, void *data)
 	return data;
 }
 
+static struct userdiff_driver no_func_name = {
+	.funcname = { "$^", 0 }
+};
+
 static struct diff_filespec *get_filespec(const char *name, const char *p)
 {
 	struct diff_filespec *spec = alloc_filespec(name);
@@ -336,6 +341,7 @@ static struct diff_filespec *get_filespec(const char *name, const char *p)
 	spec->size = strlen(p);
 	spec->should_munmap = 0;
 	spec->is_stdin = 1;
+	spec->driver = &no_func_name;
 
 	return spec;
 }
