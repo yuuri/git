@@ -7,6 +7,8 @@
 #include "hashmap.h"
 #include "xdiff-interface.h"
 #include "hungarian.h"
+#include "diff.h"
+#include "diffcore.h"
 
 static const char * const builtin_branch_diff_usage[] = {
 N_("git branch-diff [<options>] <old-base>..<old-tip> <new-base>..<new-tip>"),
@@ -272,7 +274,31 @@ static const char *short_oid(struct patch_util *util)
 	return find_unique_abbrev(&util->oid, DEFAULT_ABBREV);
 }
 
-static void output(struct string_list *a, struct string_list *b)
+static struct diff_filespec *get_filespec(const char *name, const char *p)
+{
+	struct diff_filespec *spec = alloc_filespec(name);
+
+	fill_filespec(spec, &null_oid, 0, 0644);
+	spec->data = (char *)p;
+	spec->size = strlen(p);
+	spec->should_munmap = 0;
+	spec->is_stdin = 1;
+
+	return spec;
+}
+
+static void patch_diff(const char *a, const char *b,
+			      struct diff_options *diffopt)
+{
+	diff_queue(&diff_queued_diff,
+		   get_filespec("a", a), get_filespec("b", b));
+
+	diffcore_std(diffopt);
+	diff_flush(diffopt);
+}
+
+static void output(struct string_list *a, struct string_list *b,
+		   struct diff_options *diffopt)
 {
 	int i = 0, j = 0;
 
@@ -314,6 +340,9 @@ static void output(struct string_list *a, struct string_list *b)
 			printf("%d: %s ! %d: %s\n",
 			       b_util->matching + 1, short_oid(a_util),
 			       j + 1, short_oid(b_util));
+			if (!(diffopt->output_format & DIFF_FORMAT_NO_OUTPUT))
+				patch_diff(a->items[b_util->matching].string,
+					   b->items[j].string, diffopt);
 			a_util->shown = 1;
 			j++;
 		}
@@ -322,21 +351,37 @@ static void output(struct string_list *a, struct string_list *b)
 
 int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 {
+	struct diff_options diffopt = { NULL };
 	double creation_weight = 0.6;
 	struct option options[] = {
+		OPT_SET_INT(0, "no-patches", &diffopt.output_format,
+			    N_("short format (no diffs)"),
+			    DIFF_FORMAT_NO_OUTPUT),
 		{ OPTION_CALLBACK,
 			0, "creation-weight", &creation_weight, N_("factor"),
 			N_("Fudge factor by which creation is weighted [0.6]"),
 			0, parse_creation_weight },
 		OPT_END()
 	};
-	int res = 0;
+	int i, j, res = 0;
 	struct strbuf range1 = STRBUF_INIT, range2 = STRBUF_INIT;
 	struct string_list branch1 = STRING_LIST_INIT_DUP;
 	struct string_list branch2 = STRING_LIST_INIT_DUP;
 
+	diff_setup(&diffopt);
+	diffopt.output_format = DIFF_FORMAT_PATCH;
+
 	argc = parse_options(argc, argv, NULL, options,
-			builtin_branch_diff_usage, 0);
+			builtin_branch_diff_usage, PARSE_OPT_KEEP_UNKNOWN);
+
+	for (i = j = 0; i < argc; i++) {
+		int c = diff_opt_parse(&diffopt, argv + i, argc - i, prefix);
+
+		if (!c)
+			argv[j++] = argv[i];
+	}
+	argc = j;
+	diff_setup_done(&diffopt);
 
 	if (argc == 2) {
 		if (!strstr(argv[0], ".."))
@@ -380,7 +425,7 @@ int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 		find_exact_matches(&branch1, &branch2);
 		res = get_correspondences(&branch1, &branch2, creation_weight);
 		if (!res)
-			output(&branch1, &branch2);
+			output(&branch1, &branch2, &diffopt);
 	}
 
 	strbuf_release(&range1);
