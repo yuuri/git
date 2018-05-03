@@ -435,8 +435,11 @@ int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 {
 	struct diff_options diffopt = { NULL };
 	struct strbuf four_spaces = STRBUF_INIT;
+	int dual_color = 0;
 	double creation_weight = 0.6;
 	struct option options[] = {
+		OPT_BOOL(0, "dual-color", &dual_color,
+			    N_("color both diff and diff-between-diffs")),
 		OPT_SET_INT(0, "no-patches", &diffopt.output_format,
 			    N_("short format (no diffs)"),
 			    DIFF_FORMAT_NO_OUTPUT),
@@ -471,6 +474,11 @@ int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 	}
 	argc = j;
 	diff_setup_done(&diffopt);
+
+	if (dual_color) {
+		diffopt.use_color = 1;
+		diffopt.flags.dual_color_diffed_diffs = 1;
+	}
 
 	if (argc == 2) {
 		if (!strstr(argv[0], ".."))
