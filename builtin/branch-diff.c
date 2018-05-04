@@ -275,6 +275,11 @@ static const char *short_oid(struct patch_util *util)
 	return find_unique_abbrev(&util->oid, DEFAULT_ABBREV);
 }
 
+static struct strbuf *output_prefix_cb(struct diff_options *opt, void *data)
+{
+	return data;
+}
+
 static struct diff_filespec *get_filespec(const char *name, const char *p)
 {
 	struct diff_filespec *spec = alloc_filespec(name);
@@ -353,6 +358,7 @@ static void output(struct string_list *a, struct string_list *b,
 int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 {
 	struct diff_options diffopt = { NULL };
+	struct strbuf four_spaces = STRBUF_INIT;
 	double creation_weight = 0.6;
 	struct option options[] = {
 		OPT_SET_INT(0, "no-patches", &diffopt.output_format,
@@ -371,6 +377,9 @@ int cmd_branch_diff(int argc, const char **argv, const char *prefix)
 
 	diff_setup(&diffopt);
 	diffopt.output_format = DIFF_FORMAT_PATCH;
+	diffopt.output_prefix = output_prefix_cb;
+	strbuf_addstr(&four_spaces, "    ");
+	diffopt.output_prefix_data = &four_spaces;
 
 	argc = parse_options(argc, argv, NULL, options,
 			builtin_branch_diff_usage, PARSE_OPT_KEEP_UNKNOWN);
