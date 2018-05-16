@@ -44,7 +44,7 @@ int compute_assignment(int column_count, int row_count, double *cost,
 
 	/* reduction transfer */
 	free_row = xmalloc(sizeof(int) * row_count);
-	for (int i = 0; i < row_count; i++) {
+	for (i = 0; i < row_count; i++) {
 		int j1 = row2column[i];
 		if (j1 == -1)
 			free_row[free_count++] = i;
