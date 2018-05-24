@@ -1384,6 +1384,16 @@ fetch.fsckObjects::
 	checked. Defaults to false. If not set, the value of
 	`transfer.fsckObjects` is used instead.
 
+fetch.fsck.<msg-id>::
+	Acts like `fsck.<msg-id>`, but is used by
+	linkgit:git-fetch-pack[1] instead of linkgit:git-fsck[1]. See
+	the `fsck.<msg-id>` documentation for details.
+
+fetch.fsck.skipList::
+	Acts like `fsck.skipList`, but is used by
+	linkgit:git-fetch-pack[1] instead of linkgit:git-fsck[1]. See
+	the `fsck.skipList` documentation for details.
+
 fetch.unpackLimit::
 	If the number of objects fetched over the Git native
 	transfer is below this
@@ -1519,9 +1529,10 @@ fsck.<msg-id>::
 	repositories containing such data.
 +
 Setting `fsck.<msg-id>` will be picked up by linkgit:git-fsck[1], but
-to accept pushes of such data set `receive.fsck.<msg-id>` instead. The
-rest of the documentation discusses `fsck.*` for brevity, but the same
-applies for the corresponding `receive.fsck.*` variables.
+to accept pushes of such data set `receive.fsck.<msg-id>` instead, or
+to clone or fetch it set `fetch.fsck.<msg-id>`. The rest of the
+documentation discusses `fsck.*` for brevity, but the same applies for
+the corresponding `receive.fsck.*` and `fetch.<msg-id>.*`. variables.
 +
 When `fsck.<msg-id>` is set, errors can be switched to warnings and
 vice versa by configuring the `fsck.<msg-id>` setting where the
@@ -1538,8 +1549,8 @@ hidden going forward, although that's unlikely to happen in practice
 unless someone is being deliberately malicious.
 
 fsck.skipList::
-	Like `fsck.<msg-id>` this variable has a corresponding
-	`receive.fsck.skipList` variant.
+	Like `fsck.<msg-id>` this variable has corresponding
+	`receive.fsck.skipList` and `fetch.fsck.skipList` variants.
 +
 The path to a sorted list of object names (i.e. one SHA-1 per line)
 that are known to be broken in a non-fatal way and should be
