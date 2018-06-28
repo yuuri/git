@@ -63,11 +63,13 @@ int reachable(struct commit *from, int with_flag, int assign_flag,
  * Determine if every commit in 'from' can reach at least one commit
  * that is marked with 'with_flag'. As we traverse, use 'assign_flag'
  * as a marker for commits that are already visited. Do not walk
- * commits with date below 'min_commit_date'.
+ * commits with date below 'min_commit_date' or generation below
+ * 'min_generation'.
  */
 int can_all_from_reach_with_flag(struct object_array *from,
 				 int with_flag, int assign_flag,
-				 time_t min_commit_date);
+				 time_t min_commit_date,
+				 uint32_t min_generation);
 int can_all_from_reach(struct commit_list *from, struct commit_list *to,
 		       int commit_date_cutoff);
 
