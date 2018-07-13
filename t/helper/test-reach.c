@@ -85,6 +85,13 @@ int cmd__reach(int ac, const char **av)
 			printf("%s\n", oid_to_hex(&list->item->object.oid));
 			list = list->next;
 		}
+	} else if (!strcmp(av[1], "reduce_heads")) {
+		struct commit_list *list = reduce_heads(X);
+		printf("%s(X):\n", av[1]);
+		while (list) {
+			printf("%s\n", oid_to_hex(&list->item->object.oid));
+			list = list->next;
+		}
 	}
 
 	exit(0);

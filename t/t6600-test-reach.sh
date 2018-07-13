@@ -138,4 +138,26 @@ test_expect_success 'get_merge_bases_many' '
 	test_three_modes get_merge_bases_many
 '
 
+test_expect_success 'reduce_heads' '
+	cat >input <<-\EOF &&
+		X:commit-1-10
+		X:commit-2-8
+		X:commit-3-6
+		X:commit-4-4
+		X:commit-1-7
+		X:commit-2-5
+		X:commit-3-3
+		X:commit-5-1
+	EOF
+	{
+		printf "reduce_heads(X):\n" &&
+		git rev-parse commit-5-1 &&
+		git rev-parse commit-4-4 &&
+		git rev-parse commit-3-6 &&
+		git rev-parse commit-2-8 &&
+		git rev-parse commit-1-10
+	} >expect &&
+	test_three_modes reduce_heads
+'
+
 test_done
