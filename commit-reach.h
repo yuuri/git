@@ -68,5 +68,7 @@ int reachable(struct commit *from, int with_flag, int assign_flag,
 int can_all_from_reach_with_flag(struct object_array *from,
 				 int with_flag, int assign_flag,
 				 time_t min_commit_date);
+int can_all_from_reach(struct commit_list *from, struct commit_list *to,
+		       int commit_date_cutoff);
 
 #endif
