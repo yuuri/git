@@ -462,6 +462,7 @@ out:
 static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn,
 		      struct wt_status *s)
 {
+	struct wt_status_state state;
 	struct object_id oid;
 
 	if (s->relative_paths)
@@ -481,8 +482,10 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	s->status_format = status_format;
 	s->ignore_submodule_arg = ignore_submodule_arg;
 
-	wt_status_collect(s);
-	wt_status_print(s);
+	wt_status_get_state(s, &state);
+	wt_status_collect(s, &state);
+	wt_status_print(s, &state);
+	wt_status_clear_state(&state);
 
 	return s->committable;
 }
@@ -1265,6 +1268,7 @@ static int git_status_config(const char *k, const char *v, void *cb)
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
 	static struct wt_status s;
+	struct wt_status_state state;
 	int fd;
 	struct object_id oid;
 	static struct option builtin_status_options[] = {
@@ -1337,7 +1341,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	s.status_format = status_format;
 	s.verbose = verbose;
 
-	wt_status_collect(&s);
+	wt_status_get_state(&s, &state);
+	wt_status_collect(&s, &state);
 
 	if (0 <= fd)
 		update_index_if_able(&the_index, &index_lock);
@@ -1345,7 +1350,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	if (s.relative_paths)
 		s.prefix = prefix;
 
-	wt_status_print(&s);
+	wt_status_print(&s, &state);
+	wt_status_clear_state(&state);
 	return 0;
 }
 
