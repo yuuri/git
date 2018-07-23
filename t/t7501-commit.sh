@@ -99,12 +99,12 @@ test_expect_success '--dry-run with stuff to commit returns ok' '
 	git commit -m next -a --dry-run
 '
 
-test_expect_failure '--short with stuff to commit returns ok' '
+test_expect_success '--short with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --short
 '
 
-test_expect_failure '--porcelain with stuff to commit returns ok' '
+test_expect_success '--porcelain with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --porcelain
 '
@@ -714,7 +714,7 @@ test_expect_success '--long with only unresolved merge conflicts' '
 	test_cmp expected actual
 '
 
-test_expect_failure '--dry-run with resolved and unresolved merge conflicts' '
+test_expect_success '--dry-run with resolved and unresolved merge conflicts' '
 	git reset --hard commit-2 &&
 	test_must_fail git merge --no-commit commit-1 &&
 	echo "resolve one merge conflict" >test-file1 &&
@@ -747,7 +747,7 @@ test_expect_success '--porcelain with resolved and unresolved merge conflicts' '
 	test_cmp expected actual
 '
 
-test_expect_failure '--long with resolved and unresolved merge conflicts' '
+test_expect_success '--long with resolved and unresolved merge conflicts' '
 	git reset --hard commit-2 &&
 	test_must_fail git merge --no-commit commit-1 &&
 	echo "resolve one merge conflict" >test-file1 &&
@@ -769,7 +769,7 @@ test_expect_success '--dry-run with only resolved merge conflicts' '
 	test_cmp expected actual
 '
 
-test_expect_failure '--short with only resolved merge conflicts' '
+test_expect_success '--short with only resolved merge conflicts' '
 	git reset --hard commit-2 &&
 	test_must_fail git merge --no-commit commit-1 &&
 	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
@@ -780,7 +780,7 @@ test_expect_failure '--short with only resolved merge conflicts' '
 	test_cmp expected actual
 '
 
-test_expect_failure '--porcelain with only resolved merge conflicts' '
+test_expect_success '--porcelain with only resolved merge conflicts' '
 	git reset --hard commit-2 &&
 	test_must_fail git merge --no-commit commit-1 &&
 	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
