@@ -284,6 +284,16 @@ typedef int each_repo_ref_fn(struct repository *r,
 			     int flags,
 			     void *cb_data);
 
+struct each_ref_fn_repository_wrapper {
+	each_ref_fn *fn;
+	void *cb;
+};
+
+int each_ref_fn_repository_wrapped(struct repository *r,
+				   const char *refname,
+				   const struct object_id *oid,
+				   int flags, void *cb_data);
+
 /*
  * The following functions invoke the specified callback function for
  * each reference indicated.  If the function ever returns a nonzero
@@ -293,41 +303,292 @@ typedef int each_repo_ref_fn(struct repository *r,
  * modifies the reference also returns a nonzero value to immediately
  * stop the iteration. Returned references are sorted.
  */
-int refs_head_ref(struct ref_store *refs,
-		  each_ref_fn fn, void *cb_data);
-int refs_for_each_ref(struct ref_store *refs,
-		      each_ref_fn fn, void *cb_data);
-int refs_for_each_ref_in(struct ref_store *refs, const char *prefix,
-			 each_ref_fn fn, void *cb_data);
-int refs_for_each_tag_ref(struct ref_store *refs,
-			  each_ref_fn fn, void *cb_data);
-int refs_for_each_branch_ref(struct ref_store *refs,
-			     each_ref_fn fn, void *cb_data);
-int refs_for_each_remote_ref(struct ref_store *refs,
-			     each_ref_fn fn, void *cb_data);
+int refs_head_repo_ref(struct repository *r, struct ref_store *refs,
+		       each_repo_ref_fn fn, void *cb_data);
+static inline int refs_head_ref(struct ref_store *refs,
+		  each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_head_repo_ref(the_repository, refs,
+				  each_ref_fn_repository_wrapped, &cb);
+}
 
-int head_ref(each_ref_fn fn, void *cb_data);
-int for_each_ref(each_ref_fn fn, void *cb_data);
-int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data);
-int refs_for_each_fullref_in(struct ref_store *refs, const char *prefix,
-			     each_ref_fn fn, void *cb_data,
-			     unsigned int broken);
-int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data,
-			unsigned int broken);
-int for_each_tag_ref(each_ref_fn fn, void *cb_data);
-int for_each_branch_ref(each_ref_fn fn, void *cb_data);
-int for_each_remote_ref(each_ref_fn fn, void *cb_data);
-int for_each_replace_ref(struct repository *r, each_ref_fn fn, void *cb_data);
-int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data);
-int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
-			 const char *prefix, void *cb_data);
+int refs_for_each_repo_ref(struct repository *r, struct ref_store *refs,
+		      each_repo_ref_fn fn, void *cb_data);
+static inline int refs_for_each_ref(struct ref_store *refs,
+		      each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_repo_ref(the_repository, refs,
+				      each_ref_fn_repository_wrapped, &cb);
+}
 
-int head_ref_namespaced(each_ref_fn fn, void *cb_data);
-int for_each_namespaced_ref(each_ref_fn fn, void *cb_data);
+int refs_for_each_repo_ref_in(struct repository *r, struct ref_store *refs,
+			 const char *prefix, each_repo_ref_fn fn, void *cb_data);
+static inline int refs_for_each_ref_in(struct ref_store *refs,
+				       const char *prefix,
+				       each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_repo_ref_in(the_repository, refs, prefix,
+					 each_ref_fn_repository_wrapped, &cb);
+}
+
+int refs_for_each_tag_repo_ref(struct repository *r,
+			       each_repo_ref_fn fn, void *cb_data);
+static inline int refs_for_each_tag_ref(struct ref_store *refs,
+				 each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_tag_repo_ref(the_repository,
+					  each_ref_fn_repository_wrapped, &cb);
+}
+
+int refs_for_each_branch_repo_ref(struct repository *r, struct ref_store *refs,
+				  each_repo_ref_fn fn,
+				  void *cb_data);
+static inline int refs_for_each_branch_ref(struct ref_store *refs,
+					   each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_branch_repo_ref(the_repository, refs,
+					     each_ref_fn_repository_wrapped, &cb);
+}
+
+int refs_for_each_remote_repo_ref(struct repository *r, struct ref_store *refs,
+				  each_repo_ref_fn fn,
+				  void *cb_data);
+static inline int refs_for_each_remote_ref(struct ref_store *refs,
+					   each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_remote_repo_ref(the_repository, refs,
+					     each_ref_fn_repository_wrapped, &cb);
+}
+
+int head_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int head_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return head_repo_ref(the_repository,
+			     each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_repo_ref(the_repository,
+				 each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_repo_ref_in(struct repository *r, const char *prefix,
+			 each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_repo_ref_in(the_repository, prefix,
+				    each_ref_fn_repository_wrapped, &cb);
+}
+
+int refs_for_each_full_repo_ref_in(struct repository *r, struct ref_store *refs,
+				   const char *prefix,
+				   each_repo_ref_fn fn, void *cb_data,
+				   unsigned int broken);
+static inline int refs_for_each_fullref_in(struct ref_store *refs,
+					   const char *prefix, each_ref_fn fn,
+					   void *cb_data, unsigned int broken)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_full_repo_ref_in(the_repository, refs, prefix,
+					      each_ref_fn_repository_wrapped,
+					      &cb, broken);
+}
+
+int for_each_full_repo_ref_in(struct repository *r, const char *prefix,
+			      each_repo_ref_fn fn, void *cb_data,
+			      unsigned int broken);
+static inline int for_each_fullref_in(const char *prefix, each_ref_fn fn,
+				      void *cb_data, unsigned int broken)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_full_repo_ref_in(the_repository, prefix,
+					      each_ref_fn_repository_wrapped,
+					      &cb, broken);
+}
+
+int for_each_tag_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_tag_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_tag_repo_ref(the_repository,
+				     each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_branch_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_branch_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_branch_repo_ref(the_repository,
+			each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_remote_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb);
+static inline int for_each_remote_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_remote_repo_ref(the_repository,
+					each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_replace_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_replace_ref(struct repository *r, each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_replace_repo_ref(r, each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_glob_repo_ref(struct repository *r, each_repo_ref_fn fn,
+			   const char *pattern, void *cb_data);
+static inline int for_each_glob_ref(each_ref_fn fn, const char *pattern,
+				    void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_glob_repo_ref(the_repository,
+				      each_ref_fn_repository_wrapped,
+				      pattern, &cb);
+}
+
+int for_each_glob_repo_ref_in(struct repository *r,
+			      each_repo_ref_fn fn, const char *pattern,
+			      const char *prefix, void *cb_data);
+static inline int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
+			 const char *prefix, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_glob_repo_ref_in(the_repository,
+					 each_ref_fn_repository_wrapped,
+					 pattern, prefix, &cb);
+}
+
+int head_repo_ref_namespaced(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int head_ref_namespaced(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return head_repo_ref_namespaced(the_repository,
+					each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_namespaced_repo_ref(struct repository *r, each_repo_ref_fn fn,
+				 void *cb_data);
+static inline int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_namespaced_repo_ref(the_repository,
+					    each_ref_fn_repository_wrapped, &cb);
+}
 
 /* can be used to learn about broken ref and symref */
-int refs_for_each_rawref(struct ref_store *refs, each_ref_fn fn, void *cb_data);
-int for_each_rawref(each_ref_fn fn, void *cb_data);
+int refs_for_each_raw_repo_ref(struct repository *r, struct ref_store *refs,
+			       each_repo_ref_fn fn, void *cb_data);
+static inline int refs_for_each_rawref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_raw_repo_ref(the_repository, refs,
+					  each_ref_fn_repository_wrapped, &cb);
+}
+
+int for_each_raw_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data);
+static inline int for_each_rawref(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return for_each_raw_repo_ref(the_repository,
+				     each_ref_fn_repository_wrapped, &cb);
+}
 
 /*
  * Normalizes partial refs to their fully qualified form.
@@ -442,8 +703,29 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
  * Calls the specified function for each reflog file until it returns nonzero,
  * and returns the value. Reflog file order is unspecified.
  */
-int refs_for_each_reflog(struct ref_store *refs, each_ref_fn fn, void *cb_data);
-int for_each_reflog(each_ref_fn fn, void *cb_data);
+int refs_for_each_repo_reflog(struct repository *r, struct ref_store *refs,
+			 each_repo_ref_fn fn, void *cb_data);
+static inline int refs_for_each_reflog(struct ref_store *refs, each_ref_fn fn,
+				       void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_repo_reflog(the_repository, refs,
+					 each_ref_fn_repository_wrapped, &cb);
+}
+static inline int for_each_reflog(each_ref_fn fn, void *cb_data)
+{
+	/*
+	 * NEEDSWORK: remove this function when there are no
+	 * series in flight using this function.
+	 */
+	struct each_ref_fn_repository_wrapper cb = {fn, cb_data};
+	return refs_for_each_repo_reflog(the_repository, NULL,
+					 each_ref_fn_repository_wrapped, &cb);
+}
 
 #define REFNAME_ALLOW_ONELEVEL 1
 #define REFNAME_REFSPEC_PATTERN 2

@@ -217,7 +217,7 @@ char *resolve_refdup(const char *refname, int resolve_flags,
 /* The argument to filter_refs */
 struct ref_filter {
 	const char *pattern;
-	each_ref_fn *fn;
+	each_repo_ref_fn *fn;
 	void *cb_data;
 };
 
@@ -289,14 +289,15 @@ int ref_filter_match(const char *refname,
 	return 1;
 }
 
-static int filter_refs(const char *refname, const struct object_id *oid,
-			   int flags, void *data)
+static int filter_refs(struct repository *r,
+		       const char *refname, const struct object_id *oid,
+		       int flags, void *data)
 {
 	struct ref_filter *filter = (struct ref_filter *)data;
 
 	if (wildmatch(filter->pattern, refname, 0))
 		return 0;
-	return filter->fn(refname, oid, flags, filter->cb_data);
+	return filter->fn(r, refname, oid, flags, filter->cb_data);
 }
 
 enum peel_status peel_object(const struct object_id *name, struct object_id *oid)
@@ -371,46 +372,50 @@ void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_li
 	for_each_rawref(warn_if_dangling_symref, &data);
 }
 
-int refs_for_each_tag_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_tag_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_ref_in(refs, "refs/tags/", fn, cb_data);
+	return refs_for_each_repo_ref_in(r, NULL, "refs/tags/", fn, cb_data);
 }
 
-int for_each_tag_ref(each_ref_fn fn, void *cb_data)
+int for_each_tag_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_tag_ref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_for_each_tag_repo_ref(r, fn, cb_data);
 }
 
-int refs_for_each_branch_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_branch_repo_ref(struct repository *r, struct ref_store *refs,
+				  each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_ref_in(refs, "refs/heads/", fn, cb_data);
+	return refs_for_each_repo_ref_in(r, refs, "refs/heads/", fn, cb_data);
 }
 
-int for_each_branch_ref(each_ref_fn fn, void *cb_data)
+int for_each_branch_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_branch_ref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_for_each_branch_repo_ref(r, NULL, fn, cb_data);
 }
 
-int refs_for_each_remote_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_remote_repo_ref(struct repository *r, struct ref_store *refs,
+				  each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_ref_in(refs, "refs/remotes/", fn, cb_data);
+	return refs_for_each_repo_ref_in(r, refs, "refs/remotes/", fn, cb_data);
 }
 
-int for_each_remote_ref(each_ref_fn fn, void *cb_data)
+int for_each_remote_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_remote_ref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_for_each_remote_repo_ref(the_repository, NULL, fn, cb_data);
 }
 
-int head_ref_namespaced(each_ref_fn fn, void *cb_data)
+int head_repo_ref_namespaced(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret = 0;
 	struct object_id oid;
 	int flag;
+	struct ref_store *refs = get_main_ref_store(r);
 
 	strbuf_addf(&buf, "%sHEAD", get_git_namespace());
-	if (!read_ref_full(buf.buf, RESOLVE_REF_READING, &oid, &flag))
-		ret = fn(buf.buf, &oid, flag, cb_data);
+
+	if (!refs_read_ref_full(refs, buf.buf, RESOLVE_REF_READING, &oid, &flag))
+		ret = fn(r, buf.buf, &oid, flag, cb_data);
 	strbuf_release(&buf);
 
 	return ret;
@@ -437,8 +442,8 @@ void normalize_glob_ref(struct string_list_item *item, const char *prefix,
 	strbuf_release(&normalized_pattern);
 }
 
-int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
-	const char *prefix, void *cb_data)
+int for_each_glob_repo_ref_in(struct repository *r, each_repo_ref_fn fn,
+	const char *pattern, const char *prefix, void *cb_data)
 {
 	struct strbuf real_pattern = STRBUF_INIT;
 	struct ref_filter filter;
@@ -460,15 +465,16 @@ int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
 	filter.pattern = real_pattern.buf;
 	filter.fn = fn;
 	filter.cb_data = cb_data;
-	ret = for_each_ref(filter_refs, &filter);
+	ret = for_each_repo_ref(r, filter_refs, &filter);
 
 	strbuf_release(&real_pattern);
 	return ret;
 }
 
-int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
+int for_each_glob_repo_ref(struct repository *r, each_repo_ref_fn fn,
+			   const char *pattern, void *cb_data)
 {
-	return for_each_glob_ref_in(fn, pattern, NULL, cb_data);
+	return for_each_glob_repo_ref_in(r, fn, pattern, NULL, cb_data);
 }
 
 const char *prettify_refname(const char *name)
@@ -1333,21 +1339,25 @@ int refs_rename_ref_available(struct ref_store *refs,
 	return ok;
 }
 
-int refs_head_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_head_repo_ref(struct repository *r, struct ref_store *refs,
+		       each_repo_ref_fn fn, void *cb_data)
 {
 	struct object_id oid;
 	int flag;
 
+	if (!refs)
+		refs = get_main_ref_store(r);
+
 	if (!refs_read_ref_full(refs, "HEAD", RESOLVE_REF_READING,
 				&oid, &flag))
-		return fn("HEAD", &oid, flag, cb_data);
+		return fn(r, "HEAD", &oid, flag, cb_data);
 
 	return 0;
 }
 
-int head_ref(each_ref_fn fn, void *cb_data)
+int head_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_head_ref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_head_repo_ref(r, NULL, fn, cb_data);
 }
 
 struct ref_iterator *refs_ref_iterator_begin(
@@ -1386,12 +1396,15 @@ struct ref_iterator *refs_ref_iterator_begin(
  * non-zero value, stop the iteration and return that value;
  * otherwise, return 0.
  */
-static int do_for_each_repo_ref(struct repository *r, const char *prefix,
+static int do_for_each_repo_ref(struct repository *r, struct ref_store *refs,
+				const char *prefix,
 				each_repo_ref_fn fn, int trim, int flags,
 				void *cb_data)
 {
 	struct ref_iterator *iter;
-	struct ref_store *refs = get_main_ref_store(r);
+
+	if (!refs)
+		refs = get_main_ref_store(r);
 
 	if (!refs)
 		return 0;
@@ -1399,6 +1412,15 @@ static int do_for_each_repo_ref(struct repository *r, const char *prefix,
 	iter = refs_ref_iterator_begin(refs, prefix, trim, flags);
 
 	return do_for_each_repo_ref_iterator(r, iter, fn, cb_data);
+}
+
+int each_ref_fn_repository_wrapped(struct repository *r,
+				   const char *refname,
+				   const struct object_id *oid,
+				   int flags, void *cb_data)
+{
+	struct each_ref_fn_repository_wrapper *cb = cb_data;
+	return cb->fn(refname, oid, flags, cb->cb);
 }
 
 struct do_for_each_ref_help {
@@ -1432,76 +1454,78 @@ static int do_for_each_ref(struct ref_store *refs, const char *prefix,
 					do_for_each_ref_helper, &hp);
 }
 
-int refs_for_each_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_repo_ref(struct repository *r, struct ref_store *refs,
+			   each_repo_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(refs, "", fn, 0, 0, cb_data);
+	return do_for_each_repo_ref(r, refs, "", fn, 0, 0, cb_data);
 }
 
-int for_each_ref(each_ref_fn fn, void *cb_data)
+int for_each_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_ref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_for_each_repo_ref(r, NULL, fn, cb_data);
 }
 
-int refs_for_each_ref_in(struct ref_store *refs, const char *prefix,
-			 each_ref_fn fn, void *cb_data)
+int refs_for_each_repo_ref_in(struct repository *r, struct ref_store *refs,
+			      const char *prefix, each_repo_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(refs, prefix, fn, strlen(prefix), 0, cb_data);
+	return do_for_each_repo_ref(r, refs, prefix, fn, strlen(prefix), 0, cb_data);
 }
 
-int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
+int for_each_repo_ref_in(struct repository *r, const char *prefix, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_ref_in(get_main_ref_store(the_repository), prefix, fn, cb_data);
+	return refs_for_each_repo_ref_in(r, NULL, prefix, fn, cb_data);
 }
 
-int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data, unsigned int broken)
-{
-	unsigned int flag = 0;
-
-	if (broken)
-		flag = DO_FOR_EACH_INCLUDE_BROKEN;
-	return do_for_each_ref(get_main_ref_store(the_repository),
-			       prefix, fn, 0, flag, cb_data);
-}
-
-int refs_for_each_fullref_in(struct ref_store *refs, const char *prefix,
-			     each_ref_fn fn, void *cb_data,
-			     unsigned int broken)
+int refs_for_each_full_repo_ref_in(struct repository *r, struct ref_store *refs,
+				   const char *prefix,
+				   each_repo_ref_fn fn, void *cb_data,
+				   unsigned int broken)
 {
 	unsigned int flag = 0;
 
 	if (broken)
 		flag = DO_FOR_EACH_INCLUDE_BROKEN;
-	return do_for_each_ref(refs, prefix, fn, 0, flag, cb_data);
+	return do_for_each_repo_ref(r, refs, prefix, fn, 0, flag, cb_data);
 }
 
-int for_each_replace_ref(struct repository *r, each_ref_fn fn, void *cb_data)
+int for_each_full_repo_ref_in(struct repository *r, const char *prefix,
+			      each_repo_ref_fn fn, void *cb_data,
+			      unsigned int broken)
 {
-	return do_for_each_ref(get_main_ref_store(r),
-			       git_replace_ref_base, fn,
-			       strlen(git_replace_ref_base),
-			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
+	unsigned int flag = 0;
+
+	if (broken)
+		flag = DO_FOR_EACH_INCLUDE_BROKEN;
+	return do_for_each_repo_ref(r, NULL, prefix, fn, 0, flag, cb_data);
 }
 
-int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
+int for_each_replace_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
+{
+	return do_for_each_repo_ref(r, NULL, git_replace_ref_base, fn,
+				    strlen(git_replace_ref_base),
+				    DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
+}
+
+int for_each_namespaced_repo_ref(struct repository *r,
+				 each_repo_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret;
 	strbuf_addf(&buf, "%srefs/", get_git_namespace());
-	ret = do_for_each_ref(get_main_ref_store(the_repository),
-			      buf.buf, fn, 0, 0, cb_data);
+	ret = do_for_each_repo_ref(r, NULL, buf.buf, fn, 0, 0, cb_data);
 	strbuf_release(&buf);
 	return ret;
 }
 
-int refs_for_each_rawref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_raw_repo_ref(struct repository *r, struct ref_store *refs, each_repo_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(refs, "", fn, 0,
-			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
+	return do_for_each_repo_ref(r, refs, "", fn, 0,
+				    DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
 
-int for_each_rawref(each_ref_fn fn, void *cb_data)
+int for_each_raw_repo_ref(struct repository *r, each_repo_ref_fn fn, void *cb_data)
 {
-	return refs_for_each_rawref(get_main_ref_store(the_repository), fn, cb_data);
+	return refs_for_each_raw_repo_ref(r, NULL, fn, cb_data);
 }
 
 int refs_read_raw_ref(struct ref_store *ref_store,
@@ -2055,20 +2079,18 @@ cleanup:
 	return ret;
 }
 
-int refs_for_each_reflog(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+int refs_for_each_repo_reflog(struct repository *r, struct ref_store *refs,
+			      each_repo_ref_fn fn, void *cb_data)
 {
 	struct ref_iterator *iter;
-	struct do_for_each_ref_help hp = { fn, cb_data };
+
+	if (!refs)
+		refs = get_main_ref_store(r);
 
 	iter = refs->be->reflog_iterator_begin(refs);
 
-	return do_for_each_repo_ref_iterator(the_repository, iter,
-					     do_for_each_ref_helper, &hp);
-}
-
-int for_each_reflog(each_ref_fn fn, void *cb_data)
-{
-	return refs_for_each_reflog(get_main_ref_store(the_repository), fn, cb_data);
+	return do_for_each_repo_ref_iterator(r, iter,
+					     fn, cb_data);
 }
 
 int refs_for_each_reflog_ent_reverse(struct ref_store *refs,
