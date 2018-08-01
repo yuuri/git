@@ -4244,10 +4244,9 @@ int sequencer_add_exec_commands(const char *commands)
 {
 	const char *todo_file = rebase_path_todo();
 	struct todo_list todo_list = TODO_LIST_INIT;
-	struct todo_item *item;
 	struct strbuf *buf = &todo_list.buf;
 	size_t offset = 0, commands_len = strlen(commands);
-	int i, first;
+	int i, insert_final_commands;
 
 	if (strbuf_read_file(&todo_list.buf, todo_file, 0) < 0)
 		return error(_("could not read '%s'."), todo_file);
@@ -4257,19 +4256,57 @@ int sequencer_add_exec_commands(const char *commands)
 		return error(_("unusable todo list: '%s'"), todo_file);
 	}
 
-	first = 1;
-	/* insert <commands> before every pick except the first one */
-	for (item = todo_list.items, i = 0; i < todo_list.nr; i++, item++) {
-		if (item->command == TODO_PICK && !first) {
-			strbuf_insert(buf, item->offset_in_buf + offset,
-				      commands, commands_len);
-			offset += commands_len;
+	/*
+	 * Insert <commands> after every pick. Here, fixup/squash chains
+	 * are considered part of the pick, so we insert the commands *after*
+	 * those chains if there are any.
+	 */
+	insert_final_commands = 1;
+	for (i = 0; i < todo_list.nr; ) {
+		enum todo_command command = todo_list.items[i].command;
+		int j = 0;
+
+		if (command != TODO_PICK && command != TODO_MERGE) {
+			i++;
+			continue;
 		}
-		first = 0;
+
+		/* skip fixup/squash chain, if any */
+		for (i++; i < todo_list.nr; i++, j = 0) {
+			command = todo_list.items[i].command;
+
+			if (is_fixup(command))
+				continue;
+
+			if (command != TODO_COMMENT)
+				break;
+
+			/* skip comment if followed by any fixup/squash */
+			for (j = i + 1; j < todo_list.nr; j++)
+				if (todo_list.items[j].command != TODO_COMMENT)
+					break;
+			if (j < todo_list.nr &&
+			    is_fixup(todo_list.items[j].command)) {
+				i = j;
+				continue;
+			}
+			break;
+		}
+
+		if (i >= todo_list.nr) {
+			insert_final_commands = 1;
+			break;
+		}
+
+		strbuf_insert(buf, todo_list.items[i].offset_in_buf + offset,
+			      commands, commands_len);
+		offset += commands_len;
+		insert_final_commands = 0;
 	}
 
 	/* append final <commands> */
-	strbuf_add(buf, commands, commands_len);
+	if (insert_final_commands)
+		strbuf_add(buf, commands, commands_len);
 
 	i = write_message(buf->buf, buf->len, todo_file, 0);
 	todo_list_release(&todo_list);
