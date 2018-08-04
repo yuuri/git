@@ -119,7 +119,7 @@ q_to_lf () {
 	tr Q '\012'
 }
 
-test_expect_failure 'close to overlapping ranges' '
+test_expect_success 'close to overlapping ranges' '
 	test_seq 5 >a1.c &&
 	git add a1.c &&
 	git commit -m "5 lines" a1.c &&
