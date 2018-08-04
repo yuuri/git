@@ -72,7 +72,9 @@ void range_set_append(struct range_set *rs, long a, long b)
 		rs->ranges[rs->nr-1].end = b;
 		return;
 	}
-	assert(rs->nr == 0 || rs->ranges[rs->nr-1].end <= a);
+	if (rs->nr > 0 && rs->ranges[rs->nr-1].end > a)
+		BUG("append %ld-%ld, after %ld-%ld?!?", a, b,
+		    rs->ranges[rs->nr-1].start, rs->ranges[rs->nr-1].end);
 	range_set_append_unsafe(rs, a, b);
 }
 
