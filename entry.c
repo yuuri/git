@@ -402,11 +402,9 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 static void mark_colliding_entries(const struct checkout *state,
 				   struct cache_entry *ce, struct stat *st)
 {
+#if !defined(GIT_WINDOWS_NATIVE) /* inode is always zero on Windows */
 	int i;
 
-	ce->ce_flags |= CE_MATCHED;
-
-#if !defined(GIT_WINDOWS_NATIVE) /* inode is always zero on Windows */
 	for (i = 0; i < state->istate->cache_nr; i++) {
 		struct cache_entry *dup = state->istate->cache[i];
 
@@ -422,6 +420,8 @@ static void mark_colliding_entries(const struct checkout *state,
 		}
 	}
 #endif
+
+	ce->ce_flags |= CE_MATCHED;
 }
 
 /*
