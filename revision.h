@@ -21,6 +21,8 @@
 #define PATCHSAME	(1u<<9)
 #define BOTTOM		(1u<<10)
 #define TRACK_LINEAR	(1u<<26)
+#define TOPO_WALK_EXPLORED (1u<<27)
+#define TOPO_WALK_INDEGREE (1u<<28)
 #define ALL_REV_FLAGS	(((1u<<11)-1) | TRACK_LINEAR)
 
 #define DECORATE_SHORT_REFS	1

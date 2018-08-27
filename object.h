@@ -57,7 +57,7 @@ struct object_array {
 
 /*
  * object flag allocation:
- * revision.h:               0---------10                                26
+ * revision.h:               0---------10                                26--28
  * fetch-pack.c:             0----5
  * walker.c:                 0-2
  * upload-pack.c:                4       11-----14  16-----19
@@ -75,7 +75,7 @@ struct object_array {
  * builtin/show-branch.c:    0-------------------------------------------26
  * builtin/unpack-objects.c:                                 2021
  */
-#define FLAG_BITS  27
+#define FLAG_BITS  29
 
 /*
  * The object type is stored in 3 bits.
