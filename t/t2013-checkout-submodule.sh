@@ -81,7 +81,7 @@ test_expect_success 'setup superproject with historic submodule' '
 	test_must_be_empty super1/.gitmodules
 '
 
-test_expect_failure 'checkout old state with deleted submodule' '
+test_expect_success 'checkout old state with deleted submodule' '
 	test_when_finished "rm -rf super1 sub1 super1_clone" &&
 	git clone --recurse-submodules super1 super1_clone &&
 	git -C super1_clone checkout --recurse-submodules historic_state
