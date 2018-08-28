@@ -4,6 +4,7 @@
 struct commit_list;
 
 #define BISECT_FIND_ALL		(1u<<0)
+#define BISECT_FIRST_PARENT    	(1u<<1)
 
 /*
  * Find bisection. If something is found, `reaches` will be the number of

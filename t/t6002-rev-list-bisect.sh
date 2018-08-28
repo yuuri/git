@@ -263,4 +263,62 @@ test_expect_success 'rev-parse --bisect can default to good/bad refs' '
 	test_cmp expect.sorted actual.sorted
 '
 
+# We generate the following commit graph:
+#
+#   B ------ C
+#  /          \
+# A            FX
+#  \          /
+#   D - CC - EX
+
+test_expect_success 'setup' '
+  test_commit A &&
+  test_commit B &&
+  test_commit C &&
+  git reset --hard A &&
+  test_commit D &&
+  test_commit CC &&
+  test_commit EX &&
+  test_merge FX C
+'
+
+test_output_expect_success "--bisect --first-parent" 'git rev-list --bisect --first-parent FX ^A' <<EOF
+$(git rev-parse CC)
+EOF
+
+test_output_expect_success "--first-parent" 'git rev-list --first-parent FX ^A' <<EOF
+$(git rev-parse FX)
+$(git rev-parse EX)
+$(git rev-parse CC)
+$(git rev-parse D)
+EOF
+
+test_output_expect_success "--bisect-vars --first-parent" 'git rev-list --bisect-vars --first-parent FX ^A' <<EOF
+bisect_rev='$(git rev-parse CC)'
+bisect_nr=1
+bisect_good=1
+bisect_bad=1
+bisect_all=4
+bisect_steps=1
+EOF
+
+test_expect_success "--bisect-all --first-parent" '
+cat >expect <<EOF &&
+$(git rev-parse CC) (dist=2)
+$(git rev-parse EX) (dist=1)
+$(git rev-parse D) (dist=1)
+$(git rev-parse FX) (dist=0)
+EOF
+
+# Make sure we have the same entries, nothing more, nothing less
+git rev-list --bisect-all --first-parent FX ^A >actual &&
+  sort actual >actual.sorted &&
+  sort expect >expect.sorted &&
+  test_cmp expect.sorted actual.sorted &&
+  # Make sure the entries are sorted in the dist order
+  sed -e "s/.*(dist=\([1-9]*[0-9]\)).*/\1/" actual >actual.dists &&
+  sort -r actual.dists >actual.dists.sorted &&
+  test_cmp actual.dists.sorted actual.dists
+'
+
 test_done
