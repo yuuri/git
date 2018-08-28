@@ -339,7 +339,8 @@ static struct commit_list *do_find_bisection(struct commit_list *list,
 				continue;
 			for (q = p->item->parents; q; q = q->next) {
 				if ((bisect_flags & BISECT_FIRST_PARENT)) {
-					if (weight(q) < 0)
+					if ((q->item->object.flags & UNINTERESTING) ||
+					    (weight(q) < 0))
 						q = NULL;
 					break;
 				}
