@@ -593,8 +593,7 @@ void slog_set_command_name(const char *command_name)
 	 * the cmd_<command>() and/or it may be too early to force a
 	 * lazy load.
 	 */
-	if (my__command_name)
-		free(my__command_name);
+	free(my__command_name);
 	my__command_name = xstrdup(command_name);
 }
 
@@ -606,8 +605,7 @@ void slog_set_sub_command_name(const char *sub_command_name)
 	 * the cmd_<command>() and/or it may be too early to force a
 	 * lazy load.
 	 */
-	if (my__sub_command_name)
-		free(my__sub_command_name);
+	free(my__sub_command_name);
 	my__sub_command_name = xstrdup(sub_command_name);
 }
 
