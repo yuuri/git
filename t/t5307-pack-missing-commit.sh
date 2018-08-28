@@ -24,11 +24,17 @@ test_expect_success 'check corruption' '
 '
 
 test_expect_success 'rev-list notices corruption (1)' '
-	test_must_fail git rev-list HEAD
+	(
+		GIT_TEST_COMMIT_GRAPH=0 &&
+		test_must_fail git rev-list HEAD
+	)
 '
 
 test_expect_success 'rev-list notices corruption (2)' '
-	test_must_fail git rev-list --objects HEAD
+	(
+		GIT_TEST_COMMIT_GRAPH=0 &&
+		test_must_fail git rev-list --objects HEAD
+	)
 '
 
 test_expect_success 'pack-objects notices corruption' '
