@@ -1,3 +1,5 @@
+[![Build Status](https://git.visualstudio.com/git/_apis/build/status/test-git.git)](https://git.visualstudio.com/git/_build/latest?definitionId=2)
+
 Git - fast, scalable, distributed revision control system
 =========================================================
 
