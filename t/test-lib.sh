@@ -85,6 +85,13 @@ done,*)
 	test "$(cat "$BASE.exit")" = 0
 	exit
 	;;
+*' --write-junit-xml '*)
+	# record how to call this script *with* --verbose-log, in case
+	# we encounter a breakage
+	junit_rerun_options_sq="$(printf '%s\n' "$0" --verbose-log -x "$@" |
+		sed -e "s/'/'\\\\''/g" -e "s/^/'/" -e "s/\$/'/" |
+		tr '\012' ' ')"
+	;;
 esac
 
 # For repeatability, reset the environment to known value.
@@ -445,10 +452,37 @@ test_ok_ () {
 test_failure_ () {
 	if test -n "$write_junit_xml"
 	then
+		if test -z "$GIT_TEST_TEE_OUTPUT_FILE"
+		then
+			case "$(type kill_p4d 2>/dev/null | head -n 1)" in
+			*function*) kill_p4d;;
+			esac
+
+			case "$(type stop_git_daemon 2>/dev/null |
+				head -n 1)" in
+			*function*) stop_git_daemon;;
+			esac
+
+			# re-run with --verbose-log
+			echo "# Re-running: $junit_rerun_options_sq" >&2
+
+			cd "$TEST_DIRECTORY" &&
+			eval "${TEST_SHELL_PATH}" "$junit_rerun_options_sq" \
+				>/dev/null 2>&1
+			status=$?
+
+			say_color "" "$(test 0 = $status ||
+				echo "not ")ok $test_count - (re-ran with trace)"
+			say "1..$test_count"
+			GIT_EXIT_OK=t
+			exit $status
+		fi
+
 		junit_insert="<failure message=\"not ok $test_count -"
 		junit_insert="$junit_insert $(xml_attr_encode "$1")\">"
 		junit_insert="$junit_insert $(xml_attr_encode \
-			"$(printf '%s\n' "$@" | sed 1d)")"
+			"$(cat "$GIT_TEST_TEE_OUTPUT_FILE")")"
+		>"$GIT_TEST_TEE_OUTPUT_FILE"
 		junit_insert="$junit_insert</failure>"
 		write_junit_xml_testcase "$1" "      $junit_insert"
 	fi
@@ -733,6 +767,10 @@ test_start_ () {
 	if test -n "$write_junit_xml"
 	then
 		junit_start=$(test-tool date getnanos)
+
+		# truncate output
+		test -z "$GIT_TEST_TEE_OUTPUT_FILE" ||
+		>"$GIT_TEST_TEE_OUTPUT_FILE"
 	fi
 }
 
