@@ -355,7 +355,7 @@ static int mingw_open_append(wchar_t const *wfilename, int oflags, ...)
 	 * FILE_SHARE_WRITE is required to permit child processes
 	 * to append to the file.
 	 */
-	handle = CreateFileW(wfilename, FILE_APPEND_DATA,
+	handle = CreateFileW(wfilename, FILE_WRITE_DATA | FILE_APPEND_DATA,
 			FILE_SHARE_WRITE | FILE_SHARE_READ,
 			NULL, create, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
