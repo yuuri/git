@@ -357,10 +357,17 @@ static ssize_t get_content_length(void)
 		/*
 		 * According to RFC 3875, an empty or missing
 		 * CONTENT_LENGTH means "no body", but RFC 3875
-		 * precedes HTTP/1.1 and chunked encoding. Apache and
-		 * its imitators leave CONTENT_LENGTH unset for
+		 * precedes HTTP/1.1 and chunked encoding. Apache
+		 * leaves CONTENT_LENGTH unset for
 		 * chunked requests, for which we should use EOF to
 		 * detect the end of the request.
+		 *
+		 * NEEDSWORK: Transfer-Encoding header is defined to
+		 * be a list of elements where "chunked", if exists,
+		 * must be at the end.  The current code only deals
+		 * with the case where "chunked" is the only element.
+		 * See RFC 2616 (14.41 Transfer-Encoding) when
+		 * extending this code.
 		 */
 		str = getenv("HTTP_TRANSFER_ENCODING");
 		if (str && !strcmp(str, "chunked"))
