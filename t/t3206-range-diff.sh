@@ -154,4 +154,9 @@ do
 	'
 done
 
+test_expect_success 'format-patch --range-diff as commentary' '
+	git format-patch --stdout --range-diff=HEAD~1 HEAD~1 >actual &&
+	grep -A 1 -e "\-\-\-" actual | grep "Range-diff:"
+'
+
 test_done
