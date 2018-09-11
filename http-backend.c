@@ -350,10 +350,25 @@ static ssize_t read_request_fixed_len(int fd, ssize_t req_len, unsigned char **o
 
 static ssize_t get_content_length(void)
 {
-	ssize_t val = -1;
+	ssize_t val;
 	const char *str = getenv("CONTENT_LENGTH");
 
-	if (str && *str && !git_parse_ssize_t(str, &val))
+	if (!str || !*str) {
+		/*
+		 * According to RFC 3875, an empty or missing
+		 * CONTENT_LENGTH means "no body", but RFC 3875
+		 * precedes HTTP/1.1 and chunked encoding. Apache and
+		 * its imitators leave CONTENT_LENGTH unset for
+		 * chunked requests, for which we should use EOF to
+		 * detect the end of the request.
+		 */
+		str = getenv("HTTP_TRANSFER_ENCODING");
+		if (str && !strcmp(str, "chunked"))
+			return -1;
+
+		return 0;
+	}
+	if (!git_parse_ssize_t(str, &val))
 		die("failed to parse CONTENT_LENGTH: %s", str);
 	return val;
 }
