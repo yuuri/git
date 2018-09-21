@@ -10,20 +10,20 @@
 #include "commit-slab-decl.h"
 
 /* Remember to update object flag allocation in object.h */
-#define SEEN		(1u<<0)
-#define UNINTERESTING   (1u<<1)
-#define TREESAME	(1u<<2)
-#define SHOWN		(1u<<3)
-#define TMP_MARK	(1u<<4) /* for isolated cases; clean after use */
-#define BOUNDARY	(1u<<5)
-#define CHILD_SHOWN	(1u<<6)
-#define ADDED		(1u<<7)	/* Parents already parsed and added? */
-#define SYMMETRIC_LEFT	(1u<<8)
-#define PATCHSAME	(1u<<9)
-#define BOTTOM		(1u<<10)
-#define USER_GIVEN	(1u<<25) /* given directly by the user */
-#define TRACK_LINEAR	(1u<<26)
-#define ALL_REV_FLAGS	(((1u<<11)-1) | USER_GIVEN | TRACK_LINEAR)
+#define SEEN			(1u<<0)
+#define UNINTERESTING		(1u<<1)
+#define TREESAME		(1u<<2)
+#define SHOWN			(1u<<3)
+#define TMP_MARK		(1u<<4) /* for isolated cases; clean after use */
+#define BOUNDARY		(1u<<5)
+#define CHILD_SHOWN		(1u<<6)
+#define ADDED			(1u<<7)	/* Parents already parsed and added? */
+#define SYMMETRIC_LEFT		(1u<<8)
+#define PATCHSAME		(1u<<9)
+#define BOTTOM			(1u<<10)
+#define USER_GIVEN		(1u<<25) /* given directly by the user */
+#define TRACK_LINEAR		(1u<<26)
+#define ALL_REV_FLAGS		(((1u<<11)-1) | USER_GIVEN | TRACK_LINEAR)
 
 #define DECORATE_SHORT_REFS	1
 #define DECORATE_FULL_REFS	2
