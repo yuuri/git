@@ -698,6 +698,8 @@ void write_commit_graph_reachable(const char *obj_dir, int append,
 	string_list_init(&list, 1);
 	for_each_ref(add_ref_to_list, &list);
 	write_commit_graph(obj_dir, NULL, &list, append, report_progress);
+
+	string_list_clear(&list, 0);
 }
 
 void write_commit_graph(const char *obj_dir,
@@ -846,9 +848,11 @@ void write_commit_graph(const char *obj_dir,
 	compute_generation_numbers(&commits, report_progress);
 
 	graph_name = get_commit_graph_filename(obj_dir);
-	if (safe_create_leading_directories(graph_name))
+	if (safe_create_leading_directories(graph_name)) {
+		UNLEAK(graph_name);
 		die_errno(_("unable to create leading directories of %s"),
 			  graph_name);
+	}
 
 	hold_lock_file_for_update(&lk, graph_name, LOCK_DIE_ON_ERROR);
 	f = hashfd(lk.tempfile->fd, lk.tempfile->filename.buf);
@@ -893,6 +897,8 @@ void write_commit_graph(const char *obj_dir,
 	finalize_hashfile(f, NULL, CSUM_HASH_IN_STREAM | CSUM_FSYNC);
 	commit_lock_file(&lk);
 
+	free(graph_name);
+	free(commits.list);
 	free(oids.list);
 	oids.alloc = 0;
 	oids.nr = 0;
