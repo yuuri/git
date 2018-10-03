@@ -1416,6 +1416,7 @@ enum todo_command {
 	TODO_SQUASH,
 	/* commands that do something else than handling a single commit */
 	TODO_EXEC,
+	TODO_BREAK,
 	TODO_LABEL,
 	TODO_RESET,
 	TODO_MERGE,
@@ -1437,6 +1438,7 @@ static struct {
 	{ 'f', "fixup" },
 	{ 's', "squash" },
 	{ 'x', "exec" },
+	{ 'b', "break" },
 	{ 'l', "label" },
 	{ 't', "reset" },
 	{ 'm', "merge" },
@@ -1964,7 +1966,7 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 	padding = strspn(bol, " \t");
 	bol += padding;
 
-	if (item->command == TODO_NOOP) {
+	if (item->command == TODO_NOOP || item->command == TODO_BREAK) {
 		if (bol != eol)
 			return error(_("%s does not accept arguments: '%s'"),
 				     command_to_string(item->command), bol);
@@ -3293,6 +3295,9 @@ static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 			unlink(rebase_path_stopped_sha());
 			unlink(rebase_path_amend());
 			delete_ref(NULL, "REBASE_HEAD", NULL, REF_NO_DEREF);
+
+			if (item->command == TODO_BREAK)
+				break;
 		}
 		if (item->command <= TODO_SQUASH) {
 			if (is_rebase_i(opts))
