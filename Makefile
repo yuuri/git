@@ -685,6 +685,7 @@ SCRIPTS = $(SCRIPT_SH_INS) \
 ETAGS_TARGET = TAGS
 
 FUZZ_OBJS += fuzz-pack-headers.o
+FUZZ_OBJS += fuzz-pack-idx.o
 
 FUZZ_PROGRAMS += $(patsubst %.o,%,$(FUZZ_OBJS))
 
@@ -3071,7 +3072,7 @@ cover_db_html: cover_db
 
 ### Fuzz testing
 #
-.PHONY: fuzz-clean fuzz-objs fuzz-compile
+.PHONY: fuzz-clean fuzz-objs fuzz-compile fuzz-all
 
 FUZZ_CFLAGS = $(CFLAGS) -fsanitize-coverage=trace-pc-guard -fsanitize=address
 FUZZ_LDFLAGS = $(FUZZ_CFLAGS)
@@ -3089,3 +3090,5 @@ fuzz-compile:
 $(FUZZ_PROGRAMS): fuzz-compile
 	clang++ $(FUZZ_LDFLAGS) $(LIB_OBJS) $(BUILTIN_OBJS) $(XDIFF_OBJS) \
 		$(EXTLIBS) git.o $@.o /usr/lib/llvm-4.0/lib/libFuzzer.a -o $@
+
+fuzz-all: $(FUZZ_PROGRAMS)
