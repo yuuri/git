@@ -590,6 +590,8 @@ XDIFF_OBJS =
 VCSSVN_OBJS =
 GENERATED_H =
 EXTRA_CPPFLAGS =
+FUZZ_OBJS =
+FUZZ_PROGRAMS =
 LIB_OBJS =
 PROGRAM_OBJS =
 PROGRAMS =
@@ -681,6 +683,10 @@ SCRIPTS = $(SCRIPT_SH_INS) \
 	  git-instaweb
 
 ETAGS_TARGET = TAGS
+
+FUZZ_OBJS += fuzz-pack-headers.o
+
+FUZZ_PROGRAMS += $(patsubst %.o,%,$(FUZZ_OBJS))
 
 # Empty...
 EXTRA_PROGRAMS =
@@ -2250,6 +2256,7 @@ TEST_OBJS := $(patsubst %$X,%.o,$(TEST_PROGRAMS)) $(patsubst %,t/helper/%,$(TEST
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
+	$(FUZZ_OBJS) \
 	common-main.o \
 	git.o
 ifndef NO_CURL
@@ -2931,7 +2938,7 @@ profile-clean:
 cocciclean:
 	$(RM) contrib/coccinelle/*.cocci.patch*
 
-clean: profile-clean coverage-clean cocciclean
+clean: profile-clean coverage-clean cocciclean fuzz-clean
 	$(RM) *.res
 	$(RM) $(OBJECTS)
 	$(RM) $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
@@ -3061,3 +3068,24 @@ cover_db: coverage-report
 cover_db_html: cover_db
 	cover -report html -outputdir cover_db_html cover_db
 
+
+### Fuzz testing
+#
+.PHONY: fuzz-clean fuzz-objs fuzz-compile
+
+FUZZ_CFLAGS = $(CFLAGS) -fsanitize-coverage=trace-pc-guard -fsanitize=address
+FUZZ_LDFLAGS = $(FUZZ_CFLAGS)
+
+
+fuzz-clean:
+	$(RM) $(FUZZ_PROGRAMS) $(FUZZ_OBJS)
+
+fuzz-objs: $(FUZZ_OBJS)
+
+fuzz-compile:
+	$(MAKE) CC=clang LD=clang CFLAGS="$(FUZZ_CFLAGS)" \
+		LDFLAGS="$(FUZZ_LDFLAGS)" all fuzz-objs
+
+$(FUZZ_PROGRAMS): fuzz-compile
+	clang++ $(FUZZ_LDFLAGS) $(LIB_OBJS) $(BUILTIN_OBJS) $(XDIFF_OBJS) \
+		$(EXTLIBS) git.o $@.o /usr/lib/llvm-4.0/lib/libFuzzer.a -o $@
