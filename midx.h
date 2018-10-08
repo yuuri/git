@@ -42,7 +42,9 @@ int midx_contains_pack(struct multi_pack_index *m, const char *idx_name);
 int prepare_multi_pack_index_one(struct repository *r, const char *object_dir, int local);
 
 int write_midx_file(const char *object_dir);
-void clear_midx_file(const char *object_dir);
+void clear_midx_file(struct repository *r);
 int verify_midx_file(const char *object_dir);
+
+void close_midx(struct multi_pack_index *m);
 
 #endif
