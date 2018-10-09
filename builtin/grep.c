@@ -427,8 +427,6 @@ static int grep_submodule(struct grep_opt *opt, struct repository *superproject,
 	if (repo_submodule_init(&submodule, superproject, path))
 		return 0;
 
-	repo_read_gitmodules(&submodule);
-
 	/*
 	 * NEEDSWORK: This adds the submodule's object directory to the list of
 	 * alternates for the single in-memory object store.  This has some bad
