@@ -1127,8 +1127,12 @@ struct submodule_parallel_fetch {
 	int result;
 
 	struct string_list changed_submodule_names;
+	struct get_next_submodule_task **retry;
+	int retry_nr, retry_alloc;
 };
-#define SPF_INIT {0, ARGV_ARRAY_INIT, NULL, NULL, 0, 0, 0, 0, STRING_LIST_INIT_DUP }
+#define SPF_INIT {0, ARGV_ARRAY_INIT, NULL, NULL, 0, 0, 0, 0, \
+		  STRING_LIST_INIT_DUP, \
+		  NULL, 0, 0}
 
 static void calculate_changed_submodule_paths(
 	struct submodule_parallel_fetch *spf)
@@ -1233,6 +1237,56 @@ static int get_fetch_recurse_config(const struct submodule *submodule,
 	return spf->default_option;
 }
 
+struct get_next_submodule_task {
+	struct repository *repo;
+	const struct submodule *sub;
+	unsigned free_sub : 1; /* Do we need to free the submodule? */
+	struct oid_array *commits;
+};
+
+static const struct submodule *get_default_submodule(const char *path)
+{
+	struct submodule *ret = NULL;
+	const char *name = default_name_or_path(path);
+
+	if (!name)
+		return NULL;
+
+	ret = xmalloc(sizeof(*ret));
+	memset(ret, 0, sizeof(*ret));
+	ret->path = name;
+	ret->name = name;
+
+	return (const struct submodule *) ret;
+}
+
+static struct get_next_submodule_task *get_next_submodule_task_create(
+	struct repository *r, const char *path)
+{
+	struct get_next_submodule_task *task = xmalloc(sizeof(*task));
+	memset(task, 0, sizeof(*task));
+
+	task->sub = submodule_from_path(r, &null_oid, path);
+	if (!task->sub) {
+		task->sub = get_default_submodule(path);
+		task->free_sub = 1;
+	}
+
+	return task;
+}
+
+static void get_next_submodule_task_release(struct get_next_submodule_task *p)
+{
+	if (p->free_sub)
+		free((void*)p->sub);
+	p->free_sub = 0;
+	p->sub = NULL;
+
+	if (p->repo)
+		repo_clear(p->repo);
+	FREE_AND_NULL(p->repo);
+}
+
 static struct repository *get_submodule_repo_for(struct repository *r,
 						 const struct submodule *sub)
 {
@@ -1259,39 +1313,35 @@ static struct repository *get_submodule_repo_for(struct repository *r,
 static int get_next_submodule(struct child_process *cp,
 			      struct strbuf *err, void *data, void **task_cb)
 {
-	int ret = 0;
 	struct submodule_parallel_fetch *spf = data;
 
 	for (; spf->count < spf->r->index->cache_nr; spf->count++) {
-		struct strbuf submodule_prefix = STRBUF_INIT;
+		int recurse_config;
 		const struct cache_entry *ce = spf->r->index->cache[spf->count];
 		const char *default_argv;
-		const struct submodule *submodule;
-		struct repository *repo;
-		struct submodule default_submodule = SUBMODULE_INIT;
+		struct get_next_submodule_task *task;
 
 		if (!S_ISGITLINK(ce->ce_mode))
 			continue;
 
-		submodule = submodule_from_path(spf->r, &null_oid, ce->name);
-		if (!submodule) {
-			const char *name = default_name_or_path(ce->name);
-			if (name) {
-				default_submodule.path = name;
-				default_submodule.name = name;
-				submodule = &default_submodule;
-			}
+		task = get_next_submodule_task_create(spf->r, ce->name);
+
+		if (!task->sub) {
+			free(task);
+			continue;
 		}
 
-		switch (get_fetch_recurse_config(submodule, spf))
+		recurse_config = get_fetch_recurse_config(task->sub, spf);
+
+		switch (recurse_config)
 		{
 		default:
 		case RECURSE_SUBMODULES_DEFAULT:
 		case RECURSE_SUBMODULES_ON_DEMAND:
-			if (!submodule ||
+			if (!task->sub ||
 			    !string_list_lookup(
 					&spf->changed_submodule_names,
-					submodule->name))
+					task->sub->name))
 				continue;
 			default_argv = "on-demand";
 			break;
@@ -1302,12 +1352,12 @@ static int get_next_submodule(struct child_process *cp,
 			continue;
 		}
 
-		strbuf_addf(&submodule_prefix, "%s%s/", spf->prefix, ce->name);
-		repo = get_submodule_repo_for(spf->r, submodule);
-		if (repo) {
+		task->repo = get_submodule_repo_for(spf->r, task->sub);
+		if (task->repo) {
+			struct strbuf submodule_prefix = STRBUF_INIT;
 			child_process_init(cp);
 			prepare_submodule_repo_env_in_gitdir(&cp->env_array);
-			cp->dir = xstrdup(repo->gitdir);
+			cp->dir = task->repo->gitdir;
 			cp->git_cmd = 1;
 			if (!spf->quiet)
 				strbuf_addf(err, "Fetching submodule %s%s\n",
@@ -1316,18 +1366,51 @@ static int get_next_submodule(struct child_process *cp,
 			argv_array_pushv(&cp->args, spf->args.argv);
 			argv_array_push(&cp->args, default_argv);
 			argv_array_push(&cp->args, "--submodule-prefix");
+
+			strbuf_addf(&submodule_prefix, "%s%s/",
+						       spf->prefix,
+						       task->sub->path);
 			argv_array_push(&cp->args, submodule_prefix.buf);
 
-			repo_clear(repo);
-			free(repo);
-			ret = 1;
-		}
-		strbuf_release(&submodule_prefix);
-		if (ret) {
 			spf->count++;
+			*task_cb = task;
+
+			strbuf_release(&submodule_prefix);
 			return 1;
+		} else {
+			get_next_submodule_task_release(task);
+			free(task);
 		}
 	}
+
+	if (spf->retry_nr) {
+		struct get_next_submodule_task *task = spf->retry[spf->retry_nr - 1];
+		struct strbuf submodule_prefix = STRBUF_INIT;
+		spf->retry_nr--;
+
+		strbuf_addf(&submodule_prefix, "%s%s/", spf->prefix, task->sub->path);
+
+		child_process_init(cp);
+		prepare_submodule_repo_env_in_gitdir(&cp->env_array);
+		cp->git_cmd = 1;
+		cp->dir = task->repo->gitdir;
+
+		argv_array_init(&cp->args);
+		argv_array_pushv(&cp->args, spf->args.argv);
+		argv_array_push(&cp->args, "on-demand");
+		argv_array_push(&cp->args, "--submodule-prefix");
+		argv_array_push(&cp->args, submodule_prefix.buf);
+
+		/* NEEDSWORK: have get_default_remote from s--h */
+		argv_array_push(&cp->args, "origin");
+		oid_array_for_each_unique(task->commits,
+					  append_oid_to_argv, &cp->args);
+
+		*task_cb = task;
+		strbuf_release(&submodule_prefix);
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -1335,19 +1418,67 @@ static int fetch_start_failure(struct strbuf *err,
 			       void *cb, void *task_cb)
 {
 	struct submodule_parallel_fetch *spf = cb;
+	struct get_next_submodule_task *task = task_cb;
 
 	spf->result = 1;
 
+	get_next_submodule_task_release(task);
 	return 0;
+}
+
+static int commit_exists_in_sub(const struct object_id *oid, void *data)
+{
+	struct repository *subrepo = data;
+
+	enum object_type type = oid_object_info(subrepo, oid, NULL);
+
+	return type != OBJ_COMMIT;
 }
 
 static int fetch_finish(int retvalue, struct strbuf *err,
 			void *cb, void *task_cb)
 {
 	struct submodule_parallel_fetch *spf = cb;
+	struct get_next_submodule_task *task = task_cb;
+	const struct submodule *sub;
+
+	struct string_list_item *it;
+	struct oid_array *commits;
 
 	if (retvalue)
 		spf->result = 1;
+
+	if (!task)
+		return 0;
+
+	sub = task->sub;
+	if (!sub)
+		goto out;
+
+	it = string_list_lookup(&spf->changed_submodule_names, sub->name);
+	if (!it)
+		goto out;
+
+	commits = it->util;
+	oid_array_filter(commits,
+			 commit_exists_in_sub,
+			 task->repo);
+
+	/* Are there commits that do not exist? */
+	if (commits->nr) {
+		/* We already tried fetching them, do not try again. */
+		if (task->commits)
+			return 0;
+
+		task->commits = commits;
+		ALLOC_GROW(spf->retry, spf->retry_nr + 1, spf->retry_alloc);
+		spf->retry[spf->retry_nr] = task;
+		spf->retry_nr++;
+		return 0;
+	}
+
+out:
+	get_next_submodule_task_release(task);
 
 	return 0;
 }
