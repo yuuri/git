@@ -100,6 +100,47 @@ test_expect_success 'git branch -v pattern does not show branch summaries' '
 	test_must_fail git branch -v branch*
 '
 
+test_expect_success 'git branch `--show-current` shows current branch' '
+	cat >expect <<-\EOF &&
+	branch-two
+	EOF
+	git checkout branch-two &&
+	git branch --show-current >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'git branch `--show-current` is silent when detached HEAD' '
+	git checkout HEAD^0 &&
+	git branch --show-current >actual &&
+	test_must_be_empty actual
+'
+
+test_expect_success 'git branch `--show-current` works properly when tag exists' '
+	cat >expect <<-\EOF &&
+	branch-and-tag-name
+	EOF
+	git checkout -b branch-and-tag-name &&
+	git tag branch-and-tag-name &&
+	git branch --show-current >actual &&
+	git checkout branch-one &&
+	git branch -d branch-and-tag-name &&
+	test_cmp expect actual
+'
+
+test_expect_success 'git branch `--show-current` works properly with worktrees' '
+	cat >expect <<-\EOF &&
+	branch-one
+	branch-two
+	EOF
+	git checkout branch-one &&
+	git branch --show-current >actual &&
+	git worktree add worktree branch-two &&
+	cd worktree &&
+	git branch --show-current >>../actual &&
+	cd .. &&
+	test_cmp expect actual
+'
+
 test_expect_success 'git branch shows detached HEAD properly' '
 	cat >expect <<EOF &&
 * (HEAD detached at $(git rev-parse --short HEAD^0))
