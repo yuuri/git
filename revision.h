@@ -10,17 +10,17 @@
 #include "commit-slab-decl.h"
 
 /* Remember to update object flag allocation in object.h */
-#define SEEN		(1u<<0)
-#define UNINTERESTING   (1u<<1)
-#define TREESAME	(1u<<2)
-#define SHOWN		(1u<<3)
-#define TMP_MARK	(1u<<4) /* for isolated cases; clean after use */
-#define BOUNDARY	(1u<<5)
-#define CHILD_SHOWN	(1u<<6)
-#define ADDED		(1u<<7)	/* Parents already parsed and added? */
-#define SYMMETRIC_LEFT	(1u<<8)
-#define PATCHSAME	(1u<<9)
-#define BOTTOM		(1u<<10)
+#define SEEN			(1u<<0)
+#define UNINTERESTING		(1u<<1)
+#define TREESAME		(1u<<2)
+#define SHOWN			(1u<<3)
+#define TMP_MARK		(1u<<4) /* for isolated cases; clean after use */
+#define BOUNDARY		(1u<<5)
+#define CHILD_SHOWN		(1u<<6)
+#define ADDED			(1u<<7)	/* Parents already parsed and added? */
+#define SYMMETRIC_LEFT		(1u<<8)
+#define PATCHSAME		(1u<<9)
+#define BOTTOM			(1u<<10)
 /*
  * Indicates object was reached by traversal. i.e. not given by user on
  * command-line or stdin.
@@ -28,9 +28,11 @@
  * filtering trees and blobs, but it may be useful to support filtering commits
  * in the future.
  */
-#define NOT_USER_GIVEN	(1u<<25)
-#define TRACK_LINEAR	(1u<<26)
-#define ALL_REV_FLAGS	(((1u<<11)-1) | NOT_USER_GIVEN | TRACK_LINEAR)
+#define NOT_USER_GIVEN		(1u<<25)
+#define TRACK_LINEAR		(1u<<26)
+#define ALL_REV_FLAGS		(((1u<<11)-1) | NOT_USER_GIVEN | TRACK_LINEAR)
+#define TOPO_WALK_EXPLORED	(1u<<27)
+#define TOPO_WALK_INDEGREE	(1u<<28)
 
 #define DECORATE_SHORT_REFS	1
 #define DECORATE_FULL_REFS	2
@@ -63,6 +65,8 @@ struct rev_cmdline_info {
 #define REVISION_WALK_WALK 0
 #define REVISION_WALK_NO_WALK_SORTED 1
 #define REVISION_WALK_NO_WALK_UNSORTED 2
+
+struct topo_walk_info;
 
 struct rev_info {
 	/* Starting list */
@@ -269,6 +273,8 @@ struct rev_info {
 	const char *break_bar;
 
 	struct revision_sources *sources;
+
+	struct topo_walk_info *topo_walk_info;
 };
 
 int ref_excluded(struct string_list *, const char *path);
