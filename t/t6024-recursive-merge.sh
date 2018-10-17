@@ -61,7 +61,8 @@ GIT_AUTHOR_DATE="2006-12-12 23:00:08" git commit -m F
 '
 
 test_expect_success 'combined merge conflicts' '
-	test_must_fail env GIT_TEST_COMMIT_GRAPH=0 git merge -m final G
+	test_must_fail env GIT_TEST_COMMIT_GRAPH=0 \
+		git -c core.commitGraph=false merge -m final G
 '
 
 cat > expect << EOF

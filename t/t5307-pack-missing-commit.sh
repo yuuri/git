@@ -16,7 +16,8 @@ test_expect_success setup '
 	obj=$(git rev-parse --verify tag3) &&
 	fanout=$(expr "$obj" : "\(..\)") &&
 	remainder=$(expr "$obj" : "..\(.*\)") &&
-	rm -f ".git/objects/$fanout/$remainder"
+	rm -f ".git/objects/$fanout/$remainder" &&
+	git config core.commitGraph false
 '
 
 test_expect_success 'check corruption' '
