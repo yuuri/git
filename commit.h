@@ -249,7 +249,7 @@ extern void assign_shallow_commits_to_refs(struct shallow_info *info,
 					   uint32_t **used,
 					   int *ref_status);
 extern int delayed_reachability_test(struct shallow_info *si, int c);
-extern void prune_shallow(int show_only);
+extern void prune_shallow(int show_only, int quick_prune);
 extern struct trace_key trace_shallow;
 
 extern int interactive_add(int argc, const char **argv, const char *prefix, int patch);
