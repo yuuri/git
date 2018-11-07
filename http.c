@@ -48,6 +48,7 @@ char curl_errorstr[CURL_ERROR_SIZE];
 
 static int curl_ssl_verify = -1;
 static int curl_ssl_try;
+static int curl_http_version = 11;
 static const char *ssl_cert;
 static const char *ssl_cipherlist;
 static const char *ssl_version;
@@ -284,6 +285,10 @@ static void process_curl_messages(void)
 
 static int http_options(const char *var, const char *value, void *cb)
 {
+	if (!strcmp("http.version",var)) {
+		curl_http_version=git_config_int(var,value);
+		return 0;
+	}
 	if (!strcmp("http.sslverify", var)) {
 		curl_ssl_verify = git_config_bool(var, value);
 		return 0;
@@ -805,6 +810,13 @@ static CURL *get_curl_handle(void)
 		/* The name in the cert must match whom we tried to connect */
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYHOST, 2);
 	}
+
+#if LIBCURL_VERSION_NUM >= 0x073100
+	if(curl_http_version == 20){
+		/* CURL Enable HTTP2*/
+		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_2);
+     }
+#endif
 
 #if LIBCURL_VERSION_NUM >= 0x070907
 	curl_easy_setopt(result, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
