@@ -48,7 +48,7 @@ char curl_errorstr[CURL_ERROR_SIZE];
 
 static int curl_ssl_verify = -1;
 static int curl_ssl_try;
-static int curl_http_version = 11;
+static int curl_http_version = 0;
 static const char *ssl_cert;
 static const char *ssl_cipherlist;
 static const char *ssl_version;
@@ -811,11 +811,14 @@ static CURL *get_curl_handle(void)
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYHOST, 2);
 	}
 
-#if LIBCURL_VERSION_NUM >= 0x073100
-	if(curl_http_version == 20){
-		/* CURL Enable HTTP2*/
-		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_2);
-     }
+#if LIBCURL_VERSION_NUM >= 0x074700
+    // curl_http_version 0 is default.
+    if (curl_http_version == 20) {
+		/* Enable HTTP2 when request TLS*/
+		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_2TLS);
+    } else if (curl_http_version == 11) {
+		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_1_1);
+    }
 #endif
 
 #if LIBCURL_VERSION_NUM >= 0x070907
