@@ -569,16 +569,13 @@ static int reset_head(struct object_id *oid, const char *action,
 	}
 
 	if (!fill_tree_descriptor(&desc, oid)) {
-		error(_("failed to find tree of %s"), oid_to_hex(oid));
-		rollback_lock_file(&lock);
-		free((void *)desc.buffer);
-		return -1;
+		ret = error(_("failed to find tree of %s"), oid_to_hex(oid));
+		goto leave_reset_head;
 	}
 
 	if (unpack_trees(1, &desc, &unpack_tree_opts)) {
-		rollback_lock_file(&lock);
-		free((void *)desc.buffer);
-		return -1;
+		ret = -1;
+		goto leave_reset_head;
 	}
 
 	tree = parse_tree_indirect(oid);
@@ -586,10 +583,9 @@ static int reset_head(struct object_id *oid, const char *action,
 
 	if (write_locked_index(the_repository->index, &lock, COMMIT_LOCK) < 0)
 		ret = error(_("could not write index"));
-	free((void *)desc.buffer);
 
 	if (ret)
-		return ret;
+		goto leave_reset_head;
 
 	reflog_action = getenv(GIT_REFLOG_ACTION_ENVIRONMENT);
 	strbuf_addf(&msg, "%s: ", reflog_action ? reflog_action : "rebase");
@@ -622,7 +618,10 @@ static int reset_head(struct object_id *oid, const char *action,
 					 UPDATE_REFS_MSG_ON_ERR);
 	}
 
+leave_reset_head:
 	strbuf_release(&msg);
+	rollback_lock_file(&lock);
+	free((void *)desc.buffer);
 	return ret;
 }
 
