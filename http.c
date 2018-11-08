@@ -811,10 +811,10 @@ static CURL *get_curl_handle(void)
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYHOST, 2);
 	}
 
-#if LIBCURL_VERSION_NUM >= 0x074700
+#if LIBCURL_VERSION_NUM >= 0x072f00 // 7.47.0
     // curl_http_version 0 is default.
     if (curl_http_version == 20) {
-		/* Enable HTTP2 when request TLS*/
+		/* Enable HTTP2*/
 		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_2TLS);
     } else if (curl_http_version == 11) {
 		curl_easy_setopt(result, CURLOPT_HTTP_VERSION,CURL_HTTP_VERSION_1_1);
