@@ -2773,6 +2773,11 @@ _git_worktree ()
 		add,--*)
 			__gitcomp_builtin worktree_add
 			;;
+		add,*)
+			if [ $(__git_count_arguments "worktree") -eq 2 ]; then
+				__git_complete_refs
+			fi
+			;;
 		list,--*)
 			__gitcomp_builtin worktree_list
 			;;
