@@ -27,6 +27,7 @@
 #include "commit-reach.h"
 #include "commit-graph.h"
 #include "prio-queue.h"
+#include "config.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -3143,6 +3144,9 @@ int prepare_revision_walk(struct rev_info *revs)
 		commit_list_sort_by_date(&revs->commits);
 	if (revs->no_walk)
 		return 0;
+	if (revs->limited &&
+	    git_env_bool(GIT_TEST_COMMIT_GRAPH, 0))
+		revs->limited = 0;
 	if (revs->limited) {
 		if (limit_list(revs) < 0)
 			return -1;
