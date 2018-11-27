@@ -718,10 +718,12 @@ if test -n "$diffstat"
 then
 	if test -n "$verbose"
 	then
-		echo "$(eval_gettext "Changes from \$mb to \$onto:")"
+		mb_display="${mb:-(empty)}"
+		echo "$(eval_gettext "Changes from \$mb_display to \$onto:")"
 	fi
+	mb_tree="${mb:-$(git hash-object -t tree /dev/null)}"
 	# We want color (if set), but no pager
-	GIT_PAGER='' git diff --stat --summary "$mb" "$onto"
+	GIT_PAGER='' git diff --stat --summary "$mb_tree" "$onto"
 fi
 
 test -n "$interactive_rebase" && run_specific_rebase
