@@ -296,7 +296,6 @@ struct ref **get_remote_heads(struct packet_reader *reader,
 	struct ref **orig_list = list;
 	int len = 0;
 	enum get_remote_heads_state state = EXPECTING_FIRST_REF;
-	const char *arg;
 
 	*list = NULL;
 
