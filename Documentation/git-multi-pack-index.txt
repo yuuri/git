@@ -31,6 +31,14 @@ verify::
 	When given as the verb, verify the contents of the MIDX file
 	at `<dir>/packs/multi-pack-index`.
 
+expire::
+	When given as the verb, delete the pack-files that are tracked
+	by the MIDX file at `<dir>/packs/multi-pack-index` but have
+	no objects referenced by the MIDX. All objects in these pack-
+	files have another copy in a more-recently modified pack-file.
+	Rewrite the MIDX file afterward to remove all references to
+	these pack-files.
+
 
 EXAMPLES
 --------
