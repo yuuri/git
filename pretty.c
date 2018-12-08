@@ -1056,13 +1056,20 @@ static size_t parse_padding_placeholder(struct strbuf *sb,
 	return 0;
 }
 
-static int match_placeholder_arg(const char *to_parse, const char *candidate,
-				 const char **end)
+static int match_placeholder_arg_value(const char *to_parse, const char *candidate,
+				       const char **end, const char **valuestart, size_t *valuelen)
 {
 	const char *p;
 
 	if (!(skip_prefix(to_parse, candidate, &p)))
 		return 0;
+	if (valuestart) {
+		if (*p != '=')
+			return 0;
+		*valuestart = p + 1;
+		*valuelen = strcspn(*valuestart, ",)");
+		p = *valuestart + *valuelen;
+	}
 	if (*p == ',') {
 		*end = p + 1;
 		return 1;
@@ -1072,6 +1079,12 @@ static int match_placeholder_arg(const char *to_parse, const char *candidate,
 		return 1;
 	}
 	return 0;
+}
+
+static int match_placeholder_arg(const char *to_parse, const char *candidate,
+				 const char **end)
+{
+	return match_placeholder_arg_value(to_parse, candidate, end, NULL, NULL);
 }
 
 static int match_placeholder_bool_arg(const char *to_parse, const char *candidate,
@@ -1095,7 +1108,19 @@ static int match_placeholder_bool_arg(const char *to_parse, const char *candidat
 		*val = 1;
 		return 1;
 	}
+	return 0;
+}
 
+static int format_trailer_match_cb(const struct strbuf *key, void *ud)
+{
+	const struct string_list *list = ud;
+	const struct string_list_item *item;
+
+	for_each_string_list_item (item, list) {
+		if (key->len == (uintptr_t)item->util &&
+		    !strncasecmp (item->string, key->buf, key->len))
+			return 1;
+	}
 	return 0;
 }
 
@@ -1337,6 +1362,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 
 	if (skip_prefix(placeholder, "(trailers", &arg)) {
 		struct process_trailer_options opts = PROCESS_TRAILER_OPTIONS_INIT;
+		struct string_list filter_list = STRING_LIST_INIT_NODUP;
 		size_t ret = 0;
 
 		opts.no_divider = 1;
@@ -1344,8 +1370,20 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		if (*arg == ':') {
 			arg++;
 			for (;;) {
-				if (!match_placeholder_bool_arg(arg, "only", &arg, &opts.only_trailers) &&
-				    !match_placeholder_bool_arg(arg, "unfold", &arg, &opts.unfold))
+				const char *argval;
+				size_t arglen;
+
+				if (match_placeholder_arg_value(arg, "key", &arg, &argval, &arglen)) {
+					uintptr_t len = arglen;
+					if (len && argval[len - 1] == ':')
+						len--;
+					string_list_append(&filter_list, argval)->util = (char *)len;
+
+					opts.filter = format_trailer_match_cb;
+					opts.filter_data = &filter_list;
+					opts.only_trailers = 1;
+				} else if (!match_placeholder_bool_arg(arg, "only", &arg, &opts.only_trailers) &&
+					   !match_placeholder_bool_arg(arg, "unfold", &arg, &opts.unfold))
 					break;
 			}
 		}
@@ -1353,6 +1391,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			format_trailers_from_commit(sb, msg + c->subject_off, &opts);
 			ret = arg - placeholder + 1;
 		}
+		string_list_clear (&filter_list, 0);
 		return ret;
 	}
 
