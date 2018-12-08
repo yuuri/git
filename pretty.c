@@ -1074,6 +1074,31 @@ static int match_placeholder_arg(const char *to_parse, const char *candidate,
 	return 0;
 }
 
+static int match_placeholder_bool_arg(const char *to_parse, const char *candidate,
+				      const char **end, int *val)
+{
+	const char *p;
+	if (!skip_prefix(to_parse, candidate, &p))
+		return 0;
+
+	if (match_placeholder_arg(p, "=no", end) ||
+	    match_placeholder_arg(p, "=off", end) ||
+	    match_placeholder_arg(p, "=false", end)) {
+		*val = 0;
+		return 1;
+	}
+
+	if (match_placeholder_arg(p, "", end) ||
+	    match_placeholder_arg(p, "=yes", end) ||
+	    match_placeholder_arg(p, "=on", end) ||
+	    match_placeholder_arg(p, "=true", end)) {
+		*val = 1;
+		return 1;
+	}
+
+	return 0;
+}
+
 static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 				const char *placeholder,
 				void *context)
@@ -1318,11 +1343,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		if (*arg == ':') {
 			arg++;
 			for (;;) {
-				if (match_placeholder_arg(arg, "only", &arg))
-					opts.only_trailers = 1;
-				else if (match_placeholder_arg(arg, "unfold", &arg))
-					opts.unfold = 1;
-				else
+				if (!match_placeholder_bool_arg(arg, "only", &arg, &opts.only_trailers) &&
+				    !match_placeholder_bool_arg(arg, "unfold", &arg, &opts.unfold))
 					break;
 			}
 		}
