@@ -667,6 +667,12 @@ test_expect_success 'pretty format %(trailers:key=foo,only=no) also includes non
 	test_cmp expect actual
 '
 
+test_expect_success '%(trailers:key=foo,valueonly) shows only value' '
+	git log --no-walk --pretty="format:%(trailers:key=Acked-by,valueonly)" >actual &&
+	echo "A U Thor <author@example.com>" >expect &&
+	test_cmp expect actual
+'
+
 test_expect_success 'trailer parsing not fooled by --- line' '
 	git commit --allow-empty -F - <<-\EOF &&
 	this is the subject
