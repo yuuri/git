@@ -6,11 +6,13 @@
 #include "dir.h"
 #include "object-store.h"
 #include "parse-options.h"
+#include "revision.h"
 
 static char const * const backup_log_usage[] = {
 	N_("git backup-log [--path=<path> | --id=<id>] update <path> <old-hash> <new-hash>"),
 	N_("git backup-log [--path=<path> | --id=<id>] cat [<options>] <change-id> <path>"),
 	N_("git backup-log [--path=<path> | --id=<id>] diff [<diff-options>] <change-id>"),
+	N_("git backup-log [--path=<path> | --id=<id>] log [<options>] [--] [<path>]"),
 	NULL
 };
 
@@ -213,6 +215,92 @@ static int diff(int argc, const char **argv,
 	return ret - 1;
 }
 
+struct log_options {
+	struct rev_info revs;
+	timestamp_t last_time;
+	int last_tz;
+};
+
+static void dump(struct bkl_entry *entry, struct log_options *opts)
+{
+	timestamp_t last_time = opts->last_time;
+	int last_tz = opts->last_tz;
+
+	if (entry) {
+		opts->last_time = entry->timestamp;
+		opts->last_tz = entry->tz;
+	}
+
+	if (last_time != -1 &&
+	    ((!entry && diff_queued_diff.nr) ||
+	     (entry && last_time != entry->timestamp))) {
+		printf("Change-Id: %"PRItime"\n", last_time);
+		printf("Date: %s\n", show_date(last_time, last_tz, &opts->revs.date_mode));
+		printf("\n--\n");
+		diffcore_std(&opts->revs.diffopt);
+		diff_flush(&opts->revs.diffopt);
+		printf("\n");
+	}
+}
+
+static int log_parse(struct strbuf *line, void *data)
+{
+	struct log_options *opts = data;
+	struct bkl_entry entry;
+
+	if (bkl_parse_entry(line, &entry))
+		return -1;
+
+	if (opts->revs.max_age != -1 && entry.timestamp < opts->revs.max_age)
+		return 1;
+
+	if (!match_pathspec(the_repository->index, &opts->revs.prune_data,
+			    entry.path, strlen(entry.path),
+			    0, NULL, 0))
+		return 0;
+
+	dump(&entry, opts);
+
+	queue_blk_entry_for_diff(&entry);
+
+	return 0;
+}
+
+static int log_(int argc, const char **argv,
+		const char *prefix, const char *log_path)
+{
+	struct log_options opts;
+	int ret;
+
+	memset(&opts, 0, sizeof(opts));
+	opts.last_time = -1;
+	opts.last_tz = -1;
+
+	repo_init_revisions(the_repository, &opts.revs, prefix);
+	opts.revs.date_mode.type = DATE_RELATIVE;
+	argc = setup_revisions(argc, argv, &opts.revs, NULL);
+	if (!opts.revs.diffopt.output_format) {
+		opts.revs.diffopt.output_format = DIFF_FORMAT_PATCH;
+		diff_setup_done(&opts.revs.diffopt);
+	}
+
+	setup_pager();
+	if (opts.revs.reverse) {
+		/*
+		 * Default order is reading file from the bottom. --reverse
+		 * makes it read from the top instead (i.e. forward)
+		 */
+		ret = bkl_parse_file(log_path, log_parse, &opts);
+	} else {
+		ret = bkl_parse_file_reverse(log_path, log_parse, &opts);
+	}
+	if (ret < 0)
+		die(_("failed to parse '%s'"), log_path);
+	dump(NULL, &opts);	/* flush */
+
+	return ret;
+}
+
 static char *log_id_to_path(const char *id)
 {
 	if (!strcmp(id, "index"))
@@ -256,6 +344,8 @@ int cmd_backup_log(int argc, const char **argv, const char *prefix)
 		return cat(argc, argv, prefix, log_path);
 	else if (!strcmp(argv[0], "diff"))
 		return diff(argc, argv, prefix, log_path);
+	else if (!strcmp(argv[0], "log"))
+		return log_(argc, argv, prefix, log_path);
 	else
 		die(_("unknown subcommand: %s"), argv[0]);
 

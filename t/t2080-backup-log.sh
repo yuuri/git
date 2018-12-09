@@ -130,4 +130,38 @@ test_expect_success 'backup-log diff' '
 	test_cmp stat.expected stat.actual
 '
 
+test_expect_success 'backup-log log' '
+	rm -f .git/index.bkl &&
+	echo first >initial.t &&
+	git add initial.t &&
+	echo second >initial.t &&
+	test_tick &&
+	git -c core.backupLog=true add initial.t &&
+	echo third >initial.t &&
+	# note, same tick!
+	git -c core.backupLog=true add initial.t &&
+	test_tick &&
+	echo forth >initial.t &&
+	git -c core.backupLog=true add initial.t &&
+	git backup-log --id=index log --stat --date=iso >actual &&
+	cat >expected <<-\EOF &&
+	Change-Id: 1112912593
+	Date: 2005-04-07 15:23:13 -0700
+
+	--
+	 initial.t | 2 +-
+	 1 file changed, 1 insertion(+), 1 deletion(-)
+
+	Change-Id: 1112912533
+	Date: 2005-04-07 15:22:13 -0700
+
+	--
+	 initial.t | 2 +-
+	 initial.t | 2 +-
+	 2 files changed, 2 insertions(+), 2 deletions(-)
+
+	EOF
+	test_cmp expected actual
+'
+
 test_done
