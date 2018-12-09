@@ -41,6 +41,8 @@ following commands will save backups:
   `--hard` or linkgit:git-am[1] and linkgit:git-rebase[1] with
   `--skip` or `--abort` will make a backup before overwriting non
   up-to-date files.
+- FIXME perhaps `git checkout <paths>` only makes backups on
+  "precious" paths only?
 
 Backups are split in three groups, changes related in the index, in
 working directory or in $GIT_DIR. These can be selected with `--id`
