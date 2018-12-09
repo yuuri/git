@@ -620,6 +620,8 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			topts.dir = xcalloc(1, sizeof(*topts.dir));
 			topts.dir->flags |= DIR_SHOW_IGNORED;
 			setup_standard_excludes(topts.dir);
+			repo_config_get_bool(the_repository, "core.backupLog",
+					     &topts.keep_backup);
 		}
 		tree = parse_tree_indirect(old_branch_info->commit ?
 					   &old_branch_info->commit->object.oid :

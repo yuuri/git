@@ -60,6 +60,7 @@ struct unpack_trees_options {
 		     exiting_early,
 		     show_all_errors,
 		     dry_run;
+	int keep_backup;
 	const char *prefix;
 	int cache_bottom;
 	struct dir_struct *dir;
@@ -82,6 +83,8 @@ struct unpack_trees_options {
 	struct index_state *dst_index;
 	struct index_state *src_index;
 	struct index_state result;
+
+	struct strbuf backup_log;
 
 	struct exclude_list *el; /* for internal use */
 };

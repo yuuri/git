@@ -1,6 +1,7 @@
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
 #include "argv-array.h"
+#include "backup-log.h"
 #include "repository.h"
 #include "config.h"
 #include "dir.h"
@@ -189,6 +190,23 @@ void clear_unpack_trees_porcelain(struct unpack_trees_options *opts)
 {
 	argv_array_clear(&opts->msgs_to_free);
 	memset(opts->msgs, 0, sizeof(opts->msgs));
+}
+
+static void make_backup(const struct cache_entry *ce,
+			const struct object_id *old_hash,
+			const struct object_id *new_hash,
+			struct unpack_trees_options *o)
+{
+	struct object_id null_hash;
+
+	if (!o->keep_backup || is_null_oid(old_hash))
+		return;
+
+	if (!new_hash) {
+		oidclr(&null_hash);
+		new_hash = &null_hash;
+	}
+	bkl_append(&o->backup_log, ce->name, old_hash, new_hash);
 }
 
 static int do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
@@ -461,6 +479,9 @@ static int check_updates(struct unpack_trees_options *o)
 
 	if (o->clone)
 		report_collided_checkout(index);
+
+	if (o->backup_log.len)
+		bkl_write(git_path("worktree.bkl"), &o->backup_log);
 
 	trace_performance_leave("check_updates");
 	return errs != 0;
@@ -1460,7 +1481,8 @@ static void mark_new_skip_worktree(struct exclude_list *el,
 
 static int verify_absent(const struct cache_entry *,
 			 enum unpack_trees_error_types,
-			 struct unpack_trees_options *);
+			 struct unpack_trees_options *,
+			 struct object_id *);
 /*
  * N-way merge "len" trees.  Returns 0 on success, -1 on failure to manipulate the
  * resulting index, -2 on failure to reflect the changes to the work tree.
@@ -1488,6 +1510,10 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 			o->el = &el;
 		free(sparse);
 	}
+
+	strbuf_init(&o->backup_log, 0);
+	if (!o->update)
+		o->keep_backup = 0;
 
 	memset(&o->result, 0, sizeof(o->result));
 	o->result.initialized = 1;
@@ -1596,7 +1622,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 			 * correct CE_NEW_SKIP_WORKTREE
 			 */
 			if (ce->ce_flags & CE_ADDED &&
-			    verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN, o)) {
+			    verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN, o, NULL)) {
 				if (!o->show_all_errors)
 					goto return_failed;
 				ret = -1;
@@ -1646,6 +1672,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	o->src_index = NULL;
 
 done:
+	strbuf_release(&o->backup_log);
 	trace_performance_leave("unpack_trees");
 	clear_exclude_list(&el);
 	return ret;
@@ -1880,7 +1907,8 @@ static int icase_exists(struct unpack_trees_options *o, const char *name, int le
 static int check_ok_to_remove(const char *name, int len, int dtype,
 			      const struct cache_entry *ce, struct stat *st,
 			      enum unpack_trees_error_types error_type,
-			      struct unpack_trees_options *o)
+			      struct unpack_trees_options *o,
+			      struct object_id *old_hash)
 {
 	const struct cache_entry *result;
 
@@ -1895,12 +1923,16 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 		return 0;
 
 	if (o->dir &&
-	    is_excluded(o->dir, o->src_index, name, &dtype))
+	    is_excluded(o->dir, o->src_index, name, &dtype)) {
+		if (o->keep_backup && old_hash)
+			index_path(NULL, old_hash, name, st,
+				   HASH_WRITE_OBJECT);
 		/*
 		 * ce->name is explicitly excluded, so it is Ok to
 		 * overwrite it.
 		 */
 		return 0;
+	}
 	if (S_ISDIR(st->st_mode)) {
 		/*
 		 * We are checking out path "foo" and
@@ -1935,7 +1967,8 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
  */
 static int verify_absent_1(const struct cache_entry *ce,
 			   enum unpack_trees_error_types error_type,
-			   struct unpack_trees_options *o)
+			   struct unpack_trees_options *o,
+			   struct object_id *old_hash)
 {
 	int len;
 	struct stat st;
@@ -1960,7 +1993,7 @@ static int verify_absent_1(const struct cache_entry *ce,
 								NULL, o);
 			else
 				ret = check_ok_to_remove(path, len, DT_UNKNOWN, NULL,
-							 &st, error_type, o);
+							 &st, error_type, o, old_hash);
 		}
 		free(path);
 		return ret;
@@ -1975,17 +2008,20 @@ static int verify_absent_1(const struct cache_entry *ce,
 
 		return check_ok_to_remove(ce->name, ce_namelen(ce),
 					  ce_to_dtype(ce), ce, &st,
-					  error_type, o);
+					  error_type, o, old_hash);
 	}
 }
 
 static int verify_absent(const struct cache_entry *ce,
 			 enum unpack_trees_error_types error_type,
-			 struct unpack_trees_options *o)
+			 struct unpack_trees_options *o,
+			 struct object_id *old_hash)
 {
+	if (o->keep_backup && old_hash)
+		oidclr(old_hash);
 	if (!o->skip_sparse_checkout && (ce->ce_flags & CE_NEW_SKIP_WORKTREE))
 		return 0;
-	return verify_absent_1(ce, error_type, o);
+	return verify_absent_1(ce, error_type, o, old_hash);
 }
 
 static int verify_absent_sparse(const struct cache_entry *ce,
@@ -1996,7 +2032,7 @@ static int verify_absent_sparse(const struct cache_entry *ce,
 	if (orphaned_error == ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN)
 		orphaned_error = ERROR_WOULD_LOSE_ORPHANED_OVERWRITTEN;
 
-	return verify_absent_1(ce, orphaned_error, o);
+	return verify_absent_1(ce, orphaned_error, o, NULL);
 }
 
 static int merged_entry(const struct cache_entry *ce,
@@ -2007,6 +2043,8 @@ static int merged_entry(const struct cache_entry *ce,
 	struct cache_entry *merge = dup_cache_entry(ce, &o->result);
 
 	if (!old) {
+		struct object_id old_hash;
+
 		/*
 		 * New index entries. In sparse checkout, the following
 		 * verify_absent() will be delayed until after
@@ -2023,10 +2061,15 @@ static int merged_entry(const struct cache_entry *ce,
 		merge->ce_flags |= CE_NEW_SKIP_WORKTREE;
 
 		if (verify_absent(merge,
-				  ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN, o)) {
+				  ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN,
+				  o, &old_hash)) {
 			discard_cache_entry(merge);
 			return -1;
 		}
+		if (o->keep_backup)
+			bkl_append(&o->backup_log, merge->name,
+				   &old_hash, &merge->oid);
+
 		invalidate_ce_path(merge, o);
 
 		if (submodule_from_ce(ce)) {
@@ -2083,8 +2126,12 @@ static int deleted_entry(const struct cache_entry *ce,
 {
 	/* Did it exist in the index? */
 	if (!old) {
-		if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED, o))
+		struct object_id old_hash;
+
+		if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED,
+				  o, &old_hash))
 			return -1;
+		make_backup(ce, &old_hash, NULL, o);
 		return 0;
 	}
 	if (!(old->ce_flags & CE_CONFLICTED) && verify_uptodate(old, o))
@@ -2236,8 +2283,12 @@ int threeway_merge(const struct cache_entry * const *stages,
 			if (index)
 				return deleted_entry(index, index, o);
 			if (ce && !head_deleted) {
-				if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED, o))
+				struct object_id old_hash;
+
+				if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED,
+						  o, &old_hash))
 					return -1;
+				make_backup(ce, &old_hash, NULL, o);
 			}
 			return 0;
 		}

@@ -190,4 +190,25 @@ test_expect_success 'deleted reflog is kept' '
 	grep ^$OLD .git/common/gitdir.bkl
 '
 
+test_expect_success 'overwritten ignored file is backed up' '
+	git init overwrite-ignore &&
+	(
+		cd overwrite-ignore &&
+		echo ignored-overwritten >ignored &&
+		NEW=$(git hash-object ignored) &&
+		git add ignored &&
+		git commit -m ignored &&
+		git rm --cached ignored &&
+		echo /ignored >.gitignore &&
+		git add .gitignore &&
+		git commit -m first-commit-no-ignored &&
+		echo precious >ignored &&
+		OLD=$(git hash-object ignored) &&
+		test_tick &&
+		git -c core.backupLog=true checkout --detach HEAD^ &&
+		echo "$OLD $NEW $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $test_tick -0700	ignored" >expected &&
+		test_cmp expected .git/worktree.bkl
+	)
+'
+
 test_done
