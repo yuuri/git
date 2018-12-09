@@ -178,4 +178,16 @@ test_expect_success 'config --edit makes a backup' '
 	grep $NEW .git/common/gitdir.bkl
 '
 
+test_expect_success 'deleted reflog is kept' '
+	git checkout -b foo &&
+	git commit -am everything-else &&
+	test_commit two &&
+	test_commit three &&
+	git checkout -f master &&
+	OLD=$(git hash-object .git/logs/refs/heads/foo) &&
+	git -c core.backupLog=true branch -D foo &&
+	grep logs/refs/heads/foo .git/common/gitdir.bkl &&
+	grep ^$OLD .git/common/gitdir.bkl
+'
+
 test_done
