@@ -164,4 +164,18 @@ test_expect_success 'backup-log log' '
 	test_cmp expected actual
 '
 
+test_expect_success 'config --edit makes a backup' '
+	cat >edit.sh <<-EOF &&
+	#!$SHELL_PATH
+	echo ";Edited" >>"\$1"
+	EOF
+	chmod +x edit.sh &&
+	OLD=$(git hash-object .git/config) &&
+	EDITOR=./edit.sh git -c core.backupLog=true config --edit &&
+	NEW=$(git hash-object .git/config) &&
+	grep config .git/common/gitdir.bkl &&
+	grep ^$OLD .git/common/gitdir.bkl &&
+	grep $NEW .git/common/gitdir.bkl
+'
+
 test_done
