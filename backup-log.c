@@ -4,6 +4,7 @@
 #include "lockfile.h"
 #include "object-store.h"
 #include "strbuf.h"
+#include "worktree.h"
 
 void bkl_append(struct strbuf *output, const char *path,
 		const struct object_id *from,
@@ -287,4 +288,36 @@ int bkl_prune(struct repository *r, const char *path, timestamp_t expire)
 		ret = commit_lock_file(&lk);
 	strbuf_release(&opts.copy);
 	return ret;
+}
+
+void bkl_prune_all_or_die(struct repository *r, timestamp_t expire)
+{
+	struct worktree **worktrees, **p;
+	char *bkl_path;
+
+	bkl_path = repo_git_path(r, "common/gitdir.bkl");
+	if (bkl_prune(r, bkl_path, expire))
+		die(_("failed to prune %s"), "gitdir.bkl");
+	free(bkl_path);
+
+	worktrees = get_worktrees(0);
+	for (p = worktrees; *p; p++) {
+		struct worktree *wt = *p;
+
+		if (bkl_prune(r, worktree_git_path(wt, "index.bkl"), expire)) {
+			if (wt->id)
+				die(_("failed to prune %s on working tree '%s'"),
+				    "index.bkl", wt->id);
+			else
+				die(_("failed to prune %s"), "index.bkl");
+		}
+		if (bkl_prune(r, worktree_git_path(wt, "worktree.bkl"), expire)) {
+			if (wt->id)
+				die(_("failed to prune %s on working tree '%s'"),
+				    "worktree.bkl", wt->id);
+			else
+				die(_("failed to prune %s"), "worktree.bkl");
+		}
+	}
+	free_worktrees(worktrees);
 }

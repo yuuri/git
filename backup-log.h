@@ -31,5 +31,6 @@ int bkl_parse_file(const char *path,
 		   void *data);
 
 int bkl_prune(struct repository *r, const char *id, timestamp_t expire);
+void bkl_prune_all_or_die(struct repository *r, timestamp_t expire);
 
 #endif
