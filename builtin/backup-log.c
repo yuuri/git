@@ -1,6 +1,8 @@
 #include "cache.h"
 #include "builtin.h"
 #include "backup-log.h"
+#include "diff.h"
+#include "diffcore.h"
 #include "dir.h"
 #include "object-store.h"
 #include "parse-options.h"
@@ -8,6 +10,7 @@
 static char const * const backup_log_usage[] = {
 	N_("git backup-log [--path=<path> | --id=<id>] update <path> <old-hash> <new-hash>"),
 	N_("git backup-log [--path=<path> | --id=<id>] cat [<options>] <change-id> <path>"),
+	N_("git backup-log [--path=<path> | --id=<id>] diff [<diff-options>] <change-id>"),
 	NULL
 };
 
@@ -115,6 +118,101 @@ static int cat(int argc, const char **argv,
 	return ret - 1;
 }
 
+static void queue_blk_entry_for_diff(const struct bkl_entry *e)
+{
+	unsigned mode = canon_mode(S_IFREG | 0644);
+	struct diff_filespec *one, *two;
+	const struct object_id *old, *new;
+
+	if (is_null_oid(&e->old_oid))
+		old = the_hash_algo->empty_blob;
+	else
+		old = &e->old_oid;
+
+	if (is_null_oid(&e->new_oid))
+		new = the_hash_algo->empty_blob;
+	else
+		new = &e->new_oid;
+
+	if (oideq(old, new))
+		return;
+
+	one = alloc_filespec(e->path);
+	two = alloc_filespec(e->path);
+
+	fill_filespec(one, old, 1, mode);
+	fill_filespec(two, new, 1, mode);
+	diff_queue(&diff_queued_diff, one, two);
+}
+
+static int diff_parse(struct strbuf *line, void *data)
+{
+	timestamp_t id = *(timestamp_t *)data;
+	struct bkl_entry entry;
+
+	if (bkl_parse_entry(line, &entry))
+		return -1;
+
+	if (entry.timestamp < id)
+		return 1;
+
+	if (entry.timestamp > id)
+		return 0;
+
+	queue_blk_entry_for_diff(&entry);
+	return 0;
+}
+
+static int diff(int argc, const char **argv,
+		const char *prefix, const char *log_path)
+{
+	char *end = NULL;
+	struct diff_options diffopt;
+	timestamp_t id = -1;
+	int ret, i, found_dash_dash = 0;
+
+	repo_diff_setup(the_repository, &diffopt);
+	i = 1;
+	while (i < argc) {
+		const char *arg = argv[i];
+
+		if (!found_dash_dash && *arg == '-') {
+			if (!strcmp(arg, "--")) {
+				found_dash_dash = 1;
+				i++;
+				continue;
+			}
+			ret = diff_opt_parse(&diffopt, argv + i, argc - i, prefix);
+			if (ret < 0)
+				exit(128);
+			i += ret;
+			continue;
+		}
+
+		id = strtol(arg, &end, 10);
+		if (!end || *end)
+			die(_("not a valid change id: %s"), arg);
+		i++;
+		break;
+	}
+	if (!diffopt.output_format)
+		diffopt.output_format = DIFF_FORMAT_PATCH;
+	diff_setup_done(&diffopt);
+	if (i != argc || id == -1)
+		usage_with_options(backup_log_usage, NULL);
+
+	ret = bkl_parse_file_reverse(log_path, diff_parse, &id);
+	if (ret < 0)
+		die(_("failed to parse '%s'"), log_path);
+
+	if (ret == 1) {
+		setup_pager();
+		diffcore_std(&diffopt);
+		diff_flush(&diffopt);
+	}
+	return ret - 1;
+}
+
 static char *log_id_to_path(const char *id)
 {
 	if (!strcmp(id, "index"))
@@ -156,6 +254,8 @@ int cmd_backup_log(int argc, const char **argv, const char *prefix)
 		return update(argc, argv, prefix, log_path);
 	else if (!strcmp(argv[0], "cat"))
 		return cat(argc, argv, prefix, log_path);
+	else if (!strcmp(argv[0], "diff"))
+		return diff(argc, argv, prefix, log_path);
 	else
 		die(_("unknown subcommand: %s"), argv[0]);
 

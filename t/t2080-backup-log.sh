@@ -105,4 +105,29 @@ test_expect_success 'backup-log cat' '
 	test_cmp expected actual
 '
 
+test_expect_success 'backup-log diff' '
+	echo first >initial.t &&
+	git add initial.t &&
+	echo second >initial.t &&
+	test_tick &&
+	git -c core.backupLog=true add initial.t &&
+	git backup-log --id=index diff $test_tick >actual &&
+	cat >expected <<-\EOF &&
+	diff --git a/initial.t b/initial.t
+	index 9c59e24..e019be0 100644
+	--- a/initial.t
+	+++ b/initial.t
+	@@ -1 +1 @@
+	-first
+	+second
+	EOF
+	test_cmp expected actual &&
+	git backup-log --id=index diff --stat $test_tick >stat.actual &&
+	cat >stat.expected <<-\EOF &&
+	 initial.t | 2 +-
+	 1 file changed, 1 insertion(+), 1 deletion(-)
+	EOF
+	test_cmp stat.expected stat.actual
+'
+
 test_done
