@@ -3,6 +3,7 @@
 #include "blob.h"
 #include "lockfile.h"
 #include "object-store.h"
+#include "revision.h"
 #include "strbuf.h"
 #include "worktree.h"
 
@@ -320,4 +321,68 @@ void bkl_prune_all_or_die(struct repository *r, timestamp_t expire)
 		}
 	}
 	free_worktrees(worktrees);
+}
+
+struct pending_cb {
+	struct rev_info *revs;
+	unsigned flags;
+};
+
+static void add_blob_to_pending(const struct object_id *oid,
+				const char *path,
+				struct pending_cb *cb)
+{
+	struct blob *blob;
+
+	if (!good_oid(cb->revs->repo, oid))
+		return;
+
+	blob = lookup_blob(cb->revs->repo, oid);
+	blob->object.flags |= cb->flags;
+	add_pending_object(cb->revs, &blob->object, path);
+}
+
+static int add_pending(struct strbuf *line, void *cb)
+{
+	struct bkl_entry entry;
+
+	if (bkl_parse_entry(line, &entry))
+		return -1;
+
+	add_blob_to_pending(&entry.old_oid, entry.path, cb);
+	add_blob_to_pending(&entry.new_oid, entry.path, cb);
+	return 0;
+}
+
+static void add_backup_log_to_pending(const char *path, struct pending_cb *cb)
+{
+	bkl_parse_file(path, add_pending, cb);
+}
+
+void add_backup_logs_to_pending(struct rev_info *revs, unsigned flags)
+{
+	struct worktree **worktrees, **p;
+	char *path;
+	struct pending_cb cb;
+
+	cb.revs = revs;
+	cb.flags = flags;
+
+	worktrees = get_worktrees(0);
+	for (p = worktrees; *p; p++) {
+		struct worktree *wt = *p;
+
+		path = xstrdup(worktree_git_path(wt, "index.bkl"));
+		add_backup_log_to_pending(path, &cb);
+		free(path);
+
+		path = xstrdup(worktree_git_path(wt, "worktree.bkl"));
+		add_backup_log_to_pending(path, &cb);
+		free(path);
+	}
+	free_worktrees(worktrees);
+
+	path = git_pathdup("common/gitdir.bkl");
+	add_backup_log_to_pending(path, &cb);
+	free(path);
 }
