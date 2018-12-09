@@ -1715,7 +1715,8 @@ static int same(const struct cache_entry *a, const struct cache_entry *b)
  */
 static int verify_uptodate_1(const struct cache_entry *ce,
 			     struct unpack_trees_options *o,
-			     enum unpack_trees_error_types error_type)
+			     enum unpack_trees_error_types error_type,
+			     struct object_id *old_hash)
 {
 	struct stat st;
 
@@ -1727,10 +1728,16 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 	 * if this entry is truly up-to-date because this file may be
 	 * overwritten.
 	 */
-	if ((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce))
+	if ((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce)) {
 		; /* keep checking */
-	else if (o->reset || ce_uptodate(ce))
+	} else if (o->reset) {
+		if (o->keep_backup && old_hash && !lstat(ce->name, &st))
+			index_path(NULL, old_hash, ce->name, &st,
+				   HASH_WRITE_OBJECT);
 		return 0;
+	} else if (ce_uptodate(ce)) {
+		return 0;
+	}
 
 	if (!lstat(ce->name, &st)) {
 		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
@@ -1764,17 +1771,20 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 }
 
 int verify_uptodate(const struct cache_entry *ce,
-		    struct unpack_trees_options *o)
+		    struct unpack_trees_options *o,
+		    struct object_id *old_hash)
 {
+	if (o->keep_backup && old_hash)
+		oidclr(old_hash);
 	if (!o->skip_sparse_checkout && (ce->ce_flags & CE_NEW_SKIP_WORKTREE))
 		return 0;
-	return verify_uptodate_1(ce, o, ERROR_NOT_UPTODATE_FILE);
+	return verify_uptodate_1(ce, o, ERROR_NOT_UPTODATE_FILE, old_hash);
 }
 
 static int verify_uptodate_sparse(const struct cache_entry *ce,
 				  struct unpack_trees_options *o)
 {
-	return verify_uptodate_1(ce, o, ERROR_SPARSE_NOT_UPTODATE_FILE);
+	return verify_uptodate_1(ce, o, ERROR_SPARSE_NOT_UPTODATE_FILE, NULL);
 }
 
 /*
@@ -1862,8 +1872,11 @@ static int verify_clean_subdirectory(const struct cache_entry *ce,
 		 * removed.
 		 */
 		if (!ce_stage(ce2)) {
-			if (verify_uptodate(ce2, o))
+			struct object_id old_hash;
+
+			if (verify_uptodate(ce2, o, &old_hash))
 				return -1;
+			make_backup(ce2, &old_hash, NULL, o);
 			add_entry(o, ce2, CE_REMOVE, 0);
 			invalidate_ce_path(ce, o);
 			mark_ce_used(ce2, o);
@@ -1973,8 +1986,13 @@ static int verify_absent_1(const struct cache_entry *ce,
 	int len;
 	struct stat st;
 
-	if (o->index_only || o->reset || !o->update)
+	if (o->index_only || o->reset || !o->update) {
+		if (o->reset && o->keep_backup &&
+		    old_hash && !lstat(ce->name, &st))
+			index_path(NULL, old_hash, ce->name, &st,
+				   HASH_WRITE_OBJECT);
 		return 0;
+	}
 
 	len = check_leading_path(ce->name, ce_namelen(ce));
 	if (!len)
@@ -2092,10 +2110,12 @@ static int merged_entry(const struct cache_entry *ce,
 			copy_cache_entry(merge, old);
 			update = 0;
 		} else {
-			if (verify_uptodate(old, o)) {
+			struct object_id old_hash;
+			if (verify_uptodate(old, o, &old_hash)) {
 				discard_cache_entry(merge);
 				return -1;
 			}
+			make_backup(old, &old_hash, &merge->oid, o);
 			/* Migrate old flags over */
 			update |= old->ce_flags & (CE_SKIP_WORKTREE | CE_NEW_SKIP_WORKTREE);
 			invalidate_ce_path(old, o);
@@ -2124,18 +2144,20 @@ static int deleted_entry(const struct cache_entry *ce,
 			 const struct cache_entry *old,
 			 struct unpack_trees_options *o)
 {
+	struct object_id old_hash;
+
 	/* Did it exist in the index? */
 	if (!old) {
-		struct object_id old_hash;
-
 		if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED,
 				  o, &old_hash))
 			return -1;
 		make_backup(ce, &old_hash, NULL, o);
 		return 0;
 	}
-	if (!(old->ce_flags & CE_CONFLICTED) && verify_uptodate(old, o))
+	if (!(old->ce_flags & CE_CONFLICTED) &&
+	    verify_uptodate(old, o, &old_hash))
 		return -1;
+	make_backup(ce, &old_hash, NULL, o);
 	add_entry(o, ce, CE_REMOVE, 0);
 	invalidate_ce_path(ce, o);
 	return 1;
@@ -2305,8 +2327,16 @@ int threeway_merge(const struct cache_entry * const *stages,
 	 * conflict resolution files.
 	 */
 	if (index) {
-		if (verify_uptodate(index, o))
+		struct object_id old_hash;
+
+		if (verify_uptodate(index, o, &old_hash))
 			return -1;
+		/*
+		 * A new conflict appears. We could make a backup from
+		 * worktree version to stage 2 or 3. But neither makes much
+		 * sense. Make a deletion backup instead.
+		 */
+		make_backup(index, &old_hash, NULL, o);
 	}
 
 	o->nontrivial_merge = 1;
@@ -2447,16 +2477,26 @@ int oneway_merge(const struct cache_entry * const *src,
 		return deleted_entry(old, old, o);
 
 	if (old && same(old, a)) {
+		struct object_id old_hash;
 		int update = 0;
+
+		oidclr(&old_hash);
 		if (o->reset && o->update && !ce_uptodate(old) && !ce_skip_worktree(old)) {
 			struct stat st;
+
 			if (lstat(old->name, &st) ||
-			    ie_match_stat(o->src_index, old, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE))
+			    ie_match_stat(o->src_index, old, &st,
+					  CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE))
 				update |= CE_UPDATE;
+
+			if (update & CE_UPDATE && o->keep_backup)
+				index_path(NULL, &old_hash, old->name, &st,
+					   HASH_WRITE_OBJECT);
 		}
 		if (o->update && S_ISGITLINK(old->ce_mode) &&
-		    should_update_submodules() && !verify_uptodate(old, o))
+		    should_update_submodules() && !verify_uptodate(old, o, NULL))
 			update |= CE_UPDATE;
+		make_backup(old, &old_hash, &old->oid, o);
 		add_entry(o, old, update, 0);
 		return 0;
 	}

@@ -211,4 +211,18 @@ test_expect_success 'overwritten ignored file is backed up' '
 	)
 '
 
+test_expect_success 'overwritten out-of-date file is backed up' '
+	git init overwrite-outofdate &&
+	(
+		cd overwrite-outofdate &&
+		test_commit haha &&
+		NEW=$(git hash-object haha.t) &&
+		echo bad >>haha.t &&
+		OLD=$(git hash-object haha.t) &&
+		git -c core.backupLog reset --hard &&
+		echo "$OLD $NEW $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $test_tick -0700	haha.t" >expected &&
+		test_cmp expected .git/worktree.bkl
+	)
+'
+
 test_done
