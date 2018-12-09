@@ -1,6 +1,8 @@
 #include "cache.h"
 #include "backup-log.h"
+#include "blob.h"
 #include "lockfile.h"
+#include "object-store.h"
 #include "strbuf.h"
 
 void bkl_append(struct strbuf *output, const char *path,
@@ -215,5 +217,74 @@ int bkl_parse_file(const char *path,
 		ret = parse(&sb, data);
 	fclose(logfp);
 	strbuf_release(&sb);
+	return ret;
+}
+
+struct prune_options {
+	struct repository *repo;
+	FILE *fp;
+	timestamp_t expire;
+	struct strbuf copy;
+};
+
+static int good_oid(struct repository *r, const struct object_id *oid)
+{
+	if (is_null_oid(oid))
+		return 1;
+
+	return oid_object_info(r, oid, NULL) == OBJ_BLOB;
+}
+
+static int prune_parse(struct strbuf *line, void *data)
+{
+	struct prune_options *opts = data;
+	struct bkl_entry entry;
+
+	strbuf_reset(&opts->copy);
+	strbuf_addbuf(&opts->copy, line);
+
+	if (bkl_parse_entry(line, &entry))
+		return -1;
+
+	if (entry.timestamp < opts->expire)
+		return 0;
+
+	if (oideq(&entry.old_oid, &entry.new_oid))
+		return 0;
+
+	if (!good_oid(opts->repo, &entry.old_oid) ||
+	    !good_oid(opts->repo, &entry.new_oid))
+		return 0;
+
+	if (!opts->fp)
+		return -1;
+
+	fputs(opts->copy.buf, opts->fp);
+	return 0;
+}
+
+int bkl_prune(struct repository *r, const char *path, timestamp_t expire)
+{
+	struct lock_file lk;
+	struct prune_options opts;
+	int ret;
+
+	ret = hold_lock_file_for_update(&lk, path, 0);
+	if (ret == -1) {
+		if (errno == ENOTDIR || errno == ENOENT)
+			return 0;
+		return error(_("failed to lock '%s'"), path);
+	}
+	opts.repo = r;
+	opts.expire = expire;
+	opts.fp = fdopen_lock_file(&lk, "w");
+	strbuf_init(&opts.copy, 0);
+
+	ret = bkl_parse_file(path, prune_parse, &opts);
+	if (ret < 0)
+		rollback_lock_file(&lk);
+	else
+		ret = commit_lock_file(&lk);
+	strbuf_release(&opts.copy);
 	return ret;
 }

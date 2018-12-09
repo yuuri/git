@@ -3,6 +3,7 @@
 
 #include "cache.h"
 
+struct repository;
 struct strbuf;
 
 struct bkl_entry
@@ -28,5 +29,7 @@ int bkl_parse_file_reverse(const char *path,
 int bkl_parse_file(const char *path,
 		   int (*parse)(struct strbuf *line, void *data),
 		   void *data);
+
+int bkl_prune(struct repository *r, const char *id, timestamp_t expire);
 
 #endif

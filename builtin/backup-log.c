@@ -301,6 +301,21 @@ static int log_(int argc, const char **argv,
 	return ret;
 }
 
+static int prune(int argc, const char **argv,
+		 const char *prefix, const char *log_path)
+{
+	timestamp_t expire = time(NULL) - 90 * 24 * 3600;
+	struct option options[] = {
+		OPT_EXPIRY_DATE(0, "expire", &expire,
+				N_("expire objects older than <time>")),
+		OPT_END()
+	};
+
+	argc = parse_options(argc, argv, prefix, options, backup_log_usage, 0);
+
+	return bkl_prune(the_repository, log_path, expire);
+}
+
 static char *log_id_to_path(const char *id)
 {
 	if (!strcmp(id, "index"))
@@ -346,6 +361,8 @@ int cmd_backup_log(int argc, const char **argv, const char *prefix)
 		return diff(argc, argv, prefix, log_path);
 	else if (!strcmp(argv[0], "log"))
 		return log_(argc, argv, prefix, log_path);
+	else if (!strcmp(argv[0], "prune"))
+		return prune(argc, argv, prefix, log_path);
 	else
 		die(_("unknown subcommand: %s"), argv[0]);
 
