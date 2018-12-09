@@ -88,4 +88,21 @@ test_expect_success 'apply --cached writes backup log' '
 	test_cmp expected .git/index.bkl
 '
 
+test_expect_success 'backup-log cat' '
+	OLD=$(git rev-parse :./initial.t) &&
+	echo update >>initial.t &&
+	test_tick &&
+	git -c core.backupLog=true add initial.t &&
+	NEW=$(git rev-parse :./initial.t) &&
+	git backup-log --id=index cat --before --hash $test_tick initial.t >actual &&
+	echo $OLD >expected &&
+	test_cmp expected actual &&
+	git backup-log --id=index cat --hash $test_tick initial.t >actual &&
+	echo $NEW >expected &&
+	test_cmp expected actual &&
+	git backup-log --id=index cat $test_tick initial.t >actual &&
+	git cat-file blob $NEW >expected &&
+	test_cmp expected actual
+'
+
 test_done

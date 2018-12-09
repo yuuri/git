@@ -1,10 +1,13 @@
 #include "cache.h"
 #include "builtin.h"
 #include "backup-log.h"
+#include "dir.h"
+#include "object-store.h"
 #include "parse-options.h"
 
 static char const * const backup_log_usage[] = {
 	N_("git backup-log [--path=<path> | --id=<id>] update <path> <old-hash> <new-hash>"),
+	N_("git backup-log [--path=<path> | --id=<id>] cat [<options>] <change-id> <path>"),
 	NULL
 };
 
@@ -32,6 +35,84 @@ static int update(int argc, const char **argv,
 	strbuf_release(&sb);
 
 	return ret;
+}
+
+struct cat_options {
+	timestamp_t id;
+	char *path;
+	int before;
+	int show_hash;
+};
+
+static int cat_parse(struct strbuf *line, void *data)
+{
+	struct cat_options *opts = data;
+	struct bkl_entry entry;
+	struct object_id *oid;
+	void *buf;
+	unsigned long size;
+	enum object_type type;
+
+	if (bkl_parse_entry(line, &entry))
+		return -1;
+
+	if (entry.timestamp < opts->id)
+		return 2;
+
+	if (entry.timestamp != opts->id ||
+	    fspathcmp(entry.path, opts->path))
+		return 0;
+
+	if (opts->before)
+		oid = &entry.old_oid;
+	else
+		oid = &entry.new_oid;
+
+	if (opts->show_hash) {
+		puts(oid_to_hex(oid));
+		return 1;
+	}
+
+	if (is_null_oid(oid))
+		return 1;	/* treat null oid like empty blob */
+
+	buf = read_object_file(oid, &type, &size);
+	if (!buf)
+		die(_("object not found: %s"), oid_to_hex(oid));
+	if (type != OBJ_BLOB)
+		die(_("not a blob: %s"), oid_to_hex(oid));
+
+	write_in_full(1, buf, size);
+	free(buf);
+
+	return 1;
+}
+
+static int cat(int argc, const char **argv,
+		const char *prefix, const char *log_path)
+{
+	struct cat_options opts;
+	struct option options[] = {
+		OPT_BOOL(0, "before", &opts.before, N_("select the version before the update")),
+		OPT_BOOL(0, "hash", &opts.show_hash, N_("show the hash instead of the content")),
+		OPT_END()
+	};
+	char *end = NULL;
+	int ret;
+
+	memset(&opts, 0, sizeof(opts));
+	argc = parse_options(argc, argv, prefix, options, backup_log_usage, 0);
+	if (argc != 2)
+		usage_with_options(backup_log_usage, options);
+	opts.id = strtol(argv[0], &end, 10);
+	if (!end || *end)
+		die(_("not a valid change id: %s"), argv[0]);
+	opts.path = prefix_path(prefix, prefix ? strlen(prefix) : 0, argv[1]);
+	setup_pager();
+	ret = bkl_parse_file_reverse(log_path, cat_parse, &opts);
+	if (ret < 0)
+		die(_("failed to parse '%s'"), log_path);
+	return ret - 1;
 }
 
 static char *log_id_to_path(const char *id)
@@ -73,6 +154,8 @@ int cmd_backup_log(int argc, const char **argv, const char *prefix)
 
 	if (!strcmp(argv[0], "update"))
 		return update(argc, argv, prefix, log_path);
+	else if (!strcmp(argv[0], "cat"))
+		return cat(argc, argv, prefix, log_path);
 	else
 		die(_("unknown subcommand: %s"), argv[0]);
 
