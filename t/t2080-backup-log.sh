@@ -63,4 +63,29 @@ test_expect_success 'partial commit writes backup log' '
 	test_cmp expected .git/index.bkl
 '
 
+test_expect_success 'apply --cached writes backup log' '
+	rm -f .git/index.bkl &&
+	git reset --hard &&
+	test_tick &&
+	echo to-be-deleted >to-be-deleted &&
+	echo to-be-modified >to-be-modified &&
+	OLD_M=$(git hash-object to-be-modified) &&
+	git add . &&
+	git commit -m first &&
+	rm to-be-deleted &&
+	echo modified >>to-be-modified &&
+	NEW_M=$(git hash-object to-be-modified) &&
+	OLD_A=$ZERO_OID &&
+	echo to-be-added >to-be-added &&
+	NEW_A=$(git hash-object to-be-added) &&
+	git add . &&
+	git commit -m second &&
+	git diff HEAD^ HEAD >patch &&
+	git reset --hard HEAD^ &&
+	git -c core.backupLog=true apply --cached --keep-backup patch &&
+	echo "$OLD_A $NEW_A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $test_tick -0700	to-be-added" >expected &&
+	echo "$OLD_M $NEW_M $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $test_tick -0700	to-be-modified" >>expected &&
+	test_cmp expected .git/index.bkl
+'
+
 test_done
