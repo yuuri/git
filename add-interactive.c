@@ -8,6 +8,16 @@
 
 #define HEADER_INDENT "      "
 
+/* TRANSLATORS: please do not translate the command names
+   'status', 'update', 'revert', etc. */
+static const char help_info[] = 
+		N_("status        - show paths with changes\n"
+		"update        - add working tree state to the staged set of changes\n"
+		"revert        - revert staged set of changes back to the HEAD version\n"
+		"patch         - pick hunks and update selectively\n"
+		"diff          - view diff between HEAD and index\n"
+		"add untracked - add contents of untracked files to the staged set of changes");
+
 enum collection_phase {
 	WORKTREE,
 	INDEX
@@ -243,4 +253,13 @@ void add_i_print_modified(void)
 
 	free(files);
 	hashmap_free(&s.file_map, 1);
+}
+
+void show_help(void)
+{
+	const char *help_color = get_color(COLOR_HELP);
+	const char *modified_fmt = _("%s");
+	printf("\n");
+	color_fprintf(stdout, help_color, modified_fmt, _(help_info));
+	printf("\n");
 }
