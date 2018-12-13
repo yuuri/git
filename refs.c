@@ -579,7 +579,7 @@ int expand_ref(const char *str, int len, struct object_id *oid, char **ref)
 				*ref = xstrdup(r);
 			if (!warn_ambiguous_refs)
 				break;
-		} else if ((flag & REF_ISSYMREF) && strcmp(fullref.buf, "HEAD")) {
+		} else if ((flag & REF_ISSYMREF) && strcasecmp(fullref.buf, "HEAD")) {
 			warning(_("ignoring dangling symref %s"), fullref.buf);
 		} else if ((flag & REF_ISBROKEN) && strchr(fullref.buf, '/')) {
 			warning(_("ignoring broken ref %s"), fullref.buf);
@@ -627,7 +627,7 @@ int dwim_log(const char *str, int len, struct object_id *oid, char **log)
 
 static int is_per_worktree_ref(const char *refname)
 {
-	return !strcmp(refname, "HEAD") ||
+	return !strcasecmp(refname, "HEAD") ||
 		starts_with(refname, "refs/worktree/") ||
 		starts_with(refname, "refs/bisect/") ||
 		starts_with(refname, "refs/rewritten/");
@@ -847,7 +847,7 @@ int should_autocreate_reflog(const char *refname)
 		return starts_with(refname, "refs/heads/") ||
 			starts_with(refname, "refs/remotes/") ||
 			starts_with(refname, "refs/notes/") ||
-			!strcmp(refname, "HEAD");
+			!strcasecmp(refname, "HEAD");
 	default:
 		return 0;
 	}
@@ -855,7 +855,7 @@ int should_autocreate_reflog(const char *refname)
 
 int is_branch(const char *refname)
 {
-	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
+	return !strcasecmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
 }
 
 struct read_ref_at_cb {

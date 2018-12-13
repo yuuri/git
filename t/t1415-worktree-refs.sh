@@ -76,4 +76,13 @@ test_expect_success 'reflog of worktrees/xx/HEAD' '
 	test_cmp expected actual.wt2
 '
 
+test_expect_success 'head, Head, and HEAD are the same in worktree' '
+	test_cmp_rev worktree/foo initial &&
+	git -C wt1 rev-parse HEAD >uc_ref.wt1 &&
+	git -C wt1 rev-parse Head >mc_ref.wt1 &&
+	git -C wt1 rev-parse head >lc_ref.wt1 &&
+	test_cmp uc_ref.wt1 lc_ref.wt1 &&
+	test_cmp uc_ref.wt1 mc_ref.wt1
+'
+
 test_done
