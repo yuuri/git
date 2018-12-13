@@ -244,3 +244,26 @@ void add_i_print_modified(void)
 	free(files);
 	hashmap_free(&s.file_map, 1);
 }
+
+void add_i_show_help(void)
+{
+	const char *help_color = get_color(COLOR_HELP);
+	color_fprintf(stdout, help_color, "%s%s", _("status"), 
+		N_("        - show paths with changes"));
+	printf("\n");
+	color_fprintf(stdout, help_color, "%s%s", _("update"), 
+		N_("        - add working tree state to the staged set of changes"));
+	printf("\n");	
+	color_fprintf(stdout, help_color, "%s%s", _("revert"),
+		N_("        - revert staged set of changes back to the HEAD version"));
+	printf("\n");
+	color_fprintf(stdout, help_color, "%s%s", _("patch"),
+		N_("         - pick hunks and update selectively"));
+	printf("\n");
+	color_fprintf(stdout, help_color, "%s%s", _("diff"),
+		N_("          - view diff between HEAD and index"));
+	printf("\n");
+	color_fprintf(stdout, help_color, "%s%s", _("add untracked"),
+		N_(" - add contents of untracked files to the staged set of changes"));
+	printf("\n");
+}
