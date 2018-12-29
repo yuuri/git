@@ -165,6 +165,19 @@ static int http_schannel_check_revoke = 1;
  */
 static int http_schannel_use_ssl_cainfo;
 
+/*
+ * Where to store the result of http_request.
+ *
+ * At most one of buffer or file can be non-NULL. The buffer and file are not
+ * allocated by http_request, and the caller is responsible for releasing them.
+ */
+struct http_response_dest {
+	struct strbuf *buffer;
+
+	FILE *file;
+	const char *filename;
+};
+
 size_t fread_buffer(char *ptr, size_t eltsize, size_t nmemb, void *buffer_)
 {
 	size_t size = eltsize * nmemb;
@@ -1794,12 +1807,8 @@ static void http_opt_request_remainder(CURL *curl, off_t pos)
 	curl_easy_setopt(curl, CURLOPT_RANGE, buf);
 }
 
-/* http_request() targets */
-#define HTTP_REQUEST_STRBUF	0
-#define HTTP_REQUEST_FILE	1
-
 static int http_request(const char *url,
-			void *result, int target,
+			struct http_response_dest *dest,
 			const struct http_get_options *options)
 {
 	struct active_request_slot *slot;
@@ -1812,21 +1821,23 @@ static int http_request(const char *url,
 	slot = get_active_slot();
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
 
-	if (result == NULL) {
-		curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 1);
-	} else {
+	if (dest->file) {
+		off_t posn = ftello(dest->file);
 		curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
-		curl_easy_setopt(slot->curl, CURLOPT_FILE, result);
-
-		if (target == HTTP_REQUEST_FILE) {
-			off_t posn = ftello(result);
-			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
-					 fwrite);
-			if (posn > 0)
-				http_opt_request_remainder(slot->curl, posn);
-		} else
-			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
-					 fwrite_buffer);
+		curl_easy_setopt(slot->curl, CURLOPT_FILE,
+				 dest->file);
+		curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
+				 fwrite);
+		if (posn > 0)
+			http_opt_request_remainder(slot->curl, posn);
+	} else if (dest->buffer) {
+		curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
+		curl_easy_setopt(slot->curl, CURLOPT_FILE,
+				 dest->buffer);
+		curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
+				 fwrite_buffer);
+	} else {
+		curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 1);
 	}
 
 	accept_language = get_accept_language();
@@ -1930,10 +1941,10 @@ static int update_url_from_redirect(struct strbuf *base,
 }
 
 static int http_request_reauth(const char *url,
-			       void *result, int target,
+			       struct http_response_dest *dest,
 			       struct http_get_options *options)
 {
-	int ret = http_request(url, result, target, options);
+	int ret = http_request(url, dest, options);
 
 	if (ret != HTTP_OK && ret != HTTP_REAUTH)
 		return ret;
@@ -1949,32 +1960,34 @@ static int http_request_reauth(const char *url,
 	if (ret != HTTP_REAUTH)
 		return ret;
 
-	/*
-	 * If we are using KEEP_ERROR, the previous request may have
-	 * put cruft into our output stream; we should clear it out before
-	 * making our next request. We only know how to do this for
-	 * the strbuf case, but that is enough to satisfy current callers.
-	 */
-	if (options && options->keep_error) {
-		switch (target) {
-		case HTTP_REQUEST_STRBUF:
-			strbuf_reset(result);
-			break;
-		default:
-			BUG("HTTP_KEEP_ERROR is only supported with strbufs");
+	if (dest->file) {
+		/*
+		 * At this point, the file contains the response body of the
+		 * previous request. We need to truncate the file.
+		 */
+		FILE *new_file = freopen(dest->filename, "w", dest->file);
+		if (new_file == NULL) {
+			error("Unable to open local file %s", dest->filename);
+			return HTTP_ERROR;
 		}
+		dest->file = new_file;
+	} else if (dest->buffer) {
+		strbuf_reset(dest->buffer);
 	}
 
 	credential_fill(&http_auth);
 
-	return http_request(url, result, target, options);
+	return http_request(url, dest, options);
 }
 
 int http_get_strbuf(const char *url,
-		    struct strbuf *result,
+		    struct strbuf *dest_buffer,
 		    struct http_get_options *options)
 {
-	return http_request_reauth(url, result, HTTP_REQUEST_STRBUF, options);
+	struct http_response_dest dest;
+	dest.file = NULL;
+	dest.buffer = dest_buffer;
+	return http_request_reauth(url, &dest, options);
 }
 
 /*
@@ -1988,18 +2001,20 @@ static int http_get_file(const char *url, const char *filename,
 {
 	int ret;
 	struct strbuf tmpfile = STRBUF_INIT;
-	FILE *result;
+	struct http_response_dest dest;
 
 	strbuf_addf(&tmpfile, "%s.temp", filename);
-	result = fopen(tmpfile.buf, "a");
-	if (!result) {
+	dest.buffer = NULL;
+	dest.file = fopen(tmpfile.buf, "a");
+	if (!dest.file) {
 		error("Unable to open local file %s", tmpfile.buf);
 		ret = HTTP_ERROR;
 		goto cleanup;
 	}
+	dest.filename = tmpfile.buf;
 
-	ret = http_request_reauth(url, result, HTTP_REQUEST_FILE, options);
-	fclose(result);
+	ret = http_request_reauth(url, &dest, options);
+	fclose(dest.file);
 
 	if (ret == HTTP_OK && finalize_object_file(tmpfile.buf, filename))
 		ret = HTTP_ERROR;
