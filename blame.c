@@ -479,7 +479,8 @@ void blame_coalesce(struct blame_scoreboard *sb)
 
 	for (ent = sb->ent; ent && (next = ent->next); ent = next) {
 		if (ent->suspect == next->suspect &&
-		    ent->s_lno + ent->num_lines == next->s_lno) {
+		    ent->s_lno + ent->num_lines == next->s_lno &&
+		    ent->ignored == next->ignored) {
 			ent->num_lines += next->num_lines;
 			ent->next = next->next;
 			blame_origin_decref(next->suspect);
@@ -731,6 +732,8 @@ static void split_overlap(struct blame_entry *split,
 	int chunk_end_lno;
 	memset(split, 0, sizeof(struct blame_entry [3]));
 
+	split[0].ignored = split[1].ignored = split[2].ignored = e->ignored;
+
 	if (e->s_lno < tlno) {
 		/* there is a pre-chunk part not blamed on parent */
 		split[0].suspect = blame_origin_incref(e->suspect);
@@ -867,6 +870,7 @@ static void blame_chunk(struct blame_entry ***dstq, struct blame_entry ***srcq,
 			int len = tlno - e->s_lno;
 			struct blame_entry *n = xcalloc(1, sizeof (struct blame_entry));
 			n->suspect = e->suspect;
+			n->ignored = e->ignored;
 			n->lno = e->lno + len;
 			n->s_lno = e->s_lno + len;
 			n->num_lines = e->num_lines - len;
@@ -921,6 +925,7 @@ static void blame_chunk(struct blame_entry ***dstq, struct blame_entry ***srcq,
 			int len = same - e->s_lno;
 			struct blame_entry *n = xcalloc(1, sizeof (struct blame_entry));
 			n->suspect = blame_origin_incref(e->suspect);
+			n->ignored = e->ignored;
 			n->lno = e->lno + len;
 			n->s_lno = e->s_lno + len;
 			n->num_lines = e->num_lines - len;
@@ -935,6 +940,7 @@ static void blame_chunk(struct blame_entry ***dstq, struct blame_entry ***srcq,
 			blame_origin_decref(e->suspect);
 			e->suspect = blame_origin_incref(parent);
 			e->s_lno += offset;
+			e->ignored = 1;
 			e->next = ignoredp;
 			ignoredp = e;
 		} else {
