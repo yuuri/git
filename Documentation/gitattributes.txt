@@ -343,13 +343,13 @@ automatic line ending conversion based on your platform.
 ------------------------
 
 Use the following attributes if your '*.ps1' files are UTF-16 little
-endian encoded without BOM and you want Git to use Windows line endings
+endian encoded with BOM and you want Git to use Windows line endings
 in the working directory. Please note, it is highly recommended to
 explicitly define the line endings with `eol` if the `working-tree-encoding`
 attribute is used to avoid ambiguity.
 
 ------------------------
-*.ps1		text working-tree-encoding=UTF-16LE eol=CRLF
+*.ps1		text working-tree-encoding=UTF-16LE-BOM eol=CRLF
 ------------------------
 
 You can get a list of all available encodings on your platform with the
