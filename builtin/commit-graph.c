@@ -117,6 +117,11 @@ static int graph_read(int argc, const char **argv)
 		*(unsigned char*)(graph->data + 5),
 		*(unsigned char*)(graph->data + 6),
 		*(unsigned char*)(graph->data + 7));
+
+	if (*(unsigned char *)(graph->data + 4) == 2)
+		printf("hash algorithm: %X\n",
+		       get_be32(graph->data + 8));
+
 	printf("num_commits: %u\n", graph->num_commits);
 	printf("chunks:");
 
