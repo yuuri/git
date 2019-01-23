@@ -68,11 +68,13 @@ int generation_numbers_enabled(struct repository *r);
 #define COMMIT_GRAPH_APPEND     (1 << 0)
 #define COMMIT_GRAPH_PROGRESS   (1 << 1)
 
-int write_commit_graph_reachable(const char *obj_dir, unsigned int flags);
+int write_commit_graph_reachable(const char *obj_dir, unsigned int flags,
+				 unsigned char version);
 int write_commit_graph(const char *obj_dir,
 		       struct string_list *pack_indexes,
 		       struct string_list *commit_hex,
-		       unsigned int flags);
+		       unsigned int flags,
+		       unsigned char version);
 
 int verify_commit_graph(struct repository *r, struct commit_graph *g);
 
