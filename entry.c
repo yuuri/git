@@ -161,7 +161,7 @@ static int remove_available_paths(struct string_list_item *item, void *cb_data)
 	return !available;
 }
 
-int finish_delayed_checkout(struct checkout *state)
+int finish_delayed_checkout(struct checkout *state, int *nr_checkouts)
 {
 	int errs = 0;
 	unsigned delayed_object_count;
@@ -226,7 +226,7 @@ int finish_delayed_checkout(struct checkout *state)
 				ce = index_file_exists(state->istate, path->string,
 						       strlen(path->string), 0);
 				if (ce) {
-					errs |= checkout_entry(ce, state, NULL);
+					errs |= checkout_entry(ce, state, NULL, nr_checkouts);
 					filtered_bytes += ce->ce_stat_data.sd_size;
 					display_throughput(progress, filtered_bytes);
 				} else
@@ -404,7 +404,7 @@ static void mark_colliding_entries(const struct checkout *state,
 {
 	int i, trust_ino = check_stat;
 
-#if defined(GIT_WINDOWS_NATIVE)
+#if defined(GIT_WINDOWS_NATIVE) || defined(__CYGWIN__)
 	trust_ino = 0;
 #endif
 
@@ -419,7 +419,7 @@ static void mark_colliding_entries(const struct checkout *state,
 		if (dup->ce_flags & (CE_MATCHED | CE_VALID | CE_SKIP_WORKTREE))
 			continue;
 
-		if ((trust_ino && dup->ce_stat_data.sd_ino == st->st_ino) ||
+		if ((trust_ino && !match_stat_data(&dup->ce_stat_data, st)) ||
 		    (!trust_ino && !fspathcmp(ce->name, dup->name))) {
 			dup->ce_flags |= CE_MATCHED;
 			break;
@@ -435,8 +435,8 @@ static void mark_colliding_entries(const struct checkout *state,
  * its name is returned in topath[], which must be able to hold at
  * least TEMPORARY_FILENAME_LENGTH bytes long.
  */
-int checkout_entry(struct cache_entry *ce,
-		   const struct checkout *state, char *topath)
+int checkout_entry(struct cache_entry *ce, const struct checkout *state,
+		   char *topath, int *nr_checkouts)
 {
 	static struct strbuf path = STRBUF_INIT;
 	struct stat st;
@@ -506,5 +506,7 @@ int checkout_entry(struct cache_entry *ce,
 		return 0;
 
 	create_directories(path.buf, path.len, state);
+	if (nr_checkouts)
+		(*nr_checkouts)++;
 	return write_entry(ce, path.buf, state, 0);
 }

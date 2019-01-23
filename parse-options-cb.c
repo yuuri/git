@@ -18,20 +18,14 @@ int parse_opt_abbrev_cb(const struct option *opt, const char *arg, int unset)
 	} else {
 		v = strtol(arg, (char **)&arg, 10);
 		if (*arg)
-			return opterror(opt, "expects a numerical value", 0);
+			return error(_("option `%s' expects a numerical value"),
+				     opt->long_name);
 		if (v && v < MINIMUM_ABBREV)
 			v = MINIMUM_ABBREV;
 		else if (v > 40)
 			v = 40;
 	}
 	*(int *)(opt->value) = v;
-	return 0;
-}
-
-int parse_opt_approxidate_cb(const struct option *opt, const char *arg,
-			     int unset)
-{
-	*(timestamp_t *)(opt->value) = approxidate(arg);
 	return 0;
 }
 
@@ -54,8 +48,8 @@ int parse_opt_color_flag_cb(const struct option *opt, const char *arg,
 		arg = unset ? "never" : (const char *)opt->defval;
 	value = git_config_colorbool(NULL, arg);
 	if (value < 0)
-		return opterror(opt,
-			"expects \"always\", \"auto\", or \"never\"", 0);
+		return error(_("option `%s' expects \"always\", \"auto\", or \"never\""),
+			     opt->long_name);
 	*(int *)opt->value = value;
 	return 0;
 }
@@ -64,6 +58,8 @@ int parse_opt_verbosity_cb(const struct option *opt, const char *arg,
 			   int unset)
 {
 	int *target = opt->value;
+
+	BUG_ON_OPT_ARG(arg);
 
 	if (unset)
 		/* --no-quiet, --no-verbose */
@@ -86,6 +82,8 @@ int parse_opt_commits(const struct option *opt, const char *arg, int unset)
 {
 	struct object_id oid;
 	struct commit *commit;
+
+	BUG_ON_OPT_NEG(unset);
 
 	if (!arg)
 		return -1;
@@ -117,6 +115,9 @@ int parse_opt_object_name(const struct option *opt, const char *arg, int unset)
 int parse_opt_tertiary(const struct option *opt, const char *arg, int unset)
 {
 	int *target = opt->value;
+
+	BUG_ON_OPT_ARG(arg);
+
 	*target = unset ? 2 : 1;
 	return 0;
 }

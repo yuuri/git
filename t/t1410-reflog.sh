@@ -20,12 +20,12 @@ check_have () {
 }
 
 check_fsck () {
-	output=$(git fsck --full)
+	git fsck --full >fsck.output
 	case "$1" in
 	'')
-		test -z "$output" ;;
+		test_must_be_empty fsck.output ;;
 	*)
-		echo "$output" | grep "$1" ;;
+		test_i18ngrep "$1" fsck.output ;;
 	esac
 }
 
@@ -365,6 +365,21 @@ test_expect_success 'continue walking past root commits' '
 		test_commit orphan2-1 &&
 		git log -g --format="%gd %gs" >actual &&
 		test_cmp expect actual
+	)
+'
+
+test_expect_success 'expire with multiple worktrees' '
+	git init main-wt &&
+	(
+		cd main-wt &&
+		test_tick &&
+		test_commit foo &&
+		git  worktree add link-wt &&
+		test_tick &&
+		test_commit -C link-wt foobar &&
+		test_tick &&
+		git reflog expire --verbose --all --expire=$test_tick &&
+		test_must_be_empty .git/worktrees/link-wt/logs/HEAD
 	)
 '
 

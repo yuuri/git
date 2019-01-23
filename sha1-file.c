@@ -414,25 +414,21 @@ static void fill_sha1_path(struct strbuf *buf, const unsigned char *sha1)
 	}
 }
 
-void sha1_file_name(struct repository *r, struct strbuf *buf, const unsigned char *sha1)
+static const char *odb_loose_path(struct object_directory *odb,
+				  struct strbuf *buf,
+				  const unsigned char *sha1)
 {
-	strbuf_addstr(buf, r->objects->objectdir);
+	strbuf_reset(buf);
+	strbuf_addstr(buf, odb->path);
 	strbuf_addch(buf, '/');
 	fill_sha1_path(buf, sha1);
-}
-
-struct strbuf *alt_scratch_buf(struct alternate_object_database *alt)
-{
-	strbuf_setlen(&alt->scratch, alt->base_len);
-	return &alt->scratch;
-}
-
-static const char *alt_sha1_path(struct alternate_object_database *alt,
-				 const unsigned char *sha1)
-{
-	struct strbuf *buf = alt_scratch_buf(alt);
-	fill_sha1_path(buf, sha1);
 	return buf->buf;
+}
+
+const char *loose_object_path(struct repository *r, struct strbuf *buf,
+			      const unsigned char *sha1)
+{
+	return odb_loose_path(r->objects->odb, buf, sha1);
 }
 
 /*
@@ -442,7 +438,7 @@ static int alt_odb_usable(struct raw_object_store *o,
 			  struct strbuf *path,
 			  const char *normalized_objdir)
 {
-	struct alternate_object_database *alt;
+	struct object_directory *odb;
 
 	/* Detect cases where alternate disappeared */
 	if (!is_directory(path->buf)) {
@@ -456,8 +452,8 @@ static int alt_odb_usable(struct raw_object_store *o,
 	 * Prevent the common mistake of listing the same
 	 * thing twice, or object directory itself.
 	 */
-	for (alt = o->alt_odb_list; alt; alt = alt->next) {
-		if (!fspathcmp(path->buf, alt->path))
+	for (odb = o->odb; odb; odb = odb->next) {
+		if (!fspathcmp(path->buf, odb->path))
 			return 0;
 	}
 	if (!fspathcmp(path->buf, normalized_objdir))
@@ -470,7 +466,7 @@ static int alt_odb_usable(struct raw_object_store *o,
  * Prepare alternate object database registry.
  *
  * The variable alt_odb_list points at the list of struct
- * alternate_object_database.  The elements on this list come from
+ * object_directory.  The elements on this list come from
  * non-empty elements from colon separated ALTERNATE_DB_ENVIRONMENT
  * environment variable, and $GIT_OBJECT_DIRECTORY/info/alternates,
  * whose contents is similar to that environment variable but can be
@@ -487,7 +483,7 @@ static void read_info_alternates(struct repository *r,
 static int link_alt_odb_entry(struct repository *r, const char *entry,
 	const char *relative_base, int depth, const char *normalized_objdir)
 {
-	struct alternate_object_database *ent;
+	struct object_directory *ent;
 	struct strbuf pathbuf = STRBUF_INIT;
 
 	if (!is_absolute_path(entry) && relative_base) {
@@ -515,11 +511,12 @@ static int link_alt_odb_entry(struct repository *r, const char *entry,
 		return -1;
 	}
 
-	ent = alloc_alt_odb(pathbuf.buf);
+	ent = xcalloc(1, sizeof(*ent));
+	ent->path = xstrdup(pathbuf.buf);
 
 	/* add the alternate entry */
-	*r->objects->alt_odb_tail = ent;
-	r->objects->alt_odb_tail = &(ent->next);
+	*r->objects->odb_tail = ent;
+	r->objects->odb_tail = &(ent->next);
 	ent->next = NULL;
 
 	/* recursively add alternates */
@@ -573,7 +570,7 @@ static void link_alt_odb_entries(struct repository *r, const char *alt,
 		return;
 	}
 
-	strbuf_add_absolute_path(&objdirbuf, r->objects->objectdir);
+	strbuf_add_absolute_path(&objdirbuf, r->objects->odb->path);
 	if (strbuf_normalize_path(&objdirbuf) < 0)
 		die(_("unable to normalize object directory: %s"),
 		    objdirbuf.buf);
@@ -606,18 +603,6 @@ static void read_info_alternates(struct repository *r,
 	link_alt_odb_entries(r, buf.buf, '\n', relative_base, depth);
 	strbuf_release(&buf);
 	free(path);
-}
-
-struct alternate_object_database *alloc_alt_odb(const char *dir)
-{
-	struct alternate_object_database *ent;
-
-	FLEX_ALLOC_STR(ent, path, dir);
-	strbuf_init(&ent->scratch, 0);
-	strbuf_addf(&ent->scratch, "%s/", dir);
-	ent->base_len = ent->scratch.len;
-
-	return ent;
 }
 
 void add_to_alternates_file(const char *reference)
@@ -656,7 +641,7 @@ void add_to_alternates_file(const char *reference)
 		fprintf_or_die(out, "%s\n", reference);
 		if (commit_lock_file(&lock))
 			die_errno(_("unable to move new alternates file into place"));
-		if (the_repository->objects->alt_odb_tail)
+		if (the_repository->objects->loaded_alternates)
 			link_alt_odb_entries(the_repository, reference,
 					     '\n', NULL, 0);
 	}
@@ -752,11 +737,11 @@ out:
 
 int foreach_alt_odb(alt_odb_fn fn, void *cb)
 {
-	struct alternate_object_database *ent;
+	struct object_directory *ent;
 	int r = 0;
 
 	prepare_alt_odb(the_repository);
-	for (ent = the_repository->objects->alt_odb_list; ent; ent = ent->next) {
+	for (ent = the_repository->objects->odb->next; ent; ent = ent->next) {
 		r = fn(ent, cb);
 		if (r)
 			break;
@@ -766,13 +751,13 @@ int foreach_alt_odb(alt_odb_fn fn, void *cb)
 
 void prepare_alt_odb(struct repository *r)
 {
-	if (r->objects->alt_odb_tail)
+	if (r->objects->loaded_alternates)
 		return;
 
-	r->objects->alt_odb_tail = &r->objects->alt_odb_list;
 	link_alt_odb_entries(r, r->objects->alternate_db, PATH_SEP, NULL, 0);
 
-	read_info_alternates(r, r->objects->objectdir, 0);
+	read_info_alternates(r, r->objects->odb->path, 0);
+	r->objects->loaded_alternates = 1;
 }
 
 /* Returns 1 if we have successfully freshened the file, 0 otherwise. */
@@ -799,23 +784,27 @@ int check_and_freshen_file(const char *fn, int freshen)
 	return 1;
 }
 
+static int check_and_freshen_odb(struct object_directory *odb,
+				 const struct object_id *oid,
+				 int freshen)
+{
+	static struct strbuf path = STRBUF_INIT;
+	odb_loose_path(odb, &path, oid->hash);
+	return check_and_freshen_file(path.buf, freshen);
+}
+
 static int check_and_freshen_local(const struct object_id *oid, int freshen)
 {
-	static struct strbuf buf = STRBUF_INIT;
-
-	strbuf_reset(&buf);
-	sha1_file_name(the_repository, &buf, oid->hash);
-
-	return check_and_freshen_file(buf.buf, freshen);
+	return check_and_freshen_odb(the_repository->objects->odb, oid, freshen);
 }
 
 static int check_and_freshen_nonlocal(const struct object_id *oid, int freshen)
 {
-	struct alternate_object_database *alt;
+	struct object_directory *odb;
+
 	prepare_alt_odb(the_repository);
-	for (alt = the_repository->objects->alt_odb_list; alt; alt = alt->next) {
-		const char *path = alt_sha1_path(alt, oid->hash);
-		if (check_and_freshen_file(path, freshen))
+	for (odb = the_repository->objects->odb->next; odb; odb = odb->next) {
+		if (check_and_freshen_odb(odb, oid, freshen))
 			return 1;
 	}
 	return 0;
@@ -901,7 +890,7 @@ int check_object_signature(const struct object_id *oid, void *map,
 		return -1;
 
 	/* Generate the header */
-	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", type_name(obj_type), size) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %"PRIuMAX , type_name(obj_type), (uintmax_t)size) + 1;
 
 	/* Sha1.. */
 	the_hash_algo->init_fn(&c);
@@ -956,25 +945,17 @@ int git_open_cloexec(const char *name, int flags)
  *
  * The "path" out-parameter will give the path of the object we found (if any).
  * Note that it may point to static storage and is only valid until another
- * call to sha1_file_name(), etc.
+ * call to stat_sha1_file().
  */
 static int stat_sha1_file(struct repository *r, const unsigned char *sha1,
 			  struct stat *st, const char **path)
 {
-	struct alternate_object_database *alt;
+	struct object_directory *odb;
 	static struct strbuf buf = STRBUF_INIT;
 
-	strbuf_reset(&buf);
-	sha1_file_name(r, &buf, sha1);
-	*path = buf.buf;
-
-	if (!lstat(*path, st))
-		return 0;
-
 	prepare_alt_odb(r);
-	errno = ENOENT;
-	for (alt = r->objects->alt_odb_list; alt; alt = alt->next) {
-		*path = alt_sha1_path(alt, sha1);
+	for (odb = r->objects->odb; odb; odb = odb->next) {
+		*path = odb_loose_path(odb, &buf, sha1);
 		if (!lstat(*path, st))
 			return 0;
 	}
@@ -990,30 +971,40 @@ static int open_sha1_file(struct repository *r,
 			  const unsigned char *sha1, const char **path)
 {
 	int fd;
-	struct alternate_object_database *alt;
-	int most_interesting_errno;
+	struct object_directory *odb;
+	int most_interesting_errno = ENOENT;
 	static struct strbuf buf = STRBUF_INIT;
 
-	strbuf_reset(&buf);
-	sha1_file_name(r, &buf, sha1);
-	*path = buf.buf;
-
-	fd = git_open(*path);
-	if (fd >= 0)
-		return fd;
-	most_interesting_errno = errno;
-
 	prepare_alt_odb(r);
-	for (alt = r->objects->alt_odb_list; alt; alt = alt->next) {
-		*path = alt_sha1_path(alt, sha1);
+	for (odb = r->objects->odb; odb; odb = odb->next) {
+		*path = odb_loose_path(odb, &buf, sha1);
 		fd = git_open(*path);
 		if (fd >= 0)
 			return fd;
+
 		if (most_interesting_errno == ENOENT)
 			most_interesting_errno = errno;
 	}
 	errno = most_interesting_errno;
 	return -1;
+}
+
+static int quick_has_loose(struct repository *r,
+			   const unsigned char *sha1)
+{
+	int subdir_nr = sha1[0];
+	struct object_id oid;
+	struct object_directory *odb;
+
+	hashcpy(oid.hash, sha1);
+
+	prepare_alt_odb(r);
+	for (odb = r->objects->odb; odb; odb = odb->next) {
+		odb_load_loose_cache(odb, subdir_nr);
+		if (oid_array_lookup(&odb->loose_objects_cache, &oid) >= 0)
+			return 1;
+	}
+	return 0;
 }
 
 /*
@@ -1266,6 +1257,8 @@ static int sha1_loose_object_info(struct repository *r,
 	if (!oi->typep && !oi->type_name && !oi->sizep && !oi->contentp) {
 		const char *path;
 		struct stat st;
+		if (!oi->disk_sizep && (flags & OBJECT_INFO_QUICK))
+			return quick_has_loose(r, sha1) ? 0 : -1;
 		if (stat_sha1_file(r, sha1, &st, &path) < 0)
 			return -1;
 		if (oi->disk_sizep)
@@ -1560,7 +1553,7 @@ static void write_object_file_prepare(const void *buf, unsigned long len,
 	git_hash_ctx c;
 
 	/* Generate the header */
-	*hdrlen = xsnprintf(hdr, *hdrlen, "%s %lu", type, len)+1;
+	*hdrlen = xsnprintf(hdr, *hdrlen, "%s %"PRIuMAX , type, (uintmax_t)len)+1;
 
 	/* Sha1.. */
 	the_hash_algo->init_fn(&c);
@@ -1694,8 +1687,7 @@ static int write_loose_object(const struct object_id *oid, char *hdr,
 	static struct strbuf tmp_file = STRBUF_INIT;
 	static struct strbuf filename = STRBUF_INIT;
 
-	strbuf_reset(&filename);
-	sha1_file_name(the_repository, &filename, oid->hash);
+	loose_object_path(the_repository, &filename, oid->hash);
 
 	fd = create_tmpfile(&tmp_file, filename.buf);
 	if (fd < 0) {
@@ -1826,7 +1818,7 @@ int force_object_loose(const struct object_id *oid, time_t mtime)
 	buf = read_object(oid->hash, &type, &len);
 	if (!buf)
 		return error(_("cannot read sha1_file for %s"), oid_to_hex(oid));
-	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", type_name(type), len) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %"PRIuMAX , type_name(type), (uintmax_t)len) + 1;
 	ret = write_loose_object(oid, hdr, hdrlen, buf, len, mtime);
 	free(buf);
 
@@ -1881,7 +1873,8 @@ static void check_tag(const void *buf, size_t size)
 		die(_("corrupt tag"));
 }
 
-static int index_mem(struct object_id *oid, void *buf, size_t size,
+static int index_mem(struct index_state *istate,
+		     struct object_id *oid, void *buf, size_t size,
 		     enum object_type type,
 		     const char *path, unsigned flags)
 {
@@ -1896,7 +1889,7 @@ static int index_mem(struct object_id *oid, void *buf, size_t size,
 	 */
 	if ((type == OBJ_BLOB) && path) {
 		struct strbuf nbuf = STRBUF_INIT;
-		if (convert_to_git(&the_index, path, buf, size, &nbuf,
+		if (convert_to_git(istate, path, buf, size, &nbuf,
 				   get_conv_flags(flags))) {
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;
@@ -1920,17 +1913,20 @@ static int index_mem(struct object_id *oid, void *buf, size_t size,
 	return ret;
 }
 
-static int index_stream_convert_blob(struct object_id *oid, int fd,
-				     const char *path, unsigned flags)
+static int index_stream_convert_blob(struct index_state *istate,
+				     struct object_id *oid,
+				     int fd,
+				     const char *path,
+				     unsigned flags)
 {
 	int ret;
 	const int write_object = flags & HASH_WRITE_OBJECT;
 	struct strbuf sbuf = STRBUF_INIT;
 
 	assert(path);
-	assert(would_convert_to_git_filter_fd(&the_index, path));
+	assert(would_convert_to_git_filter_fd(istate, path));
 
-	convert_to_git_filter_fd(&the_index, path, fd, &sbuf,
+	convert_to_git_filter_fd(istate, path, fd, &sbuf,
 				 get_conv_flags(flags));
 
 	if (write_object)
@@ -1943,14 +1939,15 @@ static int index_stream_convert_blob(struct object_id *oid, int fd,
 	return ret;
 }
 
-static int index_pipe(struct object_id *oid, int fd, enum object_type type,
+static int index_pipe(struct index_state *istate, struct object_id *oid,
+		      int fd, enum object_type type,
 		      const char *path, unsigned flags)
 {
 	struct strbuf sbuf = STRBUF_INIT;
 	int ret;
 
 	if (strbuf_read(&sbuf, fd, 4096) >= 0)
-		ret = index_mem(oid, sbuf.buf, sbuf.len, type, path, flags);
+		ret = index_mem(istate, oid, sbuf.buf, sbuf.len, type, path, flags);
 	else
 		ret = -1;
 	strbuf_release(&sbuf);
@@ -1959,14 +1956,15 @@ static int index_pipe(struct object_id *oid, int fd, enum object_type type,
 
 #define SMALL_FILE_SIZE (32*1024)
 
-static int index_core(struct object_id *oid, int fd, size_t size,
+static int index_core(struct index_state *istate,
+		      struct object_id *oid, int fd, size_t size,
 		      enum object_type type, const char *path,
 		      unsigned flags)
 {
 	int ret;
 
 	if (!size) {
-		ret = index_mem(oid, "", size, type, path, flags);
+		ret = index_mem(istate, oid, "", size, type, path, flags);
 	} else if (size <= SMALL_FILE_SIZE) {
 		char *buf = xmalloc(size);
 		ssize_t read_result = read_in_full(fd, buf, size);
@@ -1977,11 +1975,11 @@ static int index_core(struct object_id *oid, int fd, size_t size,
 			ret = error(_("short read while indexing %s"),
 				    path ? path : "<unknown>");
 		else
-			ret = index_mem(oid, buf, size, type, path, flags);
+			ret = index_mem(istate, oid, buf, size, type, path, flags);
 		free(buf);
 	} else {
 		void *buf = xmmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-		ret = index_mem(oid, buf, size, type, path, flags);
+		ret = index_mem(istate, oid, buf, size, type, path, flags);
 		munmap(buf, size);
 	}
 	return ret;
@@ -2009,7 +2007,8 @@ static int index_stream(struct object_id *oid, int fd, size_t size,
 	return index_bulk_checkin(oid, fd, size, type, path, flags);
 }
 
-int index_fd(struct object_id *oid, int fd, struct stat *st,
+int index_fd(struct index_state *istate, struct object_id *oid,
+	     int fd, struct stat *st,
 	     enum object_type type, const char *path, unsigned flags)
 {
 	int ret;
@@ -2018,14 +2017,14 @@ int index_fd(struct object_id *oid, int fd, struct stat *st,
 	 * Call xsize_t() only when needed to avoid potentially unnecessary
 	 * die() for large files.
 	 */
-	if (type == OBJ_BLOB && path && would_convert_to_git_filter_fd(&the_index, path))
-		ret = index_stream_convert_blob(oid, fd, path, flags);
+	if (type == OBJ_BLOB && path && would_convert_to_git_filter_fd(istate, path))
+		ret = index_stream_convert_blob(istate, oid, fd, path, flags);
 	else if (!S_ISREG(st->st_mode))
-		ret = index_pipe(oid, fd, type, path, flags);
+		ret = index_pipe(istate, oid, fd, type, path, flags);
 	else if (st->st_size <= big_file_threshold || type != OBJ_BLOB ||
-		 (path && would_convert_to_git(&the_index, path)))
-		ret = index_core(oid, fd, xsize_t(st->st_size), type, path,
-				 flags);
+		 (path && would_convert_to_git(istate, path)))
+		ret = index_core(istate, oid, fd, xsize_t(st->st_size),
+				 type, path, flags);
 	else
 		ret = index_stream(oid, fd, xsize_t(st->st_size), type, path,
 				   flags);
@@ -2033,7 +2032,8 @@ int index_fd(struct object_id *oid, int fd, struct stat *st,
 	return ret;
 }
 
-int index_path(struct object_id *oid, const char *path, struct stat *st, unsigned flags)
+int index_path(struct index_state *istate, struct object_id *oid,
+	       const char *path, struct stat *st, unsigned flags)
 {
 	int fd;
 	struct strbuf sb = STRBUF_INIT;
@@ -2044,7 +2044,7 @@ int index_path(struct object_id *oid, const char *path, struct stat *st, unsigne
 		fd = open(path, O_RDONLY);
 		if (fd < 0)
 			return error_errno("open(\"%s\")", path);
-		if (index_fd(oid, fd, st, OBJ_BLOB, path, flags) < 0)
+		if (index_fd(istate, oid, fd, st, OBJ_BLOB, path, flags) < 0)
 			return error(_("%s: failed to insert into database"),
 				     path);
 		break;
@@ -2194,43 +2194,50 @@ int for_each_loose_file_in_objdir(const char *path,
 	return r;
 }
 
-struct loose_alt_odb_data {
-	each_loose_object_fn *cb;
-	void *data;
-};
-
-static int loose_from_alt_odb(struct alternate_object_database *alt,
-			      void *vdata)
-{
-	struct loose_alt_odb_data *data = vdata;
-	struct strbuf buf = STRBUF_INIT;
-	int r;
-
-	strbuf_addstr(&buf, alt->path);
-	r = for_each_loose_file_in_objdir_buf(&buf,
-					      data->cb, NULL, NULL,
-					      data->data);
-	strbuf_release(&buf);
-	return r;
-}
-
 int for_each_loose_object(each_loose_object_fn cb, void *data,
 			  enum for_each_object_flags flags)
 {
-	struct loose_alt_odb_data alt;
-	int r;
+	struct object_directory *odb;
 
-	r = for_each_loose_file_in_objdir(get_object_directory(),
-					  cb, NULL, NULL, data);
-	if (r)
-		return r;
+	prepare_alt_odb(the_repository);
+	for (odb = the_repository->objects->odb; odb; odb = odb->next) {
+		int r = for_each_loose_file_in_objdir(odb->path, cb, NULL,
+						      NULL, data);
+		if (r)
+			return r;
 
-	if (flags & FOR_EACH_OBJECT_LOCAL_ONLY)
-		return 0;
+		if (flags & FOR_EACH_OBJECT_LOCAL_ONLY)
+			break;
+	}
 
-	alt.cb = cb;
-	alt.data = data;
-	return foreach_alt_odb(loose_from_alt_odb, &alt);
+	return 0;
+}
+
+static int append_loose_object(const struct object_id *oid, const char *path,
+			       void *data)
+{
+	oid_array_append(data, oid);
+	return 0;
+}
+
+void odb_load_loose_cache(struct object_directory *odb, int subdir_nr)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	if (subdir_nr < 0 ||
+	    subdir_nr >= ARRAY_SIZE(odb->loose_objects_subdir_seen))
+		BUG("subdir_nr out of range");
+
+	if (odb->loose_objects_subdir_seen[subdir_nr])
+		return;
+
+	strbuf_addstr(&buf, odb->path);
+	for_each_file_in_obj_subdir(subdir_nr, &buf,
+				    append_loose_object,
+				    NULL, NULL,
+				    &odb->loose_objects_cache);
+	odb->loose_objects_subdir_seen[subdir_nr] = 1;
+	strbuf_release(&buf);
 }
 
 static int check_stream_sha1(git_zstream *stream,
@@ -2259,7 +2266,8 @@ static int check_stream_sha1(git_zstream *stream,
 	 * see the comment in unpack_sha1_rest for details.
 	 */
 	while (total_read <= size &&
-	       (status == Z_OK || status == Z_BUF_ERROR)) {
+	       (status == Z_OK ||
+		(status == Z_BUF_ERROR && !stream->avail_out))) {
 		stream->next_out = buf;
 		stream->avail_out = sizeof(buf);
 		if (size - total_read < stream->avail_out)

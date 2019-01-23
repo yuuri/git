@@ -41,23 +41,17 @@ const char *git_attr_name(const struct git_attr *attr)
 
 struct attr_hashmap {
 	struct hashmap map;
-#ifndef NO_PTHREADS
 	pthread_mutex_t mutex;
-#endif
 };
 
 static inline void hashmap_lock(struct attr_hashmap *map)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_lock(&map->mutex);
-#endif
 }
 
 static inline void hashmap_unlock(struct attr_hashmap *map)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_unlock(&map->mutex);
-#endif
 }
 
 /*
@@ -372,8 +366,8 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 	if (strlen(ATTRIBUTE_MACRO_PREFIX) < namelen &&
 	    starts_with(name, ATTRIBUTE_MACRO_PREFIX)) {
 		if (!macro_ok) {
-			fprintf(stderr, "%s not allowed: %s:%d\n",
-				name, src, lineno);
+			fprintf_ln(stderr, _("%s not allowed: %s:%d"),
+				   name, src, lineno);
 			goto fail_return;
 		}
 		is_macro = 1;
@@ -498,23 +492,17 @@ static struct check_vector {
 	size_t nr;
 	size_t alloc;
 	struct attr_check **checks;
-#ifndef NO_PTHREADS
 	pthread_mutex_t mutex;
-#endif
 } check_vector;
 
 static inline void vector_lock(void)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_lock(&check_vector.mutex);
-#endif
 }
 
 static inline void vector_unlock(void)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_unlock(&check_vector.mutex);
-#endif
 }
 
 static void check_vector_add(struct attr_check *c)
@@ -1181,8 +1169,6 @@ void git_all_attrs(const struct index_state *istate,
 
 void attr_start(void)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_init(&g_attr_hashmap.mutex, NULL);
 	pthread_mutex_init(&check_vector.mutex, NULL);
-#endif
 }

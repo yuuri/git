@@ -5,6 +5,8 @@
 #include "thread-utils.h"
 #include "pack.h"
 
+struct repository;
+
 #define DEFAULT_DELTA_CACHE_SIZE (256 * 1024 * 1024)
 
 #define OE_DFS_STATE_BITS	2
@@ -127,6 +129,7 @@ struct object_entry {
 };
 
 struct packing_data {
+	struct repository *repo;
 	struct object_entry *objects;
 	uint32_t nr_objects, nr_alloc;
 
@@ -145,9 +148,7 @@ struct packing_data {
 	struct packed_git **in_pack_by_idx;
 	struct packed_git **in_pack;
 
-#ifndef NO_PTHREADS
 	pthread_mutex_t lock;
-#endif
 
 	/*
 	 * This list contains entries for bases which we know the other side
@@ -165,19 +166,15 @@ struct packing_data {
 	unsigned char *layer;
 };
 
-void prepare_packing_data(struct packing_data *pdata);
+void prepare_packing_data(struct repository *r, struct packing_data *pdata);
 
 static inline void packing_data_lock(struct packing_data *pdata)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_lock(&pdata->lock);
-#endif
 }
 static inline void packing_data_unlock(struct packing_data *pdata)
 {
-#ifndef NO_PTHREADS
 	pthread_mutex_unlock(&pdata->lock);
-#endif
 }
 
 struct object_entry *packlist_alloc(struct packing_data *pdata,
@@ -377,7 +374,7 @@ static inline unsigned long oe_delta_size(struct packing_data *pack,
 		return e->delta_size_;
 
 	/*
-	 * pack->detla_size[] can't be NULL because oe_set_delta_size()
+	 * pack->delta_size[] can't be NULL because oe_set_delta_size()
 	 * must have been called when a new delta is saved with
 	 * oe_set_delta().
 	 * If oe_delta() returns NULL (i.e. default state, which means
@@ -418,7 +415,7 @@ static inline void oe_set_tree_depth(struct packing_data *pack,
 				     unsigned int tree_depth)
 {
 	if (!pack->tree_depth)
-		ALLOC_ARRAY(pack->tree_depth, pack->nr_objects);
+		CALLOC_ARRAY(pack->tree_depth, pack->nr_alloc);
 	pack->tree_depth[e - pack->objects] = tree_depth;
 }
 
@@ -435,7 +432,7 @@ static inline void oe_set_layer(struct packing_data *pack,
 				unsigned char layer)
 {
 	if (!pack->layer)
-		ALLOC_ARRAY(pack->layer, pack->nr_objects);
+		CALLOC_ARRAY(pack->layer, pack->nr_alloc);
 	pack->layer[e - pack->objects] = layer;
 }
 

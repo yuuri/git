@@ -44,6 +44,7 @@ struct checkout_opts {
 	int ignore_skipworktree;
 	int ignore_other_worktrees;
 	int show_progress;
+	int count_checkout_paths;
 	/*
 	 * If new checkout options are added, skip_merge_working_tree
 	 * should be updated accordingly.
@@ -115,7 +116,8 @@ static int update_some(const struct object_id *oid, struct strbuf *base,
 
 static int read_tree_some(struct tree *tree, const struct pathspec *pathspec)
 {
-	read_tree_recursive(tree, "", 0, 0, pathspec, update_some, NULL);
+	read_tree_recursive(the_repository, tree, "", 0, 0,
+			    pathspec, update_some, NULL);
 
 	/* update the index with the given tree's info
 	 * for all args, expanding wildcards, and exit
@@ -165,12 +167,13 @@ static int check_stages(unsigned stages, const struct cache_entry *ce, int pos)
 }
 
 static int checkout_stage(int stage, const struct cache_entry *ce, int pos,
-			  const struct checkout *state)
+			  const struct checkout *state, int *nr_checkouts)
 {
 	while (pos < active_nr &&
 	       !strcmp(active_cache[pos]->name, ce->name)) {
 		if (ce_stage(active_cache[pos]) == stage)
-			return checkout_entry(active_cache[pos], state, NULL);
+			return checkout_entry(active_cache[pos], state,
+					      NULL, nr_checkouts);
 		pos++;
 	}
 	if (stage == 2)
@@ -179,7 +182,7 @@ static int checkout_stage(int stage, const struct cache_entry *ce, int pos,
 		return error(_("path '%s' does not have their version"), ce->name);
 }
 
-static int checkout_merged(int pos, const struct checkout *state)
+static int checkout_merged(int pos, const struct checkout *state, int *nr_checkouts)
 {
 	struct cache_entry *ce = active_cache[pos];
 	const char *path = ce->name;
@@ -214,7 +217,8 @@ static int checkout_merged(int pos, const struct checkout *state)
 	 * merge.renormalize set, too
 	 */
 	status = ll_merge(&result_buf, path, &ancestor, "base",
-			  &ours, "ours", &theirs, "theirs", NULL);
+			  &ours, "ours", &theirs, "theirs",
+			  state->istate, NULL);
 	free(ancestor.ptr);
 	free(ours.ptr);
 	free(theirs.ptr);
@@ -241,7 +245,7 @@ static int checkout_merged(int pos, const struct checkout *state)
 	ce = make_transient_cache_entry(mode, &oid, path, 2);
 	if (!ce)
 		die(_("make_cache_entry failed for path '%s'"), path);
-	status = checkout_entry(ce, state, NULL);
+	status = checkout_entry(ce, state, NULL, nr_checkouts);
 	discard_cache_entry(ce);
 	return status;
 }
@@ -256,6 +260,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	struct commit *head;
 	int errs = 0;
 	struct lock_file lock_file = LOCK_INIT;
+	int nr_checkouts = 0;
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
 		die(_("'%s' cannot be used with updating paths"), "--track");
@@ -370,17 +375,36 @@ static int checkout_paths(const struct checkout_opts *opts,
 		struct cache_entry *ce = active_cache[pos];
 		if (ce->ce_flags & CE_MATCHED) {
 			if (!ce_stage(ce)) {
-				errs |= checkout_entry(ce, &state, NULL);
+				errs |= checkout_entry(ce, &state,
+						       NULL, &nr_checkouts);
 				continue;
 			}
 			if (opts->writeout_stage)
-				errs |= checkout_stage(opts->writeout_stage, ce, pos, &state);
+				errs |= checkout_stage(opts->writeout_stage,
+						       ce, pos,
+						       &state, &nr_checkouts);
 			else if (opts->merge)
-				errs |= checkout_merged(pos, &state);
+				errs |= checkout_merged(pos, &state,
+							&nr_checkouts);
 			pos = skip_same_name(ce, pos) - 1;
 		}
 	}
-	errs |= finish_delayed_checkout(&state);
+	errs |= finish_delayed_checkout(&state, &nr_checkouts);
+
+	if (opts->count_checkout_paths) {
+		if (opts->source_tree)
+			fprintf_ln(stderr, Q_("Checked out %d path out of %s",
+					      "Checked out %d paths out of %s",
+					      nr_checkouts),
+				   nr_checkouts,
+				   find_unique_abbrev(&opts->source_tree->object.oid,
+						      DEFAULT_ABBREV));
+		else
+			fprintf_ln(stderr, Q_("Checked out %d path out of the index",
+					      "Checked out %d paths out of the index",
+					      nr_checkouts),
+				   nr_checkouts);
+	}
 
 	if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
@@ -397,7 +421,7 @@ static void show_local_changes(struct object *head,
 {
 	struct rev_info rev;
 	/* I think we want full paths, even if we're in a subdirectory. */
-	init_revisions(&rev, NULL);
+	repo_init_revisions(the_repository, &rev, NULL);
 	rev.diffopt.flags = opts->flags;
 	rev.diffopt.output_format |= DIFF_FORMAT_NAME_STATUS;
 	diff_setup_done(&rev.diffopt);
@@ -497,7 +521,8 @@ static int skip_merge_working_tree(const struct checkout_opts *opts,
 	 * We must do the merge if we are actually moving to a new commit.
 	 */
 	if (!old_branch_info->commit || !new_branch_info->commit ||
-		oidcmp(&old_branch_info->commit->object.oid, &new_branch_info->commit->object.oid))
+		!oideq(&old_branch_info->commit->object.oid,
+		       &new_branch_info->commit->object.oid))
 		return 0;
 
 	/*
@@ -751,7 +776,8 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 			free(refname);
 		}
 		else
-			create_branch(opts->new_branch, new_branch_info->name,
+			create_branch(the_repository,
+				      opts->new_branch, new_branch_info->name,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_log,
@@ -809,7 +835,7 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 				delete_reflog(old_branch_info->path);
 		}
 	}
-	remove_branch_state();
+	remove_branch_state(the_repository);
 	strbuf_release(&msg);
 	if (!opts->quiet &&
 	    (new_branch_info->path || (!opts->force_detach && !strcmp(new_branch_info->name, "HEAD"))))
@@ -898,7 +924,7 @@ static void orphaned_commit_warning(struct commit *old_commit, struct commit *ne
 	struct rev_info revs;
 	struct object *object = &old_commit->object;
 
-	init_revisions(&revs, NULL);
+	repo_init_revisions(the_repository, &revs, NULL);
 	setup_revisions(0, NULL, &revs, NULL);
 
 	object->flags &= ~UNINTERESTING;
@@ -1062,6 +1088,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 		has_dash_dash = 1; /* case (3) or (1) */
 	else if (dash_dash_pos >= 2)
 		die(_("only one reference expected, %d given."), dash_dash_pos);
+	opts->count_checkout_paths = !opts->quiet && !has_dash_dash;
 
 	if (!strcmp(arg, "-"))
 		arg = "@{-1}";
@@ -1077,9 +1104,12 @@ static int parse_branchname_arg(int argc, const char **argv,
 		 */
 		int recover_with_dwim = dwim_new_local_branch_ok;
 
-		if (!has_dash_dash &&
-		    (check_filename(opts->prefix, arg) || !no_wildcard(arg)))
+		int could_be_checkout_paths = !has_dash_dash &&
+			check_filename(opts->prefix, arg);
+
+		if (!has_dash_dash && !no_wildcard(arg))
 			recover_with_dwim = 0;
+
 		/*
 		 * Accept "git checkout foo" and "git checkout foo --"
 		 * as candidates for dwim.
@@ -1092,6 +1122,10 @@ static int parse_branchname_arg(int argc, const char **argv,
 			const char *remote = unique_tracking_name(arg, rev,
 								  dwim_remotes_matched);
 			if (remote) {
+				if (could_be_checkout_paths)
+					die(_("'%s' could be both a local file and a tracking branch.\n"
+					      "Please use -- (and optionally --no-guess) to disambiguate"),
+					    arg);
 				*new_branch = arg;
 				arg = remote;
 				/* DWIMmed to create local branch, case (3).(b) */
@@ -1226,7 +1260,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	struct checkout_opts opts;
 	struct branch_info new_branch_info;
 	char *conflict_style = NULL;
-	int dwim_new_local_branch = 1;
+	int dwim_new_local_branch, no_dwim_new_local_branch = 0;
 	int dwim_remotes_matched = 0;
 	struct option options[] = {
 		OPT__QUIET(&opts.quiet, N_("suppress progress reporting")),
@@ -1256,8 +1290,8 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('p', "patch", &opts.patch_mode, N_("select hunks interactively")),
 		OPT_BOOL(0, "ignore-skip-worktree-bits", &opts.ignore_skipworktree,
 			 N_("do not limit pathspecs to sparse entries only")),
-		OPT_HIDDEN_BOOL(0, "guess", &dwim_new_local_branch,
-				N_("second guess 'git checkout <no-such-branch>'")),
+		OPT_BOOL(0, "no-guess", &no_dwim_new_local_branch,
+			 N_("do not second guess 'git checkout <no-such-branch>'")),
 		OPT_BOOL(0, "ignore-other-worktrees", &opts.ignore_other_worktrees,
 			 N_("do not check if another worktree is holding the given ref")),
 		{ OPTION_CALLBACK, 0, "recurse-submodules", NULL,
@@ -1280,6 +1314,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, checkout_usage,
 			     PARSE_OPT_KEEP_DASHDASH);
 
+	dwim_new_local_branch = !no_dwim_new_local_branch;
 	if (opts.show_progress < 0) {
 		if (opts.quiet)
 			opts.show_progress = 0;

@@ -19,10 +19,12 @@ end of a line is ignored.  See *perlsyn*(1) for details.
 
 An example:
 
-    # gitweb configuration file for http://git.example.org
-    #
-    our $projectroot = "/srv/git"; # FHS recommendation
-    our $site_name = 'Example.org >> Repos';
+------------------------------------------------
+# gitweb configuration file for http://git.example.org
+#
+our $projectroot = "/srv/git"; # FHS recommendation
+our $site_name = 'Example.org >> Repos';
+------------------------------------------------
 
 
 The configuration file is used to override the default settings that
@@ -205,8 +207,8 @@ subsection on linkgit:gitweb[1] manpage.
 
 $strict_export::
 	Only allow viewing of repositories also shown on the overview page.
-	This for example makes `$gitweb_export_ok` file decide if repository is
-	available and not only if it is shown.  If `$gitweb_list` points to
+	This for example makes `$export_ok` file decide if repository is
+	available and not only if it is shown.  If `$projects_list` points to
 	file with list of project, only those repositories listed would be
 	available for gitweb.  Can be set during building gitweb via
 	`GITWEB_STRICT_EXPORT`.  By default this variable is not set, which
@@ -357,6 +359,7 @@ $home_link_str::
 +
 For example, the following setting produces a breadcrumb trail like
 "home / dev / projects / ..." where "projects" is the home link.
++
 ----------------------------------------------------------------------------
     our @extra_breadcrumbs = (
       [ 'home' => 'https://www.example.org/' ],
@@ -681,7 +684,7 @@ compressed tar archive) and "zip"; please consult gitweb sources for
 a definitive list.  By default only "tgz" is offered.
 +
 This feature can be configured on a per-repository basis via
-repository's `gitweb.blame` configuration variable, which contains
+repository's `gitweb.snapshot` configuration variable, which contains
 a comma separated list of formats or "none" to disable snapshots.
 Unknown values are ignored.
 
@@ -901,14 +904,16 @@ To enable blame, pickaxe search, and snapshot support (allowing "tar.gz" and
 "zip" snapshots), while allowing individual projects to turn them off, put
 the following in your GITWEB_CONFIG file:
 
-	$feature{'blame'}{'default'} = [1];
-	$feature{'blame'}{'override'} = 1;
+--------------------------------------------------------------------------------
+$feature{'blame'}{'default'} = [1];
+$feature{'blame'}{'override'} = 1;
 
-	$feature{'pickaxe'}{'default'} = [1];
-	$feature{'pickaxe'}{'override'} = 1;
+$feature{'pickaxe'}{'default'} = [1];
+$feature{'pickaxe'}{'override'} = 1;
 
-	$feature{'snapshot'}{'default'} = ['zip', 'tgz'];
-	$feature{'snapshot'}{'override'} = 1;
+$feature{'snapshot'}{'default'} = ['zip', 'tgz'];
+$feature{'snapshot'}{'override'} = 1;
+--------------------------------------------------------------------------------
 
 If you allow overriding for the snapshot feature, you can specify which
 snapshot formats are globally disabled. You can also add any command-line

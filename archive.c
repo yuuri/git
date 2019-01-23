@@ -29,9 +29,15 @@ void register_archiver(struct archiver *ar)
 	archivers[nr_archivers++] = ar;
 }
 
+void init_archivers(void)
+{
+	init_tar_archiver();
+	init_zip_archiver();
+}
+
 static void format_subst(const struct commit *commit,
-                         const char *src, size_t len,
-                         struct strbuf *buf)
+			 const char *src, size_t len,
+			 struct strbuf *buf)
 {
 	char *to_free = NULL;
 	struct strbuf fmt = STRBUF_INIT;
@@ -279,7 +285,8 @@ int write_archive_entries(struct archiver_args *args,
 		git_attr_set_direction(GIT_ATTR_INDEX);
 	}
 
-	err = read_tree_recursive(args->tree, "", 0, 0, &args->pathspec,
+	err = read_tree_recursive(args->repo, args->tree, "",
+				  0, 0, &args->pathspec,
 				  queue_or_write_archive_entry,
 				  &context);
 	if (err == READ_TREE_RECURSIVE)
@@ -340,7 +347,8 @@ static int path_exists(struct archiver_args *args, const char *path)
 	ctx.args = args;
 	parse_pathspec(&ctx.pathspec, 0, 0, "", paths);
 	ctx.pathspec.recursive = 1;
-	ret = read_tree_recursive(args->tree, "", 0, 0, &ctx.pathspec,
+	ret = read_tree_recursive(args->repo, args->tree, "",
+				  0, 0, &ctx.pathspec,
 				  reject_entry, &ctx);
 	clear_pathspec(&ctx.pathspec);
 	return ret != 0;
@@ -385,14 +393,14 @@ static void parse_treeish_arg(const char **argv,
 		int refnamelen = colon - name;
 
 		if (!dwim_ref(name, refnamelen, &oid, &ref))
-			die("no such ref: %.*s", refnamelen, name);
+			die(_("no such ref: %.*s"), refnamelen, name);
 		free(ref);
 	}
 
 	if (get_oid(name, &oid))
-		die("Not a valid object name");
+		die(_("not a valid object name: %s"), name);
 
-	commit = lookup_commit_reference_gently(the_repository, &oid, 1);
+	commit = lookup_commit_reference_gently(ar_args->repo, &oid, 1);
 	if (commit) {
 		commit_sha1 = commit->object.oid.hash;
 		archive_time = commit->date;
@@ -403,7 +411,7 @@ static void parse_treeish_arg(const char **argv,
 
 	tree = parse_tree_indirect(&oid);
 	if (tree == NULL)
-		die("not a tree object");
+		die(_("not a tree object: %s"), oid_to_hex(&oid));
 
 	if (prefix) {
 		struct object_id tree_oid;
@@ -413,7 +421,7 @@ static void parse_treeish_arg(const char **argv,
 		err = get_tree_entry(&tree->object.oid, prefix, &tree_oid,
 				     &mode);
 		if (err || !S_ISDIR(mode))
-			die("current working directory is untracked");
+			die(_("current working directory is untracked"));
 
 		tree = parse_tree_indirect(&tree_oid);
 	}
@@ -530,9 +538,6 @@ int write_archive(int argc, const char **argv, const char *prefix,
 
 	git_config_get_bool("uploadarchive.allowunreachable", &remote_allow_unreachable);
 	git_config(git_default_config, NULL);
-
-	init_tar_archiver();
-	init_zip_archiver();
 
 	args.repo = repo;
 	argc = parse_archive_args(argc, argv, &ar, &args, name_hint, remote);

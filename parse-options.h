@@ -150,9 +150,6 @@ struct option {
 				      (h), 0, &parse_opt_string_list }
 #define OPT_UYN(s, l, v, h)         { OPTION_CALLBACK, (s), (l), (v), NULL, \
 				      (h), PARSE_OPT_NOARG, &parse_opt_tertiary }
-#define OPT_DATE(s, l, v, h) \
-	{ OPTION_CALLBACK, (s), (l), (v), N_("time"),(h), 0,	\
-	  parse_opt_approxidate_cb }
 #define OPT_EXPIRY_DATE(s, l, v, h) \
 	{ OPTION_CALLBACK, (s), (l), (v), N_("expiry-date"),(h), 0,	\
 	  parse_opt_expiry_date_cb }
@@ -178,25 +175,37 @@ struct option {
  * Returns the number of arguments left in argv[].
  */
 extern int parse_options(int argc, const char **argv, const char *prefix,
-                         const struct option *options,
-                         const char * const usagestr[], int flags);
+			 const struct option *options,
+			 const char * const usagestr[], int flags);
 
 extern NORETURN void usage_with_options(const char * const *usagestr,
-                                        const struct option *options);
+					const struct option *options);
 
 extern NORETURN void usage_msg_opt(const char *msg,
 				   const char * const *usagestr,
 				   const struct option *options);
 
 extern int optbug(const struct option *opt, const char *reason);
-extern int opterror(const struct option *opt, const char *reason, int flags);
-#if defined(__GNUC__)
-#define opterror(o,r,f) (opterror((o),(r),(f)), const_error())
-#endif
+const char *optname(const struct option *opt, int flags);
+
+/*
+ * Use these assertions for callbacks that expect to be called with NONEG and
+ * NOARG respectively, and do not otherwise handle the "unset" and "arg"
+ * parameters.
+ */
+#define BUG_ON_OPT_NEG(unset) do { \
+	if ((unset)) \
+		BUG("option callback does not expect negation"); \
+} while (0)
+#define BUG_ON_OPT_ARG(arg) do { \
+	if ((arg)) \
+		BUG("option callback does not expect an argument"); \
+} while (0)
 
 /*----- incremental advanced APIs -----*/
 
 enum {
+	PARSE_OPT_COMPLETE = -2,
 	PARSE_OPT_HELP = -1,
 	PARSE_OPT_DONE,
 	PARSE_OPT_NON_OPTION,
@@ -232,7 +241,6 @@ extern struct option *parse_options_concat(struct option *a, struct option *b);
 
 /*----- some often used options -----*/
 extern int parse_opt_abbrev_cb(const struct option *, const char *, int);
-extern int parse_opt_approxidate_cb(const struct option *, const char *, int);
 extern int parse_opt_expiry_date_cb(const struct option *, const char *, int);
 extern int parse_opt_color_flag_cb(const struct option *, const char *, int);
 extern int parse_opt_verbosity_cb(const struct option *, const char *, int);

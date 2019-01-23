@@ -487,7 +487,7 @@ test_clone_url () {
 	expect_ssh "$@"
 }
 
-test_expect_success !MINGW 'clone c:temp is ssl' '
+test_expect_success !MINGW,!CYGWIN 'clone c:temp is ssl' '
 	test_clone_url c:temp c temp
 '
 
@@ -628,7 +628,7 @@ test_expect_success 'clone on case-insensitive fs' '
 	)
 '
 
-test_expect_success !MINGW,!CYGWIN,CASE_INSENSITIVE_FS 'colliding file detection' '
+test_expect_success CASE_INSENSITIVE_FS 'colliding file detection' '
 	grep X icasefs/warning &&
 	grep x icasefs/warning &&
 	test_i18ngrep "the following paths have collided" icasefs/warning

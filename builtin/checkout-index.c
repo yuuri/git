@@ -67,7 +67,8 @@ static int checkout_file(const char *name, const char *prefix)
 			continue;
 		did_checkout = 1;
 		if (checkout_entry(ce, &state,
-		    to_tempfile ? topath[ce_stage(ce)] : NULL) < 0)
+				   to_tempfile ? topath[ce_stage(ce)] : NULL,
+				   NULL) < 0)
 			errs++;
 	}
 
@@ -111,7 +112,8 @@ static void checkout_all(const char *prefix, int prefix_length)
 				write_tempfile_record(last_ce->name, prefix);
 		}
 		if (checkout_entry(ce, &state,
-		    to_tempfile ? topath[ce_stage(ce)] : NULL) < 0)
+				   to_tempfile ? topath[ce_stage(ce)] : NULL,
+				   NULL) < 0)
 			errs++;
 		last_ce = ce;
 	}
@@ -132,6 +134,8 @@ static const char * const builtin_checkout_index_usage[] = {
 static int option_parse_stage(const struct option *opt,
 			      const char *arg, int unset)
 {
+	BUG_ON_OPT_NEG(unset);
+
 	if (!strcmp(arg, "all")) {
 		to_tempfile = 1;
 		checkout_stage = CHECKOUT_ALL;

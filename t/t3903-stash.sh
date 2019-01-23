@@ -36,7 +36,7 @@ EOF
 test_expect_success 'parents of stash' '
 	test $(git rev-parse stash^) = $(git rev-parse HEAD) &&
 	git diff stash^2..stash > output &&
-	test_cmp output expect
+	test_cmp expect output
 '
 
 test_expect_success 'applying bogus stash does nothing' '
@@ -210,9 +210,9 @@ test_expect_success 'stash branch' '
 	test refs/heads/stashbranch = $(git symbolic-ref HEAD) &&
 	test $(git rev-parse HEAD) = $(git rev-parse master^) &&
 	git diff --cached > output &&
-	test_cmp output expect &&
+	test_cmp expect output &&
 	git diff > output &&
-	test_cmp output expect1 &&
+	test_cmp expect1 output &&
 	git add file &&
 	git commit -m alternate\ second &&
 	git diff master..stashbranch > output &&
@@ -710,7 +710,7 @@ test_expect_success 'stash where working directory contains "HEAD" file' '
 	git diff-index --cached --quiet HEAD &&
 	test "$(git rev-parse stash^)" = "$(git rev-parse HEAD)" &&
 	git diff stash^..stash > output &&
-	test_cmp output expect
+	test_cmp expect output
 '
 
 test_expect_success 'store called with invalid commit' '
@@ -1094,6 +1094,34 @@ test_expect_success 'stash -- <subdir> works with binary files' '
 	test_path_is_file subdir/tracked &&
 	test_path_is_file subdir/tracked-binary &&
 	test_path_is_file subdir/untracked
+'
+
+test_expect_success 'stash works when user.name and user.email are not set' '
+	git reset &&
+	>1 &&
+	git add 1 &&
+	echo "$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>" >expect &&
+	git stash &&
+	git show -s --format="%an <%ae>" refs/stash >actual &&
+	test_cmp expect actual &&
+	>2 &&
+	git add 2 &&
+	test_config user.useconfigonly true &&
+	test_config stash.usebuiltin true &&
+	(
+		sane_unset GIT_AUTHOR_NAME &&
+		sane_unset GIT_AUTHOR_EMAIL &&
+		sane_unset GIT_COMMITTER_NAME &&
+		sane_unset GIT_COMMITTER_EMAIL &&
+		test_unconfig user.email &&
+		test_unconfig user.name &&
+		test_must_fail git commit -m "should fail" &&
+		echo "git stash <git@stash>" >expect &&
+		>2 &&
+		git stash &&
+		git show -s --format="%an <%ae>" refs/stash >actual &&
+		test_cmp expect actual
+	)
 '
 
 test_done
