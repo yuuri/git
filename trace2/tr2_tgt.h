@@ -1,6 +1,10 @@
 #ifndef TR2_TGT_H
 #define TR2_TGT_H
 
+struct child_process;
+struct repository;
+struct json_writer;
+
 /*
  * Function prototypes for a TRACE2 "target" vtable.
  */

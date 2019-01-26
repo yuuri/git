@@ -1,6 +1,8 @@
 #ifndef TR2_TLS_H
 #define TR2_TLS_H
 
+#include "strbuf.h"
+
 /*
  * Arbitry limit for thread names for column alignment.
  */
