@@ -26,6 +26,21 @@ static const unsigned char *sha1_access(size_t index, void *table)
 	return array[index].hash;
 }
 
+int oid_array_readonly_contains(const struct oid_array* array,
+	const struct object_id* oid)
+{
+	int i;
+	if (array->sorted) {
+		return sha1_pos(oid->hash, array->oid, array->nr, sha1_access) >= 0;
+	}
+	for (i = 0; i < array->nr; i++) {
+		if (hashcmp(array->oid[i].hash, oid->hash) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int oid_array_lookup(struct oid_array *array, const struct object_id *oid)
 {
 	if (!array->sorted)

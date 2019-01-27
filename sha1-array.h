@@ -13,6 +13,8 @@ struct oid_array {
 void oid_array_append(struct oid_array *array, const struct object_id *oid);
 int oid_array_lookup(struct oid_array *array, const struct object_id *oid);
 void oid_array_clear(struct oid_array *array);
+int oid_array_readonly_contains(const struct oid_array* array,
+	const struct object_id* oid);
 
 typedef int (*for_each_oid_fn)(const struct object_id *oid,
 			       void *data);
