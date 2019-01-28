@@ -382,7 +382,7 @@ static void batch_one_object(const char *obj_name,
 {
 	struct object_context ctx;
 	int flags = opt->follow_symlinks ? GET_OID_FOLLOW_SYMLINKS : 0;
-	enum follow_symlinks_result result;
+	enum get_oid_result result;
 
 	result = get_oid_with_context(the_repository, obj_name,
 				      flags, &data->oid, &ctx);
@@ -390,6 +390,9 @@ static void batch_one_object(const char *obj_name,
 		switch (result) {
 		case MISSING_OBJECT:
 			printf("%s missing\n", obj_name);
+			break;
+		case SHORT_NAME_AMBIGUOUS:
+			printf("%s ambiguous\n", obj_name);
 			break;
 		case DANGLING_SYMLINK:
 			printf("dangling %"PRIuMAX"\n%s\n",
