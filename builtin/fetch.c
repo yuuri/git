@@ -628,9 +628,14 @@ static int find_and_replace(struct strbuf *haystack,
 			    const char *needle,
 			    const char *placeholder)
 {
-	const char *p = strstr(haystack->buf, needle);
+	const char *p = NULL;
 	int plen, nlen;
 
+	nlen = strlen(needle);
+	if (ends_with(haystack->buf, needle))
+		p = haystack->buf + haystack->len - nlen;
+	else
+		p = strstr(haystack->buf, needle);
 	if (!p)
 		return 0;
 
@@ -638,7 +643,6 @@ static int find_and_replace(struct strbuf *haystack,
 		return 0;
 
 	plen = strlen(p);
-	nlen = strlen(needle);
 	if (plen > nlen && p[nlen] != '/')
 		return 0;
 
