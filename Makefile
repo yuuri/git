@@ -2665,6 +2665,9 @@ export TEST_NO_MALLOC_CHECK
 test: all
 	$(MAKE) -C t/ all
 
+prove: all
+	$(MAKE) -C t/ prove
+
 perf: all
 	$(MAKE) -C t/perf/ all
 
@@ -3076,6 +3079,10 @@ coverage-compile:
 coverage-test: coverage-clean-results coverage-compile
 	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" \
 		DEFAULT_TEST_TARGET=test -j1 test
+
+coverage-prove: coverage-clean-results coverage-compile
+	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" \
+		DEFAULT_TEST_TARGET=prove -j1 prove
 
 coverage-report:
 	$(QUIET_GCOV)for dir in $(object_dirs); do \
