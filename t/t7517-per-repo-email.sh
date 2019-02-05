@@ -85,4 +85,38 @@ test_expect_success REBASE_P \
 	test_must_fail git rebase -p master
 '
 
+test_expect_success 'fallbacks for GIT_* and user.{name,email}' '
+	# We must have committer in the object
+	test_must_fail test_env \
+		GIT_AUTHOR_NAME=author.name \
+		GIT_AUTHOR_EMAIL=author@email \
+		GIT_COMMITTER_NAME= \
+		GIT_COMMITTER_EMAIL= \
+		test_commit A 2>stderr &&
+	test_i18ngrep "empty ident name.*not allowed" stderr &&
+
+	# With no committer E-Mail we will have an empty field
+	test_env \
+		GIT_AUTHOR_NAME=author.name \
+		GIT_AUTHOR_EMAIL=author@email \
+		GIT_COMMITTER_NAME=committer.name \
+		GIT_COMMITTER_EMAIL= \
+		test_commit B 2>stderr &&
+	echo "author.name author@email committer.name " >expected &&
+	git log --format="%an %ae %cn %ce" -1 >actual &&
+	test_cmp expected actual &&
+
+	# Environment overrides config
+	test_config user.name author.config.name &&
+	test_env \
+		GIT_AUTHOR_NAME=author.name \
+		GIT_AUTHOR_EMAIL=author@email \
+		GIT_COMMITTER_NAME=committer.name \
+		GIT_COMMITTER_EMAIL= \
+		test_commit C 2>stderr &&
+	echo "author.name author@email committer.name " >expected &&
+	git log --format="%an %ae %cn %ce" -1 >actual &&
+	test_cmp expected actual
+'
+
 test_done
