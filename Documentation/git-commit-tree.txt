@@ -88,7 +88,8 @@ if set:
 (nb "<", ">" and "\n"s are stripped)
 
 In case (some of) these environment variables are not set, the information
-is taken from the configuration items user.name and user.email, or, if not
+is taken from the configuration items user.name and user.email, or the more
+specific author.{name,email} and committer.{name,email} variables, or, if not
 present, the environment variable EMAIL, or, if that is not set,
 system user name and the hostname used for outgoing mail (taken
 from `/etc/mailname` and falling back to the fully qualified hostname when
