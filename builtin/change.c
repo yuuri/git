@@ -6,7 +6,13 @@
 #include "config.h"
 
 static const char * const builtin_change_usage[] = {
+	N_("git change list [<pattern>...]"),
 	N_("git change update [--force] [--replace <treeish>...] [--origin <treesih>...] [--content <newtreeish>]"),
+	NULL
+};
+
+static const char * const builtin_list_usage[] = {
+	N_("git change list [<pattern>...]"),
 	NULL
 };
 
@@ -14,6 +20,49 @@ static const char * const builtin_update_usage[] = {
 	N_("git change update [--force] [--replace <treeish>...] [--origin <treesih>...] [--content <newtreeish>]"),
 	NULL
 };
+
+static int change_list(int argc, const char **argv, const char* prefix)
+{
+	struct option options[] = {
+		OPT_END()
+	};
+	struct ref_filter filter;
+	/* TODO: Sorting temporarily disabled. See comments, below.
+	 * struct ref_sorting *sorting = ref_default_sorting(); */
+	struct ref_format format = REF_FORMAT_INIT;
+	struct ref_array array;
+	int i;
+
+	argc = parse_options(argc, argv, prefix, options, builtin_list_usage, 0);
+
+	setup_ref_filter_porcelain_msg();
+
+	memset(&filter, 0, sizeof(filter));
+	memset(&array, 0, sizeof(array));
+
+	filter.kind = FILTER_REFS_CHANGES;
+	filter.name_patterns = argv;
+
+	filter_refs(&array, &filter, FILTER_REFS_CHANGES);
+
+	/* TODO: This causes a crash. It sets one of the atom_value handlers to
+	 * something invalid, which causes a crash later when we call
+	 * show_ref_array_item. Figure out why this happens and put back the sorting.
+	 *ref_array_sort(sorting, &array); */
+
+	if (!format.format)
+		format.format = "%(refname:lstrip=1)";
+
+	if (verify_ref_format(&format))
+		die(_("unable to parse format string"));
+
+	for (i = 0; i < array.nr; i++)
+		show_ref_array_item(array.items[i], &format);
+
+	ref_array_clear(&array);
+
+	return 0;
+}
 
 struct update_state {
 	int options;
@@ -184,6 +233,8 @@ int cmd_change(int argc, const char **argv, const char *prefix)
 
 	if (argc < 1)
 		usage_with_options(builtin_change_usage, options);
+	else if (!strcmp(argv[0], "list"))
+		result = change_list(argc, argv, prefix);
 	else if (!strcmp(argv[0], "update"))
 		result = change_update(argc, argv, prefix);
 	else {
