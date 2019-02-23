@@ -656,6 +656,60 @@ test_expect_success 'when server does not send "ready", expect FLUSH' '
 	test_i18ngrep "expected no other sections to be sent after no .ready." err
 '
 
+test_expect_success 'part of packfile response provided as URI' '
+	P="$HTTPD_DOCUMENT_ROOT_PATH/http_parent" &&
+	rm -rf "$P" http_child log &&
+
+	git init "$P" &&
+	git -C "$P" config "uploadpack.allowsidebandall" "true" &&
+
+	echo my-blob >"$P/my-blob" &&
+	git -C "$P" add my-blob &&
+	echo other-blob >"$P/other-blob" &&
+	git -C "$P" add other-blob &&
+	git -C "$P" commit -m x &&
+
+	# Create a packfile for my-blob and configure it for exclusion.
+	git -C "$P" hash-object my-blob >h &&
+	git -C "$P" pack-objects --stdout <h \
+		>"$HTTPD_DOCUMENT_ROOT_PATH/one.pack" &&
+	git -C "$P" config \
+		"uploadpack.blobpackfileuri" \
+		"$(cat h) $HTTPD_URL/dumb/one.pack" &&
+
+	# Do the same for other-blob.
+	git -C "$P" hash-object other-blob >h2 &&
+	git -C "$P" pack-objects --stdout <h2 \
+		>"$HTTPD_DOCUMENT_ROOT_PATH/two.pack" &&
+	git -C "$P" config --add \
+		"uploadpack.blobpackfileuri" \
+		"$(cat h2) $HTTPD_URL/dumb/two.pack" &&
+
+	GIT_TRACE_PACKET="$(pwd)/log" GIT_TEST_SIDEBAND_ALL=1 \
+		git -c protocol.version=2 \
+		-c fetch.uriprotocols=http,https \
+		clone  "$HTTPD_URL/smart/http_parent" http_child &&
+
+	# Ensure that my-blob and other-blob are in separate packfiles.
+	for idx in http_child/.git/objects/pack/*.idx
+	do
+		git verify-pack --verbose $idx >out &&
+		if test "$(grep "^[0-9a-f]\{40\} " out | wc -l)" = 1
+		then
+			if grep $(cat h) out
+			then
+				>hfound
+			fi &&
+			if grep $(cat h2) out
+			then
+				>h2found
+			fi
+		fi
+	done &&
+	test -f hfound &&
+	test -f h2found
+'
+
 stop_httpd
 
 test_done

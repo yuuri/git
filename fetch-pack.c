@@ -38,6 +38,7 @@ static struct lock_file shallow_lock;
 static const char *alternate_shallow_file;
 static char *negotiation_algorithm;
 static struct strbuf fsck_msg_types = STRBUF_INIT;
+static struct string_list uri_protocols = STRING_LIST_INIT_DUP;
 
 /* Remember to update object flag allocation in object.h */
 #define COMPLETE	(1U << 0)
@@ -1147,6 +1148,26 @@ static int send_fetch_request(struct fetch_negotiator *negotiator, int fd_out,
 		warning("filtering not recognized by server, ignoring");
 	}
 
+	if (server_supports_feature("fetch", "packfile-uris", 0)) {
+		int i;
+		struct strbuf to_send = STRBUF_INIT;
+
+		for (i = 0; i < uri_protocols.nr; i++) {
+			const char *s = uri_protocols.items[i].string;
+
+			if (!strcmp(s, "https") || !strcmp(s, "http")) {
+				if (to_send.len)
+					strbuf_addch(&to_send, ',');
+				strbuf_addstr(&to_send, s);
+			}
+		}
+		if (to_send.len) {
+			packet_buf_write(&req_buf, "packfile-uris %s",
+					 to_send.buf);
+			strbuf_release(&to_send);
+		}
+	}
+
 	/* add wants */
 	add_wants(args->no_dependents, wants, &req_buf);
 
@@ -1322,6 +1343,32 @@ static void receive_wanted_refs(struct packet_reader *reader,
 		die(_("error processing wanted refs: %d"), reader->status);
 }
 
+static void receive_packfile_uris(struct packet_reader *reader)
+{
+	process_section_header(reader, "packfile-uris", 0);
+	while (packet_reader_read(reader) == PACKET_READ_NORMAL) {
+		const char *p;
+		struct child_process cmd = CHILD_PROCESS_INIT;
+
+
+		if (!skip_prefix(reader->line, "uri ", &p))
+			die("expected 'uri <uri>', got: %s\n", reader->line);
+
+		argv_array_push(&cmd.args, "http-fetch");
+		argv_array_push(&cmd.args, "--packfile");
+		argv_array_push(&cmd.args, p);
+		cmd.git_cmd = 1;
+		cmd.no_stdin = 1;
+		cmd.no_stdout = 1;
+		if (start_command(&cmd))
+			die("fetch-pack: unable to spawn");
+		if (finish_command(&cmd))
+			die("fetch-pack: unable to finish");
+	}
+	if (reader->status != PACKET_READ_DELIM)
+		die("expected DELIM");
+}
+
 enum fetch_state {
 	FETCH_CHECK_LOCAL = 0,
 	FETCH_SEND_REQUEST,
@@ -1414,6 +1461,9 @@ static struct ref *do_fetch_pack_v2(struct fetch_pack_args *args,
 				receive_wanted_refs(&reader, sought, nr_sought);
 
 			/* get the pack */
+			if (process_section_header(&reader, "packfile-uris", 1)) {
+				receive_packfile_uris(&reader);
+			}
 			process_section_header(&reader, "packfile", 0);
 			if (get_pack(args, fd, pack_lockfile))
 				die(_("git fetch-pack: fetch failed."));
@@ -1464,6 +1514,14 @@ static void fetch_pack_config(void)
 	git_config_get_bool("transfer.fsckobjects", &transfer_fsck_objects);
 	git_config_get_string("fetch.negotiationalgorithm",
 			      &negotiation_algorithm);
+	if (!uri_protocols.nr) {
+		char *str;
+
+		if (!git_config_get_string("fetch.uriprotocols", &str) && str) {
+			string_list_split(&uri_protocols, str, ',', -1);
+			free(str);
+		}
+	}
 
 	git_config(fetch_pack_config_cb, NULL);
 }
