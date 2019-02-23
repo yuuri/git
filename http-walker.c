@@ -425,6 +425,7 @@ static int http_fetch_pack(struct walker *walker, struct alt_base *repo, unsigne
 	int ret;
 	struct slot_results results;
 	struct http_pack_request *preq;
+	char *lockfile;
 
 	if (fetch_indices(walker, repo))
 		return -1;
@@ -457,7 +458,9 @@ static int http_fetch_pack(struct walker *walker, struct alt_base *repo, unsigne
 		goto abort;
 	}
 
-	ret = finish_http_pack_request(preq);
+	ret = finish_http_pack_request(preq, &lockfile);
+	if (!ret)
+		unlink(lockfile);
 	release_http_pack_request(preq);
 	if (ret)
 		return ret;

@@ -212,7 +212,7 @@ struct http_pack_request {
 
 extern struct http_pack_request *new_http_pack_request(
 	struct packed_git *target, const char *base_url);
-extern int finish_http_pack_request(struct http_pack_request *preq);
+int finish_http_pack_request(struct http_pack_request *preq, char **lockfile);
 extern void release_http_pack_request(struct http_pack_request *preq);
 
 /* Helpers for fetching object */

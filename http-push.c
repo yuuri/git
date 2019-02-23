@@ -586,11 +586,16 @@ static void finish_request(struct transfer_request *request)
 			fprintf(stderr, "Unable to get pack file %s\n%s",
 				request->url, curl_errorstr);
 		} else {
+			char *lockfile;
+
 			preq = (struct http_pack_request *)request->userData;
 
 			if (preq) {
-				if (finish_http_pack_request(preq) == 0)
+				if (finish_http_pack_request(preq,
+							     &lockfile) == 0) {
+					unlink(lockfile);
 					fail = 0;
+				}
 				release_http_pack_request(preq);
 			}
 		}
