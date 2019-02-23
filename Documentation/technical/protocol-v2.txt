@@ -329,7 +329,8 @@ header. Most sections are sent only when the packfile is sent.
 
     output = acknowledgements flush-pkt |
 	     [acknowledgments delim-pkt] [shallow-info delim-pkt]
-	     [wanted-refs delim-pkt] packfile flush-pkt
+	     [wanted-refs delim-pkt] [packfile-uris delim-pkt]
+	     packfile flush-pkt
 
     acknowledgments = PKT-LINE("acknowledgments" LF)
 		      (nak | *ack)
@@ -346,6 +347,9 @@ header. Most sections are sent only when the packfile is sent.
     wanted-refs = PKT-LINE("wanted-refs" LF)
 		  *PKT-LINE(wanted-ref LF)
     wanted-ref = obj-id SP refname
+
+    packfile-uris = PKT-LINE("packfile-uris" LF) *packfile-uri
+    packfile-uri = PKT-LINE("uri" SP *%x20-ff LF)
 
     packfile = PKT-LINE("packfile" LF)
 	       *PKT-LINE(%x01-03 *%x00-ff)
