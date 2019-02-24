@@ -694,7 +694,10 @@ test_expect_success 'part of packfile response provided as URI' '
 	for idx in http_child/.git/objects/pack/*.idx
 	do
 		git verify-pack --verbose $idx >out &&
-		if test "$(grep "^[0-9a-f]\{40\} " out | wc -l)" = 1
+		{
+			grep "^[0-9a-f]\{16,\} " out || :
+		} >out.objectlist &&
+		if test_line_count = 1 out.objectlist
 		then
 			if grep $(cat h) out
 			then
