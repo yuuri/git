@@ -153,6 +153,7 @@ do
 		esac
 		;;
 	--stress-limit=*)
+		stress=t;
 		stress_limit=${opt#--*=}
 		case "$stress_limit" in
 		*[!0-9]*|0*|"")
