@@ -13,11 +13,17 @@ static int use_color = -1;
 enum color_add_i {
 	COLOR_HEADER = 0,
 	COLOR_HELP,
+	COLOR_PROMPT,
+	COLOR_ERROR,
+	COLOR_RESET,
 };
 
 static char list_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_BOLD,      /* Header */
 	GIT_COLOR_BOLD_RED,  /* Help */
+	GIT_COLOR_BOLD_BLUE, /* Prompt */
+	GIT_COLOR_BOLD_RED,  /* Error */
+	GIT_COLOR_RESET,     /* Reset */
 };
 
 static const char *get_add_i_color(enum color_add_i ix)
@@ -33,6 +39,12 @@ static int parse_color_slot(const char *slot)
 		return COLOR_HEADER;
 	if (!strcasecmp(slot, "help"))
 		return COLOR_HELP;
+	if (!strcasecmp(slot, "prompt"))
+		return COLOR_PROMPT;
+	if (!strcasecmp(slot, "error"))
+		return COLOR_ERROR;
+	if (!strcasecmp(slot, "reset"))
+		return COLOR_RESET;
 
 	return -1;
 }
@@ -125,6 +137,8 @@ struct list_and_choose_options {
 static ssize_t list_and_choose(struct prefix_item **items, size_t nr,
 			       struct list_and_choose_options *opts)
 {
+	const char *prompt_color = get_add_i_color(COLOR_PROMPT);
+	const char *error_color = get_add_i_color(COLOR_ERROR);
 	struct strbuf input = STRBUF_INIT;
 	ssize_t res = -1;
 
@@ -137,7 +151,8 @@ static ssize_t list_and_choose(struct prefix_item **items, size_t nr,
 
 		list(items, nr, &opts->list_opts);
 
-		printf("%s%s", opts->prompt, "> ");
+		color_fprintf(stdout, prompt_color, "%s", opts->prompt);
+		fputs("> ", stdout);
 		fflush(stdout);
 
 		if (strbuf_getline(&input, stdin) == EOF) {
@@ -178,7 +193,8 @@ static ssize_t list_and_choose(struct prefix_item **items, size_t nr,
 				index = find_unique(p, items, nr);
 
 			if (index < 0 || index >= nr)
-				printf(_("Huh (%s)?\n"), p);
+				color_fprintf_ln(stdout, error_color,
+						 _("Huh (%s)?"), p);
 			else {
 				res = index;
 				break;
@@ -423,15 +439,21 @@ static int run_status(struct repository *r, const struct pathspec *ps,
 	return 0;
 }
 
+struct print_command_item_data {
+	const char *color, *reset;
+};
+
 static void print_command_item(int i, struct prefix_item *item,
 			       void *print_command_item_data)
 {
+	struct print_command_item_data *d = print_command_item_data;
+
 	if (!item->prefix_length ||
 	    !is_valid_prefix(item->name, item->prefix_length))
 		printf(" %2d: %s", i + 1, item->name);
 	else
-		printf(" %3d: [%.*s]%s", i + 1,
-		       (int)item->prefix_length, item->name,
+		printf(" %2d: %s%.*s%s%s", i + 1,
+		       d->color, (int)item->prefix_length, item->name, d->reset,
 		       item->name + item->prefix_length);
 }
 
@@ -455,8 +477,16 @@ static void command_prompt_help(void)
 
 int run_add_i(struct repository *r, const struct pathspec *ps)
 {
+	struct print_command_item_data data = {
+		/*
+		 * When color was asked for, use the prompt color for
+		 * highlighting, otherwise use square brackets.
+		 */
+		want_color(use_color) ? get_add_i_color(COLOR_PROMPT) : "[",
+		want_color(use_color) ? get_add_i_color(COLOR_RESET) : "]"
+	};
 	struct list_and_choose_options main_loop_opts = {
-		{ 4, N_("*** Commands ***"), print_command_item, NULL },
+		{ 4, N_("*** Commands ***"), print_command_item, &data },
 		N_("What now"), command_prompt_help
 	};
 	struct command_item
