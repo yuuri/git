@@ -12,10 +12,12 @@ static int use_color = -1;
 
 enum color_add_i {
 	COLOR_HEADER = 0,
+	COLOR_HELP,
 };
 
 static char list_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_BOLD,      /* Header */
+	GIT_COLOR_BOLD_RED,  /* Help */
 };
 
 static const char *get_add_i_color(enum color_add_i ix)
@@ -29,6 +31,8 @@ static int parse_color_slot(const char *slot)
 {
 	if (!strcasecmp(slot, "header"))
 		return COLOR_HEADER;
+	if (!strcasecmp(slot, "help"))
+		return COLOR_HELP;
 
 	return -1;
 }
@@ -112,6 +116,7 @@ struct list_and_choose_options {
 	struct list_options list_opts;
 
 	const char *prompt;
+	void (*print_help)(void);
 };
 
 /*
@@ -144,6 +149,11 @@ static ssize_t list_and_choose(struct prefix_item **items, size_t nr,
 
 		if (!input.len)
 			break;
+
+		if (!strcmp(input.buf, "?")) {
+			opts->print_help();
+			continue;
+		}
 
 		p = input.buf;
 		for (;;) {
@@ -431,11 +441,23 @@ struct command_item {
 		       struct file_list *files, struct list_options *opts);
 };
 
+static void command_prompt_help(void)
+{
+	const char *help_color = get_add_i_color(COLOR_HELP);
+	color_fprintf_ln(stdout, help_color, "%s", _("Prompt help:"));
+	color_fprintf_ln(stdout, help_color, "1          - %s",
+			 _("select a numbered item"));
+	color_fprintf_ln(stdout, help_color, "foo        - %s",
+			 _("select item based on unique prefix"));
+	color_fprintf_ln(stdout, help_color, "           - %s",
+			 _("(empty) select nothing"));
+}
+
 int run_add_i(struct repository *r, const struct pathspec *ps)
 {
 	struct list_and_choose_options main_loop_opts = {
 		{ 4, N_("*** Commands ***"), print_command_item, NULL },
-		N_("What now")
+		N_("What now"), command_prompt_help
 	};
 	struct command_item
 		status = { { "status" }, run_status };
