@@ -1,13 +1,56 @@
 #include "cache.h"
 #include "add-interactive.h"
 #include "config.h"
+#include "color.h"
+#include "config.h"
 #include "diffcore.h"
 #include "revision.h"
 #include "refs.h"
 
+static int use_color = -1;
+
+enum color_add_i {
+	COLOR_HEADER = 0,
+};
+
+static char list_colors[][COLOR_MAXLEN] = {
+	GIT_COLOR_BOLD,      /* Header */
+};
+
+static const char *get_add_i_color(enum color_add_i ix)
+{
+	if (want_color(use_color))
+		return list_colors[ix];
+	return "";
+}
+
+static int parse_color_slot(const char *slot)
+{
+	if (!strcasecmp(slot, "header"))
+		return COLOR_HEADER;
+
+	return -1;
+}
+
 int add_i_config(const char *var, const char *value, void *cb)
 {
-	return git_default_config(var, value, cb);
+	const char *name;
+
+	if (!strcmp(var, "color.interactive")) {
+		use_color = git_config_colorbool(var, value);
+		return 0;
+	}
+
+	if (skip_prefix(var, "color.interactive.", &name)) {
+		int slot = parse_color_slot(name);
+		if (slot < 0)
+			return 0;
+		if (!value)
+			return config_error_nonbool(var);
+		return color_parse(value, list_colors[slot]);
+	}
+
+	return git_color_default_config(var, value, cb);
 }
 
 struct item {
@@ -27,8 +70,10 @@ static void list(struct item **list, size_t nr, struct list_options *opts)
 	if (!nr)
 		return;
 
-	if (opts->header)
-		printf("%s\n", opts->header);
+	if (opts->header) {
+		const char *header_color = get_add_i_color(COLOR_HEADER);
+		color_fprintf_ln(stdout, header_color, "%s", opts->header);
+	}
 
 	for (i = 0; i < nr; i++) {
 		opts->print_item(i, list[i], opts->print_item_data);
