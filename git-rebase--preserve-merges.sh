@@ -105,6 +105,8 @@ warn () {
 	printf '%s\n' "$*" >&2
 }
 
+warn "git rebase --preserve-merges is deprecated. Use --rebase-merges instead."
+
 # Output the commit message for the specified commit.
 commit_message () {
 	git cat-file commit "$1" | sed "1,/^$/d"
