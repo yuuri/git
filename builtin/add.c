@@ -20,6 +20,7 @@
 #include "bulk-checkin.h"
 #include "argv-array.h"
 #include "submodule.h"
+#include "add-interactive.h"
 
 static const char * const builtin_add_usage[] = {
 	N_("git add [<options>] [--] <pathspec>..."),
@@ -28,6 +29,7 @@ static const char * const builtin_add_usage[] = {
 static int patch_interactive, add_interactive, edit_interactive;
 static int take_worktree_changes;
 static int add_renormalize;
+static int use_builtin_add_i;
 
 struct update_callback_data {
 	int flags;
@@ -186,6 +188,9 @@ int run_add_interactive(const char *revision, const char *patch_mode,
 	int status, i;
 	struct argv_array argv = ARGV_ARRAY_INIT;
 
+	if (use_builtin_add_i && !patch_mode)
+		return !!run_add_i(the_repository, pathspec);
+
 	argv_array_push(&argv, "add--interactive");
 	if (patch_mode)
 		argv_array_push(&argv, patch_mode);
@@ -319,7 +324,12 @@ static int add_config(const char *var, const char *value, void *cb)
 		ignore_add_errors = git_config_bool(var, value);
 		return 0;
 	}
-	return git_default_config(var, value, cb);
+	if (!strcmp(var, "add.interactive.usebuiltin")) {
+		use_builtin_add_i = git_config_bool(var, value);
+		return 0;
+	}
+
+	return add_i_config(var, value, cb);
 }
 
 static const char embedded_advice[] = N_(
@@ -394,8 +404,12 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	int require_pathspec;
 	char *seen = NULL;
 	struct lock_file lock_file = LOCK_INIT;
+	int use_builtin_add_i_env =
+		git_env_bool("GIT_TEST_ADD_I_USE_BUILTIN", -1);
 
 	git_config(add_config, NULL);
+	if (use_builtin_add_i_env >= 0)
+		use_builtin_add_i = use_builtin_add_i_env;
 
 	argc = parse_options(argc, argv, prefix, builtin_add_options,
 			  builtin_add_usage, PARSE_OPT_KEEP_ARGV0);
