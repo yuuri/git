@@ -415,7 +415,7 @@ static enum get_oid_result get_short_oid(const char *name, int len,
 					 struct object_id *oid,
 					 unsigned flags)
 {
-	int status;
+	int status, attempts = 0;
 	struct disambiguate_state ds;
 	int quietly = !!(flags & GET_OID_QUIETLY);
 
@@ -438,9 +438,20 @@ static enum get_oid_result get_short_oid(const char *name, int len,
 	else
 		ds.fn = default_disambiguate_hint;
 
+try_again:
 	find_short_object_filename(&ds);
 	find_short_packed_object(&ds);
 	status = finish_object_disambiguation(&ds, oid);
+
+	/*
+	 * If we did not find it, do the usual reprepare() slow-path, since the
+	 * object may have recently been added to the repository or migrated
+	 * from loose to packed.
+	 */
+	if (status == MISSING_OBJECT && !attempts++) {
+		reprepare_packed_git(the_repository);
+		goto try_again;
+	}
 
 	if (!quietly && (status == SHORT_NAME_AMBIGUOUS)) {
 		struct oid_array collect = OID_ARRAY_INIT;
