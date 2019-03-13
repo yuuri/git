@@ -705,4 +705,14 @@ test_expect_success SYMLINKS 'difftool --dir-diff handles modified symlinks' '
 	test_cmp expect actual
 '
 
+test_expect_success 'outside worktree' '
+	mkdir outside &&
+	echo 1 >outside/1 &&
+	echo 2 >outside/2 &&
+	test_expect_code 1 env GIT_CEILING_DIRECTORIES="$(pwd)" git \
+		-c diff.tool=echo -c difftool.echo.cmd="echo \$LOCAL \$REMOTE" \
+		-C outside difftool --no-prompt --no-index 1 2 >out &&
+	test "1 2" = "$(cat out)"
+'
+
 test_done
