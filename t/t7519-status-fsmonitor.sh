@@ -346,7 +346,7 @@ test_expect_success UNTRACKED_CACHE 'ignore .git changes when invalidating UNTR'
 	test_cmp before after
 '
 
-test_expect_failure 'discard_index() also discards fsmonitor info' '
+test_expect_success 'discard_index() also discards fsmonitor info' '
 	test_when_finished \
 		"git config core.monitor .git/hooks/fsmonitor-test" &&
 	test_config core.fsmonitor "$TEST_DIRECTORY/t7519/fsmonitor-all" &&
