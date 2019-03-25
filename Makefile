@@ -3099,7 +3099,7 @@ check-docs::
 		    -e 's/^/listed /' command-list.txt; \
 		$(MAKE) -C Documentation print-man1 | \
 		grep '\.txt$$' | \
-		sed -e 's|Documentation/|documented |' \
+		sed -e 's|^|documented |' \
 		    -e 's/\.txt//'; \
 	) | while read how cmd; \
 	do \
