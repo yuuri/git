@@ -3085,6 +3085,7 @@ check-docs::
 	( \
 		sed -e '1,/^### command list/d' \
 		    -e '/^#/d' \
+		    $(patsubst %,-e '/^% /d',$(EXCLUDED_PROGRAMS)) \
 		    -e '/guide$$/d' \
 		    -e 's/[ 	].*//' \
 		    -e 's/^/listed /' command-list.txt; \
