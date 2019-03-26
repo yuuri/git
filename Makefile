@@ -2455,22 +2455,25 @@ $(VCSSVN_LIB): $(VCSSVN_OBJS)
 
 export DEFAULT_EDITOR DEFAULT_PAGER
 
+Documentation/GIT-EXCLUDED-PROGRAMS: Makefile config.mak.uname
+	$(QUIET_GEN)echo "EXCLUDED_PROGRAMS := $(EXCLUDED_PROGRAMS)" >$@
+
 .PHONY: doc man man-perl html info pdf
-doc: man-perl
+doc: man-perl Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation all
 
-man: man-perl
+man: man-perl Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation man
 
 man-perl: perl/build/man/man3/Git.3pm
 
-html:
+html: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation html
 
-info:
+info: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation info
 
-pdf:
+pdf: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation pdf
 
 XGETTEXT_FLAGS = \
@@ -2907,33 +2910,33 @@ endif
 install-gitweb:
 	$(MAKE) -C gitweb install
 
-install-doc: install-man-perl
+install-doc: install-man-perl Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation install
 
-install-man: install-man-perl
+install-man: install-man-perl Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation install-man
 
-install-man-perl: man-perl
+install-man-perl: man-perl Documentation/GIT-EXCLUDED-PROGRAMS
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mandir_SQ)/man3'
 	(cd perl/build/man/man3 && $(TAR) cf - .) | \
 	(cd '$(DESTDIR_SQ)$(mandir_SQ)/man3' && umask 022 && $(TAR) xof -)
 
-install-html:
+install-html: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation install-html
 
-install-info:
+install-info: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation install-info
 
-install-pdf:
+install-pdf: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation install-pdf
 
-quick-install-doc:
+quick-install-doc: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation quick-install
 
-quick-install-man:
+quick-install-man: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation quick-install-man
 
-quick-install-html:
+quick-install-html: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation quick-install-html
 
 
@@ -2988,7 +2991,7 @@ artifacts-tar:: $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) $(OTHER_PROGRAMS) \
 htmldocs = git-htmldocs-$(GIT_VERSION)
 manpages = git-manpages-$(GIT_VERSION)
 .PHONY: dist-doc distclean
-dist-doc:
+dist-doc: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(RM) -r .doc-tmp-dir
 	mkdir .doc-tmp-dir
 	$(MAKE) -C Documentation WEBDOC_DEST=../.doc-tmp-dir install-webdoc
@@ -3035,6 +3038,7 @@ clean: profile-clean coverage-clean cocciclean
 	$(RM) $(GIT_TARNAME).tar.gz git-core_$(GIT_VERSION)-*.tar.gz
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
 	$(MAKE) -C Documentation/ clean
+	$(RM) Documentation/GIT-EXCLUDED-PROGRAMS
 ifndef NO_PERL
 	$(MAKE) -C gitweb clean
 	$(RM) -r perl/build/
@@ -3062,7 +3066,7 @@ ALL_COMMANDS += gitweb
 ALL_COMMANDS += git-gui git-citool
 
 .PHONY: check-docs
-check-docs::
+check-docs:: Documentation/GIT-EXCLUDED-PROGRAMS
 	$(MAKE) -C Documentation lint-docs
 	@(for v in $(patsubst %$X,%,$(ALL_COMMANDS)); \
 	do \
