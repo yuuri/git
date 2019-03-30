@@ -1123,28 +1123,51 @@ void commit_post_rewrite(struct repository *r,
 	run_rewrite_hook(&old_head->object.oid, new_head);
 }
 
+int run_commit_hook(int editor_is_used, const char *index_file,
+		    const char *name, ...)
+{
+	struct argv_array hook_env = ARGV_ARRAY_INIT;
+	va_list args;
+	int ret;
+
+	argv_array_pushf(&hook_env, "GIT_INDEX_FILE=%s", index_file);
+
+	/*
+	 * Let the hook know that no editor will be launched.
+	 */
+	if (!editor_is_used)
+		argv_array_push(&hook_env, "GIT_EDITOR=:");
+
+	va_start(args, name);
+	ret = run_hook_ve(hook_env.argv,name, args);
+	va_end(args);
+	argv_array_clear(&hook_env);
+
+	return ret;
+}
+
 static int run_prepare_commit_msg_hook(struct repository *r,
 				       struct strbuf *msg,
 				       const char *commit)
 {
 	struct argv_array hook_env = ARGV_ARRAY_INIT;
-	int ret;
-	const char *name;
+	int ret = 0;
+	const char *name, *arg1 = NULL, *arg2 = NULL;
 
 	name = git_path_commit_editmsg();
 	if (write_message(msg->buf, msg->len, name, 0))
 		return -1;
 
-	argv_array_pushf(&hook_env, "GIT_INDEX_FILE=%s", r->index_file);
-	argv_array_push(&hook_env, "GIT_EDITOR=:");
-	if (commit)
-		ret = run_hook_le(hook_env.argv, "prepare-commit-msg", name,
-				  "commit", commit, NULL);
-	else
-		ret = run_hook_le(hook_env.argv, "prepare-commit-msg", name,
-				  "message", NULL);
-	if (ret)
+	if (commit) {
+		arg1 = "commit";
+		arg2 = commit;
+	} else {
+		arg1 = "message";
+	}
+	if (run_commit_hook(0, r->index_file, "prepare-commit-msg", name,
+			    arg1, arg2, NULL))
 		ret = error(_("'prepare-commit-msg' hook failed"));
+
 	argv_array_clear(&hook_env);
 
 	return ret;

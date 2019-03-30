@@ -201,4 +201,6 @@ int write_basic_state(struct replay_opts *opts, const char *head_name,
 void sequencer_post_commit_cleanup(struct repository *r);
 int sequencer_get_last_command(struct repository* r,
 			       enum replay_action *action);
+LAST_ARG_MUST_BE_NULL
+int run_commit_hook(int editor_is_used, const char *index_file, const char *name, ...);
 #endif /* SEQUENCER_H */
