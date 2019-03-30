@@ -203,4 +203,5 @@ int sequencer_get_last_command(struct repository* r,
 			       enum replay_action *action);
 LAST_ARG_MUST_BE_NULL
 int run_commit_hook(int editor_is_used, const char *index_file, const char *name, ...);
+void run_post_commit_hook(int editor_is_used, const char *index_file);
 #endif /* SEQUENCER_H */

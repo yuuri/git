@@ -1467,4 +1467,21 @@ test_expect_success 'valid author header when author contains single quote' '
 	test_cmp expected actual
 '
 
+test_expect_success 'post-commit hook is called' '
+	test_when_finished "rm -f .git/hooks/post-commit commits" &&
+	mkdir -p .git/hooks &&
+	write_script .git/hooks/post-commit <<-\EOS &&
+	git rev-parse HEAD >>commits
+	EOS
+	set_fake_editor &&
+	FAKE_LINES="edit 4 1 reword 2 fixup 3" git rebase -i A E &&
+	echo x>file3 &&
+	git add file3 &&
+	FAKE_COMMIT_MESSAGE=edited git rebase --continue &&
+	# rev-list does not support -g --reverse
+	git rev-list --no-walk=unsorted HEAD@{5} HEAD@{4} HEAD@{3} HEAD@{2} \
+		HEAD@{1} HEAD >expected &&
+	test_cmp expected commits
+'
+
 test_done

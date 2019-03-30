@@ -1173,6 +1173,10 @@ static int run_prepare_commit_msg_hook(struct repository *r,
 	return ret;
 }
 
+void run_post_commit_hook(int editor_is_used, const char *index_file) {
+	run_commit_hook(editor_is_used, index_file, "post-commit", NULL);
+}
+
 static const char implicit_ident_advice_noconfig[] =
 N_("Your name and email address were configured automatically based\n"
 "on your username and hostname. Please check that they are accurate.\n"
@@ -1427,6 +1431,7 @@ static int try_to_commit(struct repository *r,
 		goto out;
 	}
 
+	run_post_commit_hook(0, r->index_file);
 	if (flags & AMEND_MSG)
 		commit_post_rewrite(r, current_head, oid);
 
