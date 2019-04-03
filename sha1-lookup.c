@@ -69,8 +69,12 @@ int sha1_pos(const unsigned char *sha1, void *table, size_t nr,
 			miv = take2(sha1 + ofs);
 			if (miv < lov)
 				return -1;
-			if (hiv < miv)
-				return -1 - nr;
+			if (hiv < miv) {
+				if (nr > INT_MAX)
+					die("overflow: -1 - %"PRIuMAX,
+					    (uintmax_t)nr);
+				return -1 - (int)nr;
+			}
 			if (lov != hiv) {
 				/*
 				 * At this point miv could be equal
@@ -97,7 +101,9 @@ int sha1_pos(const unsigned char *sha1, void *table, size_t nr,
 			lo = mi + 1;
 		mi = lo + (hi - lo) / 2;
 	} while (lo < hi);
-	return -lo-1;
+	if (nr > INT_MAX)
+		die("overflow: -1 - %"PRIuMAX, (uintmax_t)lo);
+	return -1 - (int)lo;
 }
 
 int bsearch_hash(const unsigned char *sha1, const uint32_t *fanout_nbo,
