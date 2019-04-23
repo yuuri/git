@@ -9,7 +9,7 @@
 #include "streaming.h"
 #include "run-command.h"
 
-#define RECORDSIZE	(512)
+#define RECORDSIZE	(512u)
 #define BLOCKSIZE	(RECORDSIZE * 20)
 
 static char block[BLOCKSIZE];
