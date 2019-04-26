@@ -167,21 +167,21 @@ struct commit_graph *parse_commit_graph(void *graph_map, int fd,
 
 	graph_signature = get_be32(data);
 	if (graph_signature != GRAPH_SIGNATURE) {
-		error(_("commit-graph signature %X does not match signature %X"),
+		error(_("commit-graph signature 0x%X does not match signature 0x%X"),
 		      graph_signature, GRAPH_SIGNATURE);
 		return NULL;
 	}
 
 	graph_version = *(unsigned char*)(data + 4);
 	if (graph_version != GRAPH_VERSION) {
-		error(_("commit-graph version %X does not match version %X"),
+		error(_("commit-graph has version %d, our maximum supported version is %d"),
 		      graph_version, GRAPH_VERSION);
 		return NULL;
 	}
 
 	hash_version = *(unsigned char*)(data + 5);
 	if (hash_version != oid_version()) {
-		error(_("commit-graph hash version %X does not match version %X"),
+		error(_("commit-graph has hash version %d, our maximum supported version is %d"),
 		      hash_version, oid_version());
 		return NULL;
 	}
@@ -215,7 +215,7 @@ struct commit_graph *parse_commit_graph(void *graph_map, int fd,
 		chunk_lookup += GRAPH_CHUNKLOOKUP_WIDTH;
 
 		if (chunk_offset > graph_size - the_hash_algo->rawsz) {
-			error(_("commit-graph improper chunk offset %08x%08x"), (uint32_t)(chunk_offset >> 32),
+			error(_("commit-graph improper chunk offset 0x%08x%08x"), (uint32_t)(chunk_offset >> 32),
 			      (uint32_t)chunk_offset);
 			free(graph);
 			return NULL;
@@ -252,7 +252,7 @@ struct commit_graph *parse_commit_graph(void *graph_map, int fd,
 		}
 
 		if (chunk_repeated) {
-			error(_("commit-graph chunk id %08x appears multiple times"), chunk_id);
+			error(_("commit-graph chunk id 0x%08x appears multiple times"), chunk_id);
 			free(graph);
 			return NULL;
 		}

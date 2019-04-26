@@ -420,17 +420,17 @@ test_expect_success 'detect too small' '
 
 test_expect_success 'detect bad signature' '
 	corrupt_graph_and_verify 0 "\0" \
-		"graph signature"
+		"commit-graph signature"
 '
 
 test_expect_success 'detect bad version' '
 	corrupt_graph_and_verify $GRAPH_BYTE_VERSION "\02" \
-		"graph version"
+		"commit-graph has version"
 '
 
 test_expect_success 'detect bad hash version' '
 	corrupt_graph_and_verify $GRAPH_BYTE_HASH "\02" \
-		"hash version"
+		"commit-graph has hash version"
 '
 
 test_expect_success 'detect low chunk count' '
