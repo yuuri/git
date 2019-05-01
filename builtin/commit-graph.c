@@ -173,7 +173,7 @@ static int graph_write(int argc, const char **argv)
 	read_replace_refs = 0;
 
 	if (opts.reachable)
-		return write_commit_graph_reachable(opts.obj_dir, flags);
+		return write_commit_graph_reachable(opts.obj_dir, flags, 0);
 
 	string_list_init(&lines, 0);
 	if (opts.stdin_packs || opts.stdin_commits) {
@@ -193,7 +193,7 @@ static int graph_write(int argc, const char **argv)
 	result = write_commit_graph(opts.obj_dir,
 				    pack_indexes,
 				    commit_hex,
-				    flags);
+				    flags, 0);
 
 	UNLEAK(lines);
 	return result;
