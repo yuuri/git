@@ -21,7 +21,11 @@
 # because it will change our working directory.
 TEST_DIRECTORY=$(pwd)/..
 TEST_OUTPUT_DIRECTORY=$(pwd)
-ABSOLUTE_GIT_TEST_INSTALLED=$(
+
+# Likewise we must turn GIT_TEST_INSTALLED into an absolute path; but remember
+# and export the original value, since we'll later generate our prefix from it.
+: ${TEST_INSTALLED_ORIG=$GIT_TEST_INSTALLED}; export TEST_INSTALLED_ORIG
+GIT_TEST_INSTALLED=$(
 	test -n "$GIT_TEST_INSTALLED" && cd "$GIT_TEST_INSTALLED" && pwd)
 
 TEST_NO_CREATE_REPO=t
@@ -32,8 +36,7 @@ TEST_NO_MALLOC_CHECK=t
 if test -z "$GIT_TEST_INSTALLED"; then
 	perf_results_prefix=
 else
-	perf_results_prefix=$(printf "%s" "${GIT_TEST_INSTALLED%/bin-wrappers}" | tr -c "[a-zA-Z0-9]" "[_*]")"."
-	GIT_TEST_INSTALLED=$ABSOLUTE_GIT_TEST_INSTALLED
+	perf_results_prefix=$(printf "%s" "${TEST_INSTALLED_ORIG%/bin-wrappers}" | tr -c "[a-zA-Z0-9]" "[_*]")"."
 fi
 
 # Variables from test-lib that are normally internal to the tests; we
