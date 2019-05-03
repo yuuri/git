@@ -45,6 +45,12 @@ char *get_commit_graph_filename(const char *obj_dir)
 	return xstrfmt("%s/info/commit-graph", obj_dir);
 }
 
+static char *get_split_graph_filename(const char *obj_dir,
+				      uint32_t split_count)
+{
+	return xstrfmt("%s/info/commit-graphs/commit-graph-%d", obj_dir, split_count);
+}
+
 static uint8_t oid_version(void)
 {
 	return 1;
@@ -289,15 +295,31 @@ static struct commit_graph *load_commit_graph_one(const char *graph_file)
 static void prepare_commit_graph_one(struct repository *r, const char *obj_dir)
 {
 	char *graph_name;
+	uint32_t split_count = 1;
+	struct commit_graph *g;
 
 	if (r->objects->commit_graph)
 		return;
 
 	graph_name = get_commit_graph_filename(obj_dir);
-	r->objects->commit_graph =
-		load_commit_graph_one(graph_name);
-
+	g = load_commit_graph_one(graph_name);
 	FREE_AND_NULL(graph_name);
+
+	while (g) {
+		g->base_graph = r->objects->commit_graph;
+
+		if (g->base_graph)
+			g->num_commits_in_base = g->base_graph->num_commits +
+						 g->base_graph->num_commits_in_base;;
+
+		r->objects->commit_graph = g;
+
+		graph_name = get_split_graph_filename(obj_dir, split_count);
+		g = load_commit_graph_one(graph_name);
+		FREE_AND_NULL(graph_name);
+
+		split_count++;
+	}
 }
 
 /*
@@ -411,8 +433,15 @@ static struct commit_list **insert_parent_or_die(struct repository *r,
 
 static void fill_commit_graph_info(struct commit *item, struct commit_graph *g, uint32_t pos)
 {
-	const unsigned char *commit_data = g->chunk_commit_data + GRAPH_DATA_WIDTH * pos;
-	item->graph_pos = pos + g->num_commits_in_base;
+	const unsigned char *commit_data;
+
+	if (pos < g->num_commits_in_base) {
+		fill_commit_graph_info(item, g->base_graph, pos);
+		return;
+	}
+
+	commit_data = g->chunk_commit_data + GRAPH_DATA_WIDTH * (pos - g->num_commits_in_base);
+	item->graph_pos = pos;
 	item->generation = get_be32(commit_data + g->hash_len + 8) >> 2;
 }
 
