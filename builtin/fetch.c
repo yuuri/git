@@ -23,6 +23,7 @@
 #include "packfile.h"
 #include "list-objects-filter-options.h"
 #include "commit-reach.h"
+#include "commit-graph.h"
 
 static const char * const builtin_fetch_usage[] = {
 	N_("git fetch [<options>] [<repository> [<refspec>...]]"),
@@ -62,6 +63,7 @@ static const char *submodule_prefix = "";
 static int recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int recurse_submodules_default = RECURSE_SUBMODULES_ON_DEMAND;
 static int shown_url = 0;
+static int fetch_write_commit_graph = 0;
 static struct refspec refmap = REFSPEC_INIT_FETCH;
 static struct list_objects_filter_options filter_options;
 static struct string_list server_options = STRING_LIST_INIT_DUP;
@@ -76,6 +78,11 @@ static int git_fetch_config(const char *k, const char *v, void *cb)
 
 	if (!strcmp(k, "fetch.prunetags")) {
 		fetch_prune_tags_config = git_config_bool(k, v);
+		return 0;
+	}
+
+	if (!strcmp(k, "fetch.writecommitgraph")) {
+		fetch_write_commit_graph = 1;
 		return 0;
 	}
 
@@ -1669,6 +1676,16 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	}
 
 	string_list_clear(&list, 0);
+
+	if (fetch_write_commit_graph) {
+		int commit_graph_flags = COMMIT_GRAPH_SPLIT;
+
+		if (progress)
+			commit_graph_flags |= COMMIT_GRAPH_PROGRESS;
+
+		write_commit_graph_reachable(get_object_directory(),
+					     commit_graph_flags);
+	}
 
 	close_all_packs(the_repository->objects);
 
