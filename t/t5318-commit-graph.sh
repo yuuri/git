@@ -260,6 +260,32 @@ test_expect_success 'check that gc computes commit-graph' '
 	test_cmp_bin commit-graph-after-gc $objdir/info/commit-graph
 '
 
+test_expect_success 'write split commit-graph' '
+	cd "$TRASH_DIRECTORY" &&
+	git clone full split &&
+	cd split &&
+	git config core.commitGraph true &&
+	for i in $(test_seq 1 20); do
+		test_commit padding-$i
+	done &&
+	git commit-graph write --reachable &&
+	test_commit split-commit &&
+	git branch -f split-commit &&
+	git commit-graph write --reachable --split &&
+	test_path_is_file .git/objects/info/commit-graphs/commit-graph-1
+'
+
+graph_git_behavior 'split graph, split-commit vs merge 1' bare split-commit merge/1
+
+test_expect_success 'collapse split commit-graph' '
+	cd "$TRASH_DIRECTORY/split" &&
+	git commit-graph write --reachable &&
+	test_path_is_missing .git/objects/info/commit-graphs/commit-graph-1 &&
+	test_path_is_file .git/objects/info/commit-graph
+'
+
+graph_git_behavior 'collapsed graph, split-commit vs merge 1' bare split-commit merge/1
+
 test_expect_success 'replace-objects invalidates commit-graph' '
 	cd "$TRASH_DIRECTORY" &&
 	test_when_finished rm -rf replace &&
