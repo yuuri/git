@@ -127,6 +127,148 @@ Design Details
   helpful for these clones, anyway. The commit-graph will not be read or
   written when shallow commits are present.
 
+Split Commit Graphs
+-------------------
+
+Typically, repos grow with near-constant velocity (commits per day). Over
+time, the number of commits added by a fetch operation is much smaller than
+the number of commits in the full history. The split commit-graph feature
+allows for fast writes of new commit data without rewriting the entire
+commit history -- at least, most of the time.
+
+## File Layout
+
+A split commit-graph uses multiple files, and we use a fixed naming
+convention to organize these files. The base commit-graph file is the
+same: `$OBJDIR/info/commit-graph`. The rest of the commit-graph files have
+the format `$OBJDIR/info/commit-graphs/commit-graph-<N>` where N is a
+positive integer. The integers must start at 1 and grow sequentially
+to form a stack of files.
+
+Each `commit-graph-<N>` file has the same format as the `commit-graph`
+file, including a lexicographic list of commit ids. The only difference
+is that this list is considered to be concatenated to the list from
+the lower commit-graphs. As an example, consider this diagram of three
+files:
+
+ +-----------------------+
+ |  commit-graph-2       |
+ +-----------------------+
+	  |
+ +-----------------------+
+ |                       |
+ |  commit-graph-1       |
+ |                       |
+ +-----------------------+
+	  |
+ +-----------------------+
+ |                       |
+ |                       |
+ |                       |
+ |  commit-graph         |
+ |                       |
+ |                       |
+ |                       |
+ +-----------------------+
+
+Let X0 be the number of commits in `commit-graph`, X1 be the number
+of commits in commit-graph-1, and X2 be the number of commits in
+commit-graph-2. If a commit appears in position i in `commit-graph-2`,
+then we interpret this as being the commit in position (X0 + X1 + i),
+and that will be used as its "graph position". The commits in
+commit-graph-2 use these positions to refer to their parents, which
+may be in commit-graph-1 or commit-graph. We can navigate to an
+arbitrary commit in position j by checking its containment in the
+intervals [0, X0), [X0, X0 + X1), [X0 + X1, X0 + X1 + X2).
+
+When Git reads from these files, it starts by acquiring a read handle
+on the `commit-graph` file. On success, it continues acquiring read
+handles on the `commit-graph-<N>` files in increasing order. This
+order is important for how we replace the files.
+
+## Merging commit-graph files
+
+If we only added a `commit-graph-<N>` file on every write, we would
+run into a linear search problem through many commit-graph files.
+Instead, we use a merge strategy to decide when the stack should
+collapse some number of levels.
+
+The diagram below shows such a collapse. As a set of new commits
+are added, it is determined by the merge strategy that the files
+should collapse to `commit-graph-1`. Thus, the new commits, the
+commits in `commit-graph-2` and the commits in `commit-graph-1`
+should be combined into a new `commit-graph-1` file.
+
+			    +---------------------+
+			    |                     |
+			    |    (new commits)    |
+			    |                     |
+			    +---------------------+
+			    |                     |
+ +-----------------------+  +---------------------+
+ |  commit-graph-2       |->|                     |
+ +-----------------------+  +---------------------+
+	  |                 |                     |
+ +-----------------------+  +---------------------+
+ |                       |  |                     |
+ |  commit-graph-1       |->|                     |
+ |                       |  |                     |
+ +-----------------------+  +---------------------+
+	  |                   commit-graph-1.lock
+ +-----------------------+
+ |                       |
+ |                       |
+ |                       |
+ |  commit-graph         |
+ |                       |
+ |                       |
+ |                       |
+ +-----------------------+
+
+During this process, the commits to write are combined, sorted
+and we write the contents to the `commit-graph-1.lock` file.
+When the file is flushed and ready to swap to `commit-graph-1`,
+we first unlink the files above our target file. This unlinking
+is done from the top of the stack, the reverse direction that
+another process would use to read the stack.
+
+During this time window, another process trying to read the
+commit-graph stack could read `commit-graph-1` before the swap
+but try to read `commit-graph-2` after it is unlinked. That
+process would then believe that this stack is complete, but
+will miss out on the performance benefits of the commits in
+`commit-graph-2`. For this reason, the stack above the
+`commit-graph` file should be small.
+
+## Merge Strategy
+
+When writing a set of commits that do not exist in the
+commit-graph stack of height N, we default to creating
+a new file at level N + 1. We then decide to merge
+with the Nth level if one of two conditions hold:
+
+  1. The expected file size for level N + 1 is at
+     least half the file size for level N.
+
+  2. Level N + 1 contains more than MAX_SPLIT_COMMITS
+     commits (64,0000 commits).
+
+This decision cascades down the levels: when we
+merge a level we create a new set of commits that
+then compares to the next level.
+
+The first condition bounds the number of levels
+to be logarithmic in the total number of commits.
+The second condition bounds the total number of
+commits in a `commit-graph-N` file and not in
+the `commit-graph` file, preventing significant
+performance issues when the stack merges and another
+process only partially reads the previous stack.
+
+The merge strategy values (2 for the size multiple,
+64,000 for the maximum number of commits) could be
+extracted into config settings for full flexibility.
+
 Related Links
 -------------
 [0] https://bugs.chromium.org/p/git/issues/detail?id=8
