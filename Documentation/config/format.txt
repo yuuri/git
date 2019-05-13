@@ -85,3 +85,16 @@ format.outputDirectory::
 format.useAutoBase::
 	A boolean value which lets you enable the `--base=auto` option of
 	format-patch by default.
+
+format.notes::
+	A ref which specifies where to get the notes (see
+	linkgit:git-notes[1]) that are appended for the commit after the
+	three-dash line.
++
+If the special value of "standard" is specified, then the standard notes
+ref is used (i.e. the notes ref used by `git notes` when no `--ref`
+argument is specified). If one wishes to use the ref
+`ref/notes/standard`, please use that literal instead.
++
+This configuration can be specified multiple times in order to allow
+multiple notes refs to be included.
