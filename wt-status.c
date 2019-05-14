@@ -194,7 +194,6 @@ static void wt_longstatus_print_unmerged_header(struct wt_status *s)
 	} else {
 		status_printf_ln(s, c, _("  (use \"git add/rm <file>...\" as appropriate to mark resolution)"));
 	}
-	status_printf_ln(s, c, "%s", "");
 }
 
 static void wt_longstatus_print_cached_header(struct wt_status *s)
@@ -210,7 +209,6 @@ static void wt_longstatus_print_cached_header(struct wt_status *s)
 		status_printf_ln(s, c, _("  (use \"git reset %s <file>...\" to unstage)"), s->reference);
 	else
 		status_printf_ln(s, c, _("  (use \"git rm --cached <file>...\" to unstage)"));
-	status_printf_ln(s, c, "%s", "");
 }
 
 static void wt_longstatus_print_dirty_header(struct wt_status *s,
@@ -229,7 +227,6 @@ static void wt_longstatus_print_dirty_header(struct wt_status *s,
 	status_printf_ln(s, c, _("  (use \"git checkout -- <file>...\" to discard changes in working directory)"));
 	if (has_dirty_submodules)
 		status_printf_ln(s, c, _("  (commit or discard the untracked or modified content in submodules)"));
-	status_printf_ln(s, c, "%s", "");
 }
 
 static void wt_longstatus_print_other_header(struct wt_status *s,
@@ -241,7 +238,6 @@ static void wt_longstatus_print_other_header(struct wt_status *s,
 	if (!s->hints)
 		return;
 	status_printf_ln(s, c, _("  (use \"git %s <file>...\" to include in what will be committed)"), how);
-	status_printf_ln(s, c, "%s", "");
 }
 
 static void wt_longstatus_print_trailer(struct wt_status *s)
