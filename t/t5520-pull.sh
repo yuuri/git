@@ -461,15 +461,6 @@ test_expect_success 'pull.rebase=1 is treated as true and flattens keep-merge' '
 	test file3 = "$(git show HEAD:file3.t)"
 '
 
-test_expect_success REBASE_P \
-	'pull.rebase=preserve rebases and merges keep-merge' '
-	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
-	git pull . copy &&
-	test "$(git rev-parse HEAD^^)" = "$(git rev-parse copy)" &&
-	test "$(git rev-parse HEAD^2)" = "$(git rev-parse keep-merge)"
-'
-
 test_expect_success 'pull.rebase=interactive' '
 	write_script "$TRASH_DIRECTORY/fake-editor" <<-\EOF &&
 	echo I was here >fake.out &&
@@ -513,15 +504,6 @@ test_expect_success '--rebase=true rebases and flattens keep-merge' '
 	git pull --rebase=true . copy &&
 	test "$(git rev-parse HEAD^^)" = "$(git rev-parse copy)" &&
 	test file3 = "$(git show HEAD:file3.t)"
-'
-
-test_expect_success REBASE_P \
-	'--rebase=preserve rebases and merges keep-merge' '
-	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase true &&
-	git pull --rebase=preserve . copy &&
-	test "$(git rev-parse HEAD^^)" = "$(git rev-parse copy)" &&
-	test "$(git rev-parse HEAD^2)" = "$(git rev-parse keep-merge)"
 '
 
 test_expect_success '--rebase=invalid fails' '
