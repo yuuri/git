@@ -40,6 +40,8 @@ int cmd_bundle(int argc, const char **argv, const char *prefix)
 			usage(builtin_bundle_usage);
 			return 1;
 		}
+		if (!startup_info->have_repository)
+			die(_("Need a repository to create a bundle."));
 		if (verify_bundle(the_repository, &header, 1))
 			return 1;
 		fprintf(stderr, _("%s is okay\n"), bundle_file);
