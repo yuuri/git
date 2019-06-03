@@ -204,4 +204,25 @@ test_expect_success 'test merge stragety constants' '
 	)
 '
 
+corrupt_file() {
+	file=$1
+	pos=$2
+	data="${3:-\0}"
+	printf "$data" | dd of="$file" bs=1 seek="$pos" conv=notrunc
+}
+
+test_expect_success 'verify shallow' '
+	git clone . verify &&
+	(
+		cd verify &&
+		git commit-graph verify &&
+		base_file=$graphdir/graph-$(head -n 1 $graphdir/commit-graph-chain).graph &&
+		corrupt_file "$base_file" 1760 "\01" &&
+		git commit-graph verify --shallow &&
+		test_must_fail git commit-graph verify 2>test_err &&
+		grep -v "^+" test_err >err &&
+		test_i18ngrep "incorrect checksum" err
+	)
+'
+
 test_done
