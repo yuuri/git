@@ -6,6 +6,7 @@ struct repo_settings {
 	char gc_write_commit_graph;
 	char pack_use_sparse;
 	char status_ahead_behind;
+	char fetch_show_forced_updates;
 	int index_version;
 };
 

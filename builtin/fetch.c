@@ -23,6 +23,7 @@
 #include "packfile.h"
 #include "list-objects-filter-options.h"
 #include "commit-reach.h"
+#include "repo-settings.h"
 
 #define FORCED_UPDATES_DELAY_WARNING_IN_MS (10 * 1000)
 
@@ -80,11 +81,6 @@ static int git_fetch_config(const char *k, const char *v, void *cb)
 
 	if (!strcmp(k, "fetch.prunetags")) {
 		fetch_prune_tags_config = git_config_bool(k, v);
-		return 0;
-	}
-
-	if (!strcmp(k, "fetch.showforcedupdates")) {
-		fetch_show_forced_updates = git_config_bool(k, v);
 		return 0;
 	}
 
@@ -1617,6 +1613,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	fetch_config_from_gitmodules(&max_children, &recurse_submodules);
 	git_config(git_fetch_config, NULL);
+
+	prepare_repo_settings(the_repository);
+	if (the_repository->settings->fetch_show_forced_updates != -1)
+		fetch_show_forced_updates = the_repository->settings->fetch_show_forced_updates;
 
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);

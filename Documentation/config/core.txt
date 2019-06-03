@@ -623,3 +623,8 @@ client machine.
 +
 * `status.aheadBehind=false` enables `--no-ahead-behind` by default during
 linkgit:git-status[1] calls, saving time in a fast-moving commit history.
++
+* `fetch.showForcedUpdates=false` enables `--no-show-forced-updates` by
+default during linkgit:git-fetch[1] and linkgit:git-pull[1] calls, saving
+time in a fast-moving commit history. This has a small side-effect of not
+updating the forced-update bit in the reflog.
