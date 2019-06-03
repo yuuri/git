@@ -5,6 +5,7 @@ struct repo_settings {
 	char core_commit_graph;
 	char gc_write_commit_graph;
 	char pack_use_sparse;
+	char status_ahead_behind;
 	int index_version;
 };
 

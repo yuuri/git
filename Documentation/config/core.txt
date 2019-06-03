@@ -620,3 +620,6 @@ core.size::
 * `pack.useSparse=true` uses the sparse tree-walk algorithm, which is
 optimized for enumerating objects during linkgit:git-push[1] from a
 client machine.
++
+* `status.aheadBehind=false` enables `--no-ahead-behind` by default during
+linkgit:git-status[1] calls, saving time in a fast-moving commit history.

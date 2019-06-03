@@ -15,7 +15,8 @@ status.branch::
 status.aheadBehind::
 	Set to true to enable `--ahead-behind` and false to enable
 	`--no-ahead-behind` by default in linkgit:git-status[1] for
-	non-porcelain status formats.  Defaults to true.
+	non-porcelain status formats.  Defaults to true, unless
+	`core.size=large`.
 
 status.displayCommentPrefix::
 	If set to true, linkgit:git-status[1] will insert a comment

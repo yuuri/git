@@ -36,6 +36,7 @@
 #include "help.h"
 #include "commit-reach.h"
 #include "commit-graph.h"
+#include "repo-settings.h"
 
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [<options>] [--] <pathspec>..."),
@@ -1117,8 +1118,11 @@ static void finalize_deferred_config(struct wt_status *s)
 	 * in particular), we inherit _FULL for backwards compatibility.
 	 */
 	if (use_deferred_config &&
-	    s->ahead_behind_flags == AHEAD_BEHIND_UNSPECIFIED)
-		s->ahead_behind_flags = status_deferred_config.ahead_behind;
+	    s->ahead_behind_flags == AHEAD_BEHIND_UNSPECIFIED) {
+		prepare_repo_settings(the_repository);
+		if (the_repository->settings->status_ahead_behind != -1)
+			s->ahead_behind_flags = the_repository->settings->status_ahead_behind;
+	}
 
 	if (s->ahead_behind_flags == AHEAD_BEHIND_UNSPECIFIED)
 		s->ahead_behind_flags = AHEAD_BEHIND_FULL;
@@ -1257,10 +1261,6 @@ static int git_status_config(const char *k, const char *v, void *cb)
 	}
 	if (!strcmp(k, "status.branch")) {
 		status_deferred_config.show_branch = git_config_bool(k, v);
-		return 0;
-	}
-	if (!strcmp(k, "status.aheadbehind")) {
-		status_deferred_config.ahead_behind = git_config_bool(k, v);
 		return 0;
 	}
 	if (!strcmp(k, "status.showstash")) {
