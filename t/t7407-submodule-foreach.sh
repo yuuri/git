@@ -421,4 +421,11 @@ test_expect_success 'option-like arguments passed to foreach commands are not lo
 	test_cmp expected actual
 '
 
+test_expect_success 'option-like arguments passed to foreach recurse correctly' '
+  (
+    cd super &&
+    git submodule foreach --recursive git reset --hard
+  )
+'
+
 test_done
