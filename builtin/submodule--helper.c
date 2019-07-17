@@ -19,6 +19,7 @@
 #include "diffcore.h"
 #include "diff.h"
 #include "object-store.h"
+#include "list-objects-filter-options.h"
 
 #define OPT_QUIET (1 << 0)
 #define OPT_CACHED (1 << 1)
@@ -1222,7 +1223,8 @@ static int module_deinit(int argc, const char **argv, const char *prefix)
 
 static int clone_submodule(const char *path, const char *gitdir, const char *url,
 			   const char *depth, struct string_list *reference, int dissociate,
-			   int quiet, int progress)
+			   int quiet, int progress,
+			   const struct list_objects_filter_options *filter_options)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 
@@ -1244,6 +1246,12 @@ static int clone_submodule(const char *path, const char *gitdir, const char *url
 		argv_array_push(&cp.args, "--dissociate");
 	if (gitdir && *gitdir)
 		argv_array_pushl(&cp.args, "--separate-git-dir", gitdir, NULL);
+	if (filter_options->choice) {
+		struct strbuf expanded_filter = STRBUF_INIT;
+		expand_list_objects_filter_spec(filter_options, &expanded_filter);
+		argv_array_pushf(&cp.args, "--filter=%s", expanded_filter.buf);
+		strbuf_release(&expanded_filter);
+	}
 
 	argv_array_push(&cp.args, "--");
 	argv_array_push(&cp.args, url);
@@ -1359,6 +1367,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	char *p, *path = NULL, *sm_gitdir;
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list reference = STRING_LIST_INIT_NODUP;
+	struct list_objects_filter_options filter_options;
 	int dissociate = 0;
 	char *sm_alternate = NULL, *error_strategy = NULL;
 
@@ -1386,16 +1395,18 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&quiet, "Suppress output for cloning a submodule"),
 		OPT_BOOL(0, "progress", &progress,
 			   N_("force cloning progress")),
+		OPT_PARSE_LIST_OBJECTS_FILTER(&filter_options),
 		OPT_END()
 	};
 
 	const char *const git_submodule_helper_usage[] = {
 		N_("git submodule--helper clone [--prefix=<path>] [--quiet] "
 		   "[--reference <repository>] [--name <name>] [--depth <depth>] "
-		   "--url <url> --path <path>"),
+		   "[--filter <filter-spec>] --url <url> --path <path>"),
 		NULL
 	};
 
+	memset(&filter_options, 0, sizeof(filter_options));
 	argc = parse_options(argc, argv, prefix, module_clone_options,
 			     git_submodule_helper_usage, 0);
 
@@ -1420,7 +1431,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		prepare_possible_alternates(name, &reference);
 
 		if (clone_submodule(path, sm_gitdir, url, depth, &reference, dissociate,
-				    quiet, progress))
+				    quiet, progress, &filter_options))
 			die(_("clone of '%s' into submodule path '%s' failed"),
 			    url, path);
 	} else {
@@ -1454,6 +1465,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	free(sm_gitdir);
 	free(path);
 	free(p);
+	list_objects_filter_release(&filter_options);
 	return 0;
 }
 
@@ -1539,6 +1551,7 @@ struct submodule_update_clone {
 	const char *depth;
 	const char *recursive_prefix;
 	const char *prefix;
+	const struct list_objects_filter_options *filter_options;
 
 	/* to be consumed by git-submodule.sh */
 	struct update_clone_data *update_clone;
@@ -1555,7 +1568,7 @@ struct submodule_update_clone {
 };
 #define SUBMODULE_UPDATE_CLONE_INIT {0, MODULE_LIST_INIT, 0, \
 	SUBMODULE_UPDATE_STRATEGY_INIT, 0, 0, -1, STRING_LIST_INIT_DUP, 0, \
-	NULL, NULL, NULL, \
+	NULL, NULL, NULL, NULL, \
 	NULL, 0, 0, 0, NULL, 0, 0, 1}
 
 
@@ -1681,6 +1694,12 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 		argv_array_pushl(&child->args, "--prefix", suc->prefix, NULL);
 	if (suc->recommend_shallow && sub->recommend_shallow == 1)
 		argv_array_push(&child->args, "--depth=1");
+	if (suc->filter_options->choice) {
+		struct strbuf expanded_filter = STRBUF_INIT;
+		expand_list_objects_filter_spec(suc->filter_options, &expanded_filter);
+		argv_array_pushf(&child->args, "--filter=%s", expanded_filter.buf);
+		strbuf_release(&expanded_filter);
+	}
 	argv_array_pushl(&child->args, "--path", sub->path, NULL);
 	argv_array_pushl(&child->args, "--name", sub->name, NULL);
 	argv_array_pushl(&child->args, "--url", url, NULL);
@@ -1844,6 +1863,8 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	const char *update = NULL;
 	struct pathspec pathspec;
 	struct submodule_update_clone suc = SUBMODULE_UPDATE_CLONE_INIT;
+	struct list_objects_filter_options filter_options;
+	int ret;
 
 	struct option module_update_clone_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -1870,6 +1891,7 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&suc.quiet, N_("don't print cloning progress")),
 		OPT_BOOL(0, "progress", &suc.progress,
 			    N_("force cloning progress")),
+		OPT_PARSE_LIST_OBJECTS_FILTER(&filter_options),
 		OPT_END()
 	};
 
@@ -1882,6 +1904,7 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	update_clone_config_from_gitmodules(&suc.max_jobs);
 	git_config(git_update_clone_config, &suc.max_jobs);
 
+	memset(&filter_options, 0, sizeof(filter_options));
 	argc = parse_options(argc, argv, prefix, module_update_clone_options,
 			     git_submodule_helper_usage, 0);
 
@@ -1889,13 +1912,19 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 		if (parse_submodule_update_strategy(update, &suc.update) < 0)
 			die(_("bad value for update parameter"));
 
-	if (module_list_compute(argc, argv, prefix, &pathspec, &suc.list) < 0)
+	suc.filter_options = &filter_options;
+
+	if (module_list_compute(argc, argv, prefix, &pathspec, &suc.list) < 0) {
+		list_objects_filter_release(&filter_options);
 		return 1;
+	}
 
 	if (pathspec.nr)
 		suc.warn_if_uninitialized = 1;
 
-	return update_submodules(&suc);
+	ret = update_submodules(&suc);
+	list_objects_filter_release(&filter_options);
+	return ret;
 }
 
 static int resolve_relative_path(int argc, const char **argv, const char *prefix)

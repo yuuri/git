@@ -798,6 +798,15 @@ static int checkout(int submodule_progress)
 			argv_array_push(&args, "--no-fetch");
 		}
 
+		if (filter_options.choice) {
+			struct strbuf expanded_filter = STRBUF_INIT;
+			expand_list_objects_filter_spec(&filter_options,
+							&expanded_filter);
+			argv_array_pushf(&args, "--filter=%s",
+					 expanded_filter.buf);
+			strbuf_release(&expanded_filter);
+		}
+
 		err = run_command_v_opt(args.argv, RUN_GIT_CMD);
 		argv_array_clear(&args);
 	}
