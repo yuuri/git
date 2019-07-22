@@ -38,6 +38,13 @@ test_expect_success PERL 'git reset -p HEAD^' '
 	test_i18ngrep "Apply" output
 '
 
+test_expect_success PERL 'git reset -p HEAD^^{tree}' '
+	test_write_lines n y | git reset -p HEAD^^{tree} >output &&
+	verify_state dir/foo work parent &&
+	verify_saved_state bar &&
+	test_i18ngrep "Apply" output
+'
+
 # The idea in the rest is that bar sorts first, so we always say 'y'
 # first and if the path limiter fails it'll apply to bar instead of
 # dir/foo.  There's always an extra 'n' to reject edits to dir/foo in
