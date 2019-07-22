@@ -3,10 +3,17 @@
 #include "config.h"
 #include "repo-settings.h"
 
+#define UPDATE_DEFAULT(s,v) do { if (s == -1) { s = v; } } while(0)
+
 static int git_repo_config(const char *key, const char *value, void *cb)
 {
 	struct repo_settings *rs = (struct repo_settings *)cb;
 
+	if (!strcmp(key, "feature.manycommits")) {
+		UPDATE_DEFAULT(rs->core_commit_graph, 1);
+		UPDATE_DEFAULT(rs->gc_write_commit_graph, 1);
+		return 0;
+	}
 	if (!strcmp(key, "core.commitgraph")) {
 		rs->core_commit_graph = git_config_bool(key, value);
 		return 0;
