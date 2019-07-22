@@ -1,11 +1,15 @@
 #ifndef REPO_SETTINGS_H
 #define REPO_SETTINGS_H
 
+#define CORE_UNTRACKED_CACHE_WRITE (1 << 0)
+#define CORE_UNTRACKED_CACHE_KEEP (1 << 1)
+
 struct repo_settings {
 	int core_commit_graph;
 	int gc_write_commit_graph;
 	int pack_use_sparse;
 	int index_version;
+	int core_untracked_cache;
 };
 
 struct repository;
