@@ -14,6 +14,12 @@ static int git_repo_config(const char *key, const char *value, void *cb)
 		UPDATE_DEFAULT(rs->gc_write_commit_graph, 1);
 		return 0;
 	}
+	if (!strcmp(key, "feature.manyfiles")) {
+		UPDATE_DEFAULT(rs->index_version, 4);
+		UPDATE_DEFAULT(rs->core_untracked_cache,
+			       CORE_UNTRACKED_CACHE_KEEP | CORE_UNTRACKED_CACHE_WRITE);
+		return 0;
+	}
 	if (!strcmp(key, "core.commitgraph")) {
 		rs->core_commit_graph = git_config_bool(key, value);
 		return 0;
