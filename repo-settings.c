@@ -3,6 +3,8 @@
 #include "config.h"
 #include "repo-settings.h"
 
+#define UPDATE_DEFAULT(s,v) do { if (s == -1) { s = v; } } while(0)
+
 void prepare_repo_settings(struct repository *r)
 {
 	int value;
@@ -23,6 +25,11 @@ void prepare_repo_settings(struct repository *r)
 
 	if (!repo_config_get_bool(r, "pack.usesparse", &value))
 		r->settings.pack_use_sparse = value;
+
+	if (!repo_config_get_bool(r, "feature.manycommits", &value) && value) {
+		UPDATE_DEFAULT(r->settings.core_commit_graph, 1);
+		UPDATE_DEFAULT(r->settings.gc_write_commit_graph, 1);
+	}
 
 	r->settings_initialized = 1;
 }
