@@ -28,6 +28,7 @@
 #include "submodule.h"
 #include "revision.h"
 #include "commit-reach.h"
+#include "repo-settings.h"
 
 struct path_hashmap_entry {
 	struct hashmap_entry e;
@@ -1375,10 +1376,14 @@ static int handle_rename_via_dir(struct merge_options *opt,
 	 * there is no content merge to do; just move the file into the
 	 * desired final location.
 	 */
+	struct repository *r = the_repository;
 	const struct rename *ren = ci->ren1;
 	const struct diff_filespec *dest = ren->pair->two;
 	char *file_path = dest->path;
-	int mark_conflicted = (opt->detect_directory_renames == 1);
+	int mark_conflicted;
+
+	prepare_repo_settings(r);
+	mark_conflicted = (r->settings->merge_directory_renames == MERGE_DIRECTORY_RENAMES_CONFLICT);
 	assert(ren->dir_rename_original_dest);
 
 	if (!opt->call_depth && would_lose_untracked(opt, dest->path)) {
@@ -2850,6 +2855,7 @@ static int detect_and_process_renames(struct merge_options *opt,
 				      struct string_list *entries,
 				      struct rename_info *ri)
 {
+	struct repository *r = the_repository;
 	struct diff_queue_struct *head_pairs, *merge_pairs;
 	struct hashmap *dir_re_head, *dir_re_merge;
 	int clean = 1;
@@ -2863,7 +2869,8 @@ static int detect_and_process_renames(struct merge_options *opt,
 	head_pairs = get_diffpairs(opt, common, head);
 	merge_pairs = get_diffpairs(opt, common, merge);
 
-	if (opt->detect_directory_renames) {
+	prepare_repo_settings(r);
+	if (r->settings->merge_directory_renames) {
 		dir_re_head = get_directory_renames(head_pairs);
 		dir_re_merge = get_directory_renames(merge_pairs);
 
@@ -3112,6 +3119,7 @@ static int handle_rename_normal(struct merge_options *opt,
 				const struct diff_filespec *b,
 				struct rename_conflict_info *ci)
 {
+	struct repository *r = the_repository;
 	struct rename *ren = ci->ren1;
 	struct merge_file_info mfi;
 	int clean;
@@ -3121,7 +3129,9 @@ static int handle_rename_normal(struct merge_options *opt,
 	clean = handle_content_merge(&mfi, opt, path, was_dirty(opt, path),
 				     o, a, b, ci);
 
-	if (clean && opt->detect_directory_renames == 1 &&
+	prepare_repo_settings(r);
+	if (clean &&
+	    r->settings->merge_directory_renames == MERGE_DIRECTORY_RENAMES_CONFLICT &&
 	    ren->dir_rename_original_dest) {
 		if (update_stages(opt, path,
 				  NULL,
@@ -3155,6 +3165,7 @@ static void dir_rename_warning(const char *msg,
 static int warn_about_dir_renamed_entries(struct merge_options *opt,
 					  struct rename *ren)
 {
+	struct repository *r = the_repository;
 	const char *msg;
 	int clean = 1, is_add;
 
@@ -3166,12 +3177,13 @@ static int warn_about_dir_renamed_entries(struct merge_options *opt,
 		return clean;
 
 	/* Sanity checks */
-	assert(opt->detect_directory_renames > 0);
+	prepare_repo_settings(r);
+	assert(r->settings->merge_directory_renames > 0);
 	assert(ren->dir_rename_original_type == 'A' ||
 	       ren->dir_rename_original_type == 'R');
 
 	/* Check whether to treat directory renames as a conflict */
-	clean = (opt->detect_directory_renames == 2);
+	clean = (r->settings->merge_directory_renames == MERGE_DIRECTORY_RENAMES_TRUE);
 
 	is_add = (ren->dir_rename_original_type == 'A');
 	if (ren->dir_rename_original_type == 'A' && clean) {
@@ -3662,15 +3674,6 @@ static void merge_recursive_config(struct merge_options *opt)
 		opt->merge_detect_rename = git_config_rename("merge.renames", value);
 		free(value);
 	}
-	if (!git_config_get_string("merge.directoryrenames", &value)) {
-		int boolval = git_parse_maybe_bool(value);
-		if (0 <= boolval) {
-			opt->detect_directory_renames = boolval ? 2 : 0;
-		} else if (!strcasecmp(value, "conflict")) {
-			opt->detect_directory_renames = 1;
-		} /* avoid erroring on values from future versions of git */
-		free(value);
-	}
 	git_config(git_xmerge_config, NULL);
 }
 
@@ -3687,7 +3690,6 @@ void init_merge_options(struct merge_options *opt,
 	opt->renormalize = 0;
 	opt->diff_detect_rename = -1;
 	opt->merge_detect_rename = -1;
-	opt->detect_directory_renames = 1;
 	merge_recursive_config(opt);
 	merge_verbosity = getenv("GIT_MERGE_VERBOSITY");
 	if (merge_verbosity)

@@ -9,6 +9,12 @@ static int git_repo_config(const char *key, const char *value, void *cb)
 {
 	struct repo_settings *rs = (struct repo_settings *)cb;
 
+	if (!strcmp(key, "feature.experimental")) {
+		UPDATE_DEFAULT(rs->pack_use_sparse, 1);
+		UPDATE_DEFAULT(rs->merge_directory_renames, MERGE_DIRECTORY_RENAMES_TRUE);
+		UPDATE_DEFAULT(rs->fetch_negotiation_algorithm, FETCH_NEGOTIATION_SKIPPING);
+		return 0;
+	}
 	if (!strcmp(key, "feature.manycommits")) {
 		UPDATE_DEFAULT(rs->core_commit_graph, 1);
 		UPDATE_DEFAULT(rs->gc_write_commit_graph, 1);
@@ -50,6 +56,23 @@ static int git_repo_config(const char *key, const char *value, void *cb)
 				"using 'keep' default value"), value);
 		return 0;
 	}
+	if (!strcmp(key, "merge.directoryrenames")) {
+		int bool_value = git_parse_maybe_bool(value);
+		if (0 <= bool_value) {
+			rs->merge_directory_renames = bool_value ? MERGE_DIRECTORY_RENAMES_TRUE : 0;
+		} else if (!strcasecmp(value, "conflict")) {
+			rs->merge_directory_renames = MERGE_DIRECTORY_RENAMES_CONFLICT;
+		}
+		return 0;
+	}
+	if (!strcmp(key, "fetch.negotiationalgorithm"))	{
+		if (!strcasecmp(value, "skipping")) {
+			rs->fetch_negotiation_algorithm = FETCH_NEGOTIATION_SKIPPING;
+		} else {
+			rs->fetch_negotiation_algorithm = FETCH_NEGOTIATION_DEFAULT;
+		}
+		return 0;
+	}
 
 	return 1;
 }
@@ -64,9 +87,13 @@ void prepare_repo_settings(struct repository *r)
 	/* Defaults */
 	r->settings->core_commit_graph = -1;
 	r->settings->gc_write_commit_graph = -1;
-	r->settings->pack_use_sparse = -1;
+
 	r->settings->index_version = -1;
 	r->settings->core_untracked_cache = -1;
+
+	r->settings->pack_use_sparse = -1;
+	r->settings->merge_directory_renames = -1;
+	r->settings->fetch_negotiation_algorithm = -1;
 
 	repo_config(r, git_repo_config, r->settings);
 
@@ -75,4 +102,7 @@ void prepare_repo_settings(struct repository *r)
 		r->settings->core_untracked_cache = CORE_UNTRACKED_CACHE_KEEP;
 	else
 		UPDATE_DEFAULT(r->settings->core_untracked_cache, CORE_UNTRACKED_CACHE_KEEP);
+
+	UPDATE_DEFAULT(r->settings->merge_directory_renames, MERGE_DIRECTORY_RENAMES_CONFLICT);
+	UPDATE_DEFAULT(r->settings->fetch_negotiation_algorithm, FETCH_NEGOTIATION_DEFAULT);
 }

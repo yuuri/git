@@ -34,6 +34,7 @@
 #include "string-list.h"
 #include "packfile.h"
 #include "repository.h"
+#include "repo-settings.h"
 
 /**
  * Returns the length of the first line of msg.
@@ -1538,7 +1539,8 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 	o.branch1 = "HEAD";
 	their_tree_name = xstrfmt("%.*s", linelen(state->msg), state->msg);
 	o.branch2 = their_tree_name;
-	o.detect_directory_renames = 0;
+	prepare_repo_settings(the_repository);
+	the_repository->settings->merge_directory_renames = 0;
 
 	if (state->quiet)
 		o.verbosity = 0;
