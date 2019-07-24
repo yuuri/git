@@ -64,7 +64,7 @@ test_expect_success 'setup' '
 '
 
 # FAILURE: Does not preserve master4.
-test_expect_failure 'Rebase -Xsubtree --preserve-merges --onto commit' '
+test_expect_failure REBASE_P 'Rebase -Xsubtree --preserve-merges --onto commit' '
 	reset_rebase &&
 	git checkout -b rebase-preserve-merges to-rebase &&
 	git rebase -Xsubtree=files_subtree --preserve-merges --onto files-master master &&
@@ -73,7 +73,7 @@ test_expect_failure 'Rebase -Xsubtree --preserve-merges --onto commit' '
 '
 
 # FAILURE: Does not preserve master4.
-test_expect_failure 'Rebase -Xsubtree --keep-empty --preserve-merges --onto commit' '
+test_expect_failure REBASE_P 'Rebase -Xsubtree --keep-empty --preserve-merges --onto commit' '
 	reset_rebase &&
 	git checkout -b rebase-keep-empty to-rebase &&
 	git rebase -Xsubtree=files_subtree --keep-empty --preserve-merges --onto files-master master &&
