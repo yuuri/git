@@ -185,6 +185,7 @@ static void fn_start_fl(const char *file, int line,
 	struct strbuf buf_payload = STRBUF_INIT;
 
 	sq_quote_argv_pretty(&buf_payload, argv);
+	strbuf_trim(&buf_payload);
 
 	perf_io_write_fl(file, line, event_name, NULL, &us_elapsed_absolute,
 			 NULL, NULL, &buf_payload);
