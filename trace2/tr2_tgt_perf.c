@@ -455,6 +455,7 @@ static void fn_region_enter_printf_va_fl(const char *file, int line,
 	if (label)
 		strbuf_addf(&buf_payload, "label:%s ", label);
 	maybe_append_string_va(&buf_payload, fmt, ap);
+	strbuf_rtrim(&buf_payload);
 
 	perf_io_write_fl(file, line, event_name, repo, &us_elapsed_absolute,
 			 NULL, category, &buf_payload);
@@ -472,6 +473,7 @@ static void fn_region_leave_printf_va_fl(
 	if (label)
 		strbuf_addf(&buf_payload, "label:%s ", label);
 	maybe_append_string_va(&buf_payload, fmt, ap);
+	strbuf_rtrim(&buf_payload);
 
 	perf_io_write_fl(file, line, event_name, repo, &us_elapsed_absolute,
 			 &us_elapsed_region, category, &buf_payload);
