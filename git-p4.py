@@ -1151,6 +1151,13 @@ class LargeFileSystem(object):
         return contentFile.name
 
     def exceedsLargeFileThreshold(self, relPath, contents):
+
+        def allocateTempFileName():
+            allocatedName = None
+            with tempfile.NamedTemporaryFile(prefix='git-p4-large-file', delete=False) as tempFile:
+                allocatedName = tempFile.name
+            return allocatedName
+
         if gitConfigInt('git-p4.largeFileThreshold'):
             contentsSize = sum(len(d) for d in contents)
             if contentsSize > gitConfigInt('git-p4.largeFileThreshold'):
@@ -1160,13 +1167,12 @@ class LargeFileSystem(object):
             if contentsSize <= gitConfigInt('git-p4.largeFileCompressedThreshold'):
                 return False
             contentTempFile = self.generateTempFile(contents)
-            compressedContentFile = tempfile.NamedTemporaryFile(prefix='git-p4-large-file', delete=False)
-            zf = zipfile.ZipFile(compressedContentFile.name, mode='w')
-            zf.write(contentTempFile, compress_type=zipfile.ZIP_DEFLATED)
-            zf.close()
-            compressedContentsSize = zf.infolist()[0].compress_size
+            compressedContentFileName = allocateTempFileName()
+            with zipfile.ZipFile(compressedContentFileName, mode='w') as zf:
+                zf.write(contentTempFile, compress_type=zipfile.ZIP_DEFLATED)
+                compressedContentsSize = zf.infolist()[0].compress_size
             os.remove(contentTempFile)
-            os.remove(compressedContentFile.name)
+            os.remove(compressedContentFileName)
             if compressedContentsSize > gitConfigInt('git-p4.largeFileCompressedThreshold'):
                 return True
         return False
@@ -3525,8 +3531,9 @@ class P4Sync(Command, P4UserMap):
         self.updateOptionDict(details)
         try:
             self.commit(details, self.extractFilesFromCommit(details), self.branch)
-        except IOError:
+        except IOError as err:
             print("IO error with git fast-import. Is your git version recent enough?")
+            print("IO error details: {}".format(err))
             print(self.gitError.read())
 
     def openStreams(self):
