@@ -541,6 +541,9 @@ template_dir = share/git-core/templates
 htmldir = $(prefix)/share/doc/git-doc
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 ETC_GITATTRIBUTES = $(sysconfdir)/gitattributes
+USER_GITCONFIG = ~/.gitconfig
+USER_GITCREDENTIALS = ~/.git-credentials
+USER_GITCREDENTIAL_CACHE = ~/.git-credential-cache
 lib = lib
 # DESTDIR =
 pathsep = :
@@ -1910,6 +1913,9 @@ endif
 
 ETC_GITCONFIG_SQ = $(subst ','\'',$(ETC_GITCONFIG))
 ETC_GITATTRIBUTES_SQ = $(subst ','\'',$(ETC_GITATTRIBUTES))
+USER_GITCONFIG_SQ = $(subst ','\'',$(USER_GITCONFIG))
+USER_GITCREDENTIALS_SQ = $(subst ','\'',$(USER_GITCREDENTIALS))
+USER_GITCREDENTIAL_CACHE_SQ = $(subst ','\'',$(USER_GITCREDENTIAL_CACHE))
 
 DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
 bindir_SQ = $(subst ','\'',$(bindir))
@@ -2400,11 +2406,29 @@ builtin/init-db.sp builtin/init-db.s builtin/init-db.o: EXTRA_CPPFLAGS = \
 
 config.sp config.s config.o: GIT-PREFIX
 config.sp config.s config.o: EXTRA_CPPFLAGS = \
-	-DETC_GITCONFIG='"$(ETC_GITCONFIG_SQ)"'
+	-DETC_GITCONFIG='"$(ETC_GITCONFIG_SQ)"' \
+	-DUSER_GITCONFIG='"$(USER_GITCONFIG_SQ)"'
+
+builtin/config.sp builtin/config.s builtin/config.o: GIT-PREFIX
+builtin/config.sp builtin/config.s builtin/config.o: EXTRA_CPPFLAGS = \
+	-DUSER_GITCONFIG='"$(USER_GITCONFIG_SQ)"'
+
+sequencer.sp sequencer.s sequencer.o: GIT-PREFIX
+sequencer.sp sequencer.s sequencer.o: EXTRA_CPPFLAGS = \
+	-DUSER_GITCONFIG='"$(USER_GITCONFIG_SQ)"'
 
 attr.sp attr.s attr.o: GIT-PREFIX
 attr.sp attr.s attr.o: EXTRA_CPPFLAGS = \
 	-DETC_GITATTRIBUTES='"$(ETC_GITATTRIBUTES_SQ)"'
+
+credential-cache.sp credential-cache.s credential-cache.o: GIT-PREFIX
+credential-cache.sp credential-cache.s credential-cache.o: EXTRA_CPPFLAGS = \
+	-DUSER_GITCONFIG='"$(USER_GITCONFIG_SQ)"' \
+	-DUSER_GITCREDENTIAL_CACHE='"$(USER_GITCREDENTIAL_CACHE_SQ)"'
+
+credential-store.sp credential-store.s credential-store.o: GIT-PREFIX
+credential-store.sp credential-store.s credential-store.o: EXTRA_CPPFLAGS = \
+	-DUSER_GITCREDENTIALS='"$(USER_GITCREDENTIALS_SQ)"'
 
 gettext.sp gettext.s gettext.o: GIT-PREFIX
 gettext.sp gettext.s gettext.o: EXTRA_CPPFLAGS = \
