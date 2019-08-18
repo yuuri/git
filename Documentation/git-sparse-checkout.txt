@@ -26,6 +26,18 @@ COMMANDS
 'list'::
 	Provide a list of the contents in the sparse-checkout file.
 
+'init'::
+	Enable the `core.sparseCheckout` setting. If the
+	sparse-checkout file does not exist, then populate it with
+	patterns that match every file in the root directory and
+	no other directories, then will remove all directories tracked
+	by Git. Add patterns to the sparse-checkout file to
+	repopulate the working directory.
++
+The init subcommand also enables the 'extensions.worktreeConfig' setting
+and sets the `core.sparseCheckout` setting in the worktree-specific config
+file. This prevents the sparse-checkout feature from interfering with other
+worktrees.
 
 SPARSE CHECKOUT
 ----------------
