@@ -6,17 +6,18 @@
 #include "repository.h"
 #include "commit-graph.h"
 #include "object-store.h"
+#include "unistd.h"
 
 static char const * const builtin_commit_graph_usage[] = {
 	N_("git commit-graph [--object-dir <objdir>]"),
 	N_("git commit-graph read [--object-dir <objdir>]"),
-	N_("git commit-graph verify [--object-dir <objdir>] [--shallow]"),
-	N_("git commit-graph write [--object-dir <objdir>] [--append|--split] [--reachable|--stdin-packs|--stdin-commits] <split options>"),
+	N_("git commit-graph verify [--object-dir <objdir>] [--shallow] [--[no-]progress]"),
+	N_("git commit-graph write [--object-dir <objdir>] [--append|--split] [--reachable|--stdin-packs|--stdin-commits] [--[no-]progress] <split options>"),
 	NULL
 };
 
 static const char * const builtin_commit_graph_verify_usage[] = {
-	N_("git commit-graph verify [--object-dir <objdir>] [--shallow]"),
+	N_("git commit-graph verify [--object-dir <objdir>] [--shallow] [--[no-]progress]"),
 	NULL
 };
 
@@ -26,7 +27,7 @@ static const char * const builtin_commit_graph_read_usage[] = {
 };
 
 static const char * const builtin_commit_graph_write_usage[] = {
-	N_("git commit-graph write [--object-dir <objdir>] [--append|--split] [--reachable|--stdin-packs|--stdin-commits] <split options>"),
+	N_("git commit-graph write [--object-dir <objdir>] [--append|--split] [--reachable|--stdin-packs|--stdin-commits] [--[no-]progress] <split options>"),
 	NULL
 };
 
@@ -38,6 +39,7 @@ static struct opts_commit_graph {
 	int append;
 	int split;
 	int shallow;
+	int progress;
 } opts;
 
 static int graph_verify(int argc, const char **argv)
@@ -48,16 +50,20 @@ static int graph_verify(int argc, const char **argv)
 	int fd;
 	struct stat st;
 	int flags = 0;
-
+	int defaultProgressState = isatty(2);
+	
 	static struct option builtin_commit_graph_verify_options[] = {
 		OPT_STRING(0, "object-dir", &opts.obj_dir,
 			   N_("dir"),
 			   N_("The object directory to store the graph")),
 		OPT_BOOL(0, "shallow", &opts.shallow,
 			 N_("if the commit-graph is split, only verify the tip file")),
+		OPT_BOOL(0, "progress", &opts.progress, N_("force progress reporting")),
 		OPT_END(),
 	};
 
+	opts.progress = defaultProgressState;
+	
 	argc = parse_options(argc, argv, NULL,
 			     builtin_commit_graph_verify_options,
 			     builtin_commit_graph_verify_usage, 0);
@@ -66,7 +72,9 @@ static int graph_verify(int argc, const char **argv)
 		opts.obj_dir = get_object_directory();
 	if (opts.shallow)
 		flags |= COMMIT_GRAPH_VERIFY_SHALLOW;
-
+	if (opts.progress)
+		flags |= COMMIT_GRAPH_PROGRESS;
+	
 	graph_name = get_commit_graph_filename(opts.obj_dir);
 	open_ok = open_commit_graph(graph_name, &fd, &st);
 	if (!open_ok && errno != ENOENT)
@@ -154,8 +162,9 @@ static int graph_write(int argc, const char **argv)
 	struct string_list *commit_hex = NULL;
 	struct string_list lines;
 	int result = 0;
-	unsigned int flags = COMMIT_GRAPH_PROGRESS;
-
+	unsigned int flags = 0;
+	int defaultProgressState = isatty(2);
+	
 	static struct option builtin_commit_graph_write_options[] = {
 		OPT_STRING(0, "object-dir", &opts.obj_dir,
 			N_("dir"),
@@ -168,6 +177,7 @@ static int graph_write(int argc, const char **argv)
 			N_("start walk at commits listed by stdin")),
 		OPT_BOOL(0, "append", &opts.append,
 			N_("include all commits already in the commit-graph file")),
+		OPT_BOOL(0, "progress", &opts.progress, N_("force progress reporting")),
 		OPT_BOOL(0, "split", &opts.split,
 			N_("allow writing an incremental commit-graph file")),
 		OPT_INTEGER(0, "max-commits", &split_opts.max_commits,
@@ -179,6 +189,7 @@ static int graph_write(int argc, const char **argv)
 		OPT_END(),
 	};
 
+	opts.progress = defaultProgressState;
 	split_opts.size_multiple = 2;
 	split_opts.max_commits = 0;
 	split_opts.expire_time = 0;
@@ -195,6 +206,8 @@ static int graph_write(int argc, const char **argv)
 		flags |= COMMIT_GRAPH_APPEND;
 	if (opts.split)
 		flags |= COMMIT_GRAPH_SPLIT;
+	if (opts.progress)
+		flags |= COMMIT_GRAPH_PROGRESS;
 
 	read_replace_refs = 0;
 
