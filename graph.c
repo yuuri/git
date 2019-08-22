@@ -115,11 +115,20 @@ static const char *column_get_color_code(unsigned short color)
 static void strbuf_write_column(struct strbuf *sb, const struct column *c,
 				char col_char)
 {
+	/*
+	 * Remember the buffer's width as we're about to add non-printing
+	 * content to it, and we want to avoid counting the byte length
+	 * of this content towards the buffer's visible width
+	 */
+	size_t prev_width = sb->width;
+
 	if (c->color < column_colors_max)
 		strbuf_addstr(sb, column_get_color_code(c->color));
 	strbuf_addch(sb, col_char);
 	if (c->color < column_colors_max)
 		strbuf_addstr(sb, column_get_color_code(column_colors_max));
+
+	sb->width = prev_width + 1;
 }
 
 struct git_graph {
@@ -686,8 +695,7 @@ static int graph_is_mapping_correct(struct git_graph *graph)
 	return 1;
 }
 
-static void graph_pad_horizontally(struct git_graph *graph, struct strbuf *sb,
-				   int chars_written)
+static void graph_pad_horizontally(struct git_graph *graph, struct strbuf *sb)
 {
 	/*
 	 * Add additional spaces to the end of the strbuf, so that all
@@ -696,8 +704,8 @@ static void graph_pad_horizontally(struct git_graph *graph, struct strbuf *sb,
 	 * This way, fields printed to the right of the graph will remain
 	 * aligned for the entire commit.
 	 */
-	if (chars_written < graph->width)
-		strbuf_addchars(sb, ' ', graph->width - chars_written);
+	if (sb->width < graph->width)
+		strbuf_addchars(sb, ' ', graph->width - sb->width);
 }
 
 static void graph_output_padding_line(struct git_graph *graph,
@@ -723,7 +731,7 @@ static void graph_output_padding_line(struct git_graph *graph,
 		strbuf_addch(sb, ' ');
 	}
 
-	graph_pad_horizontally(graph, sb, graph->num_new_columns * 2);
+	graph_pad_horizontally(graph, sb);
 }
 
 
@@ -740,7 +748,7 @@ static void graph_output_skip_line(struct git_graph *graph, struct strbuf *sb)
 	 * of the graph is missing.
 	 */
 	strbuf_addstr(sb, "...");
-	graph_pad_horizontally(graph, sb, 3);
+	graph_pad_horizontally(graph, sb);
 
 	if (graph->num_parents >= 3 &&
 	    graph->commit_index < (graph->num_columns - 1))
@@ -754,7 +762,6 @@ static void graph_output_pre_commit_line(struct git_graph *graph,
 {
 	int num_expansion_rows;
 	int i, seen_this;
-	int chars_written;
 
 	/*
 	 * This function formats a row that increases the space around a commit
@@ -777,14 +784,12 @@ static void graph_output_pre_commit_line(struct git_graph *graph,
 	 * Output the row
 	 */
 	seen_this = 0;
-	chars_written = 0;
 	for (i = 0; i < graph->num_columns; i++) {
 		struct column *col = &graph->columns[i];
 		if (col->commit == graph->commit) {
 			seen_this = 1;
 			strbuf_write_column(sb, col, '|');
 			strbuf_addchars(sb, ' ', graph->expansion_row);
-			chars_written += 1 + graph->expansion_row;
 		} else if (seen_this && (graph->expansion_row == 0)) {
 			/*
 			 * This is the first line of the pre-commit output.
@@ -800,19 +805,15 @@ static void graph_output_pre_commit_line(struct git_graph *graph,
 				strbuf_write_column(sb, col, '\\');
 			else
 				strbuf_write_column(sb, col, '|');
-			chars_written++;
 		} else if (seen_this && (graph->expansion_row > 0)) {
 			strbuf_write_column(sb, col, '\\');
-			chars_written++;
 		} else {
 			strbuf_write_column(sb, col, '|');
-			chars_written++;
 		}
 		strbuf_addch(sb, ' ');
-		chars_written++;
 	}
 
-	graph_pad_horizontally(graph, sb, chars_written);
+	graph_pad_horizontally(graph, sb);
 
 	/*
 	 * Increment graph->expansion_row,
@@ -842,11 +843,9 @@ static void graph_output_commit_char(struct git_graph *graph, struct strbuf *sb)
 }
 
 /*
- * Draw the horizontal dashes of an octopus merge and return the number of
- * characters written.
+ * Draw the horizontal dashes of an octopus merge.
  */
-static int graph_draw_octopus_merge(struct git_graph *graph,
-				    struct strbuf *sb)
+static void graph_draw_octopus_merge(struct git_graph *graph, struct strbuf *sb)
 {
 	/*
 	 * Here dashless_parents represents the number of parents which don't
@@ -890,13 +889,12 @@ static int graph_draw_octopus_merge(struct git_graph *graph,
 		strbuf_write_column(sb, &graph->new_columns[i+first_col],
 				    i == dashful_parents-1 ? '.' : '-');
 	}
-	return 2 * dashful_parents;
 }
 
 static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 {
 	int seen_this = 0;
-	int i, chars_written;
+	int i;
 
 	/*
 	 * Output the row containing this commit
@@ -906,7 +904,6 @@ static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 	 * children that we have already processed.)
 	 */
 	seen_this = 0;
-	chars_written = 0;
 	for (i = 0; i <= graph->num_columns; i++) {
 		struct column *col = &graph->columns[i];
 		struct commit *col_commit;
@@ -921,14 +918,11 @@ static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 		if (col_commit == graph->commit) {
 			seen_this = 1;
 			graph_output_commit_char(graph, sb);
-			chars_written++;
 
 			if (graph->num_parents > 2)
-				chars_written += graph_draw_octopus_merge(graph,
-									  sb);
+				graph_draw_octopus_merge(graph, sb);
 		} else if (seen_this && (graph->num_parents > 2)) {
 			strbuf_write_column(sb, col, '\\');
-			chars_written++;
 		} else if (seen_this && (graph->num_parents == 2)) {
 			/*
 			 * This is a 2-way merge commit.
@@ -948,16 +942,13 @@ static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 				strbuf_write_column(sb, col, '\\');
 			else
 				strbuf_write_column(sb, col, '|');
-			chars_written++;
 		} else {
 			strbuf_write_column(sb, col, '|');
-			chars_written++;
 		}
 		strbuf_addch(sb, ' ');
-		chars_written++;
 	}
 
-	graph_pad_horizontally(graph, sb, chars_written);
+	graph_pad_horizontally(graph, sb);
 
 	/*
 	 * Update graph->state
@@ -984,12 +975,11 @@ static struct column *find_new_column_by_commit(struct git_graph *graph,
 static void graph_output_post_merge_line(struct git_graph *graph, struct strbuf *sb)
 {
 	int seen_this = 0;
-	int i, j, chars_written;
+	int i, j;
 
 	/*
 	 * Output the post-merge row
 	 */
-	chars_written = 0;
 	for (i = 0; i <= graph->num_columns; i++) {
 		struct column *col = &graph->columns[i];
 		struct commit *col_commit;
@@ -1017,7 +1007,6 @@ static void graph_output_post_merge_line(struct git_graph *graph, struct strbuf 
 			assert(par_column);
 
 			strbuf_write_column(sb, par_column, '|');
-			chars_written++;
 			for (j = 0; j < graph->num_parents - 1; j++) {
 				parents = next_interesting_parent(graph, parents);
 				assert(parents);
@@ -1026,19 +1015,16 @@ static void graph_output_post_merge_line(struct git_graph *graph, struct strbuf 
 				strbuf_write_column(sb, par_column, '\\');
 				strbuf_addch(sb, ' ');
 			}
-			chars_written += j * 2;
 		} else if (seen_this) {
 			strbuf_write_column(sb, col, '\\');
 			strbuf_addch(sb, ' ');
-			chars_written += 2;
 		} else {
 			strbuf_write_column(sb, col, '|');
 			strbuf_addch(sb, ' ');
-			chars_written += 2;
 		}
 	}
 
-	graph_pad_horizontally(graph, sb, chars_written);
+	graph_pad_horizontally(graph, sb);
 
 	/*
 	 * Update graph->state
@@ -1181,7 +1167,7 @@ static void graph_output_collapsing_line(struct git_graph *graph, struct strbuf 
 		}
 	}
 
-	graph_pad_horizontally(graph, sb, graph->mapping_size);
+	graph_pad_horizontally(graph, sb);
 
 	/*
 	 * Swap mapping and new_mapping
@@ -1199,6 +1185,8 @@ static void graph_output_collapsing_line(struct git_graph *graph, struct strbuf 
 
 int graph_next_line(struct git_graph *graph, struct strbuf *sb)
 {
+	sb->width = 0;
+
 	switch (graph->state) {
 	case GRAPH_PADDING:
 		graph_output_padding_line(graph, sb);
@@ -1227,7 +1215,6 @@ int graph_next_line(struct git_graph *graph, struct strbuf *sb)
 static void graph_padding_line(struct git_graph *graph, struct strbuf *sb)
 {
 	int i;
-	int chars_written = 0;
 
 	if (graph->state != GRAPH_COMMIT) {
 		graph_next_line(graph, sb);
@@ -1245,19 +1232,16 @@ static void graph_padding_line(struct git_graph *graph, struct strbuf *sb)
 		struct column *col = &graph->columns[i];
 
 		strbuf_write_column(sb, col, '|');
-		chars_written++;
 
 		if (col->commit == graph->commit && graph->num_parents > 2) {
 			int len = (graph->num_parents - 2) * 2;
 			strbuf_addchars(sb, ' ', len);
-			chars_written += len;
 		} else {
 			strbuf_addch(sb, ' ');
-			chars_written++;
 		}
 	}
 
-	graph_pad_horizontally(graph, sb, chars_written);
+	graph_pad_horizontally(graph, sb);
 
 	/*
 	 * Update graph->prev_state since we have output a padding line

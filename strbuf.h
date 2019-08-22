@@ -66,11 +66,12 @@ struct string_list;
 struct strbuf {
 	size_t alloc;
 	size_t len;
+	size_t width;
 	char *buf;
 };
 
 extern char strbuf_slopbuf[];
-#define STRBUF_INIT  { .alloc = 0, .len = 0, .buf = strbuf_slopbuf }
+#define STRBUF_INIT  { .alloc = 0, .len = 0, .width = 0, .buf = strbuf_slopbuf }
 
 /*
  * Predeclare this here, since cache.h includes this file before it defines the
@@ -161,6 +162,10 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 {
 	if (len > (sb->alloc ? sb->alloc - 1 : 0))
 		die("BUG: strbuf_setlen() beyond buffer");
+	if (len > sb->len)
+		sb->width += len - sb->len;
+	else
+		sb->width = len;
 	sb->len = len;
 	if (sb->buf != strbuf_slopbuf)
 		sb->buf[len] = '\0';
@@ -231,6 +236,7 @@ static inline void strbuf_addch(struct strbuf *sb, int c)
 		strbuf_grow(sb, 1);
 	sb->buf[sb->len++] = c;
 	sb->buf[sb->len] = '\0';
+	sb->width++;
 }
 
 /**
