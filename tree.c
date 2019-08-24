@@ -253,9 +253,11 @@ struct tree *parse_tree_indirect(const struct object_id *oid)
 			return (struct tree *) obj;
 		else if (obj->type == OBJ_COMMIT)
 			obj = &(get_commit_tree(((struct commit *)obj))->object);
-		else if (obj->type == OBJ_TAG)
+		else if (obj->type == OBJ_TAG) {
 			obj = ((struct tag *) obj)->tagged;
-		else
+			if (!obj)
+				return NULL;
+		} else
 			return NULL;
 		if (!obj->parsed)
 			parse_object(the_repository, &obj->oid);
