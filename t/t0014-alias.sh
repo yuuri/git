@@ -37,4 +37,12 @@ test_expect_success 'looping aliases - internal execution' '
 #	test_i18ngrep "^fatal: alias loop detected: expansion of" output
 #'
 
+test_expect_success 'run-command parses empty args properly, using sq_quote_buf_pretty' '
+	cat >expect <<-EOF &&
+	fatal: cannot change to '\''alias.foo=frotz foo '\'''\'' bar'\'': No such file or directory
+	EOF
+	test_expect_code 128 git -C "alias.foo=frotz foo '\'''\'' bar" foo 2>actual &&
+	test_cmp expect actual
+'
+
 test_done

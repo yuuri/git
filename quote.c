@@ -48,6 +48,18 @@ void sq_quote_buf_pretty(struct strbuf *dst, const char *src)
 	static const char ok_punct[] = "+,-./:=@_^";
 	const char *p;
 
+	/* In case of null tokens, warn the user of the BUG in their call. */
+	if (!src) 
+		BUG("BUG can't append a NULL token to the buffer");
+	
+	/* In case of empty tokens, add a '' to ensure they 
+	 * don't get inadvertently dropped. 
+	 */
+	if (!*src) {
+		strbuf_addstr(dst, "''");
+		return;
+	}
+
 	for (p = src; *p; p++) {
 		if (!isalpha(*p) && !isdigit(*p) && !strchr(ok_punct, *p)) {
 			sq_quote_buf(dst, src);
