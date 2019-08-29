@@ -1713,6 +1713,15 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	opts.overlay_mode = -1;
 	opts.checkout_index = -2;    /* default on */
 	opts.checkout_worktree = -2; /* default on */
+	
+	if (argc == 3 && !strcmp(argv[1], "-b")) {
+		/*
+		 * User ran 'git checkout -b <branch>' and expects
+		 * the same behavior as 'git switch -c <branch>'.
+		 */
+		opts.switch_branch_doing_nothing_is_ok = 0;
+		opts.only_merge_on_switching_branches = 1;
+	}
 
 	options = parse_options_dup(checkout_options);
 	options = add_common_options(&opts, options);
