@@ -200,6 +200,8 @@ static int deflate_to_pack(struct bulk_checkin_state *state,
 	struct hashfile_checkpoint checkpoint;
 	struct pack_idx_entry *idx = NULL;
 
+	checkpoint.offset = 0;
+
 	seekback = lseek(fd, 0, SEEK_CUR);
 	if (seekback == (off_t) -1)
 		return error("cannot find the current offset");

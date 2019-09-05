@@ -1266,7 +1266,7 @@ static int get_mail_commit_oid(struct object_id *commit_id, const char *mail)
 static void get_commit_info(struct am_state *state, struct commit *commit)
 {
 	const char *buffer, *ident_line, *msg;
-	size_t ident_len;
+	size_t ident_len = 0;
 	struct ident_split id;
 
 	buffer = logmsg_reencode(commit, NULL, get_commit_output_encoding());

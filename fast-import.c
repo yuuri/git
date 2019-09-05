@@ -903,7 +903,8 @@ static int store_object(
 	struct object_entry *e;
 	unsigned char hdr[96];
 	struct object_id oid;
-	unsigned long hdrlen, deltalen;
+	unsigned long hdrlen;
+	unsigned long deltalen = 0;
 	git_hash_ctx c;
 	git_zstream s;
 

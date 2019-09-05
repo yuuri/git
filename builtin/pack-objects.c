@@ -1166,7 +1166,7 @@ static int add_object_entry(const struct object_id *oid, enum object_type type,
 {
 	struct packed_git *found_pack = NULL;
 	off_t found_offset = 0;
-	uint32_t index_pos;
+	uint32_t index_pos = 0;
 
 	display_progress(progress_state, ++nr_seen);
 

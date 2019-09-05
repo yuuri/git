@@ -4,7 +4,7 @@
 
 int cmd__read_cache(int argc, const char **argv)
 {
-	int i, cnt = 1, namelen;
+	int i, cnt = 1, namelen = 0;
 	const char *name = NULL;
 
 	if (argc > 1 && skip_prefix(argv[1], "--print-and-refresh=", &name)) {
