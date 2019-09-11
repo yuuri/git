@@ -7,9 +7,8 @@ test_description='git log --graph of skewed left octopus merge.'
 test_expect_success 'set up merge history' '
 	cat >expect.uncolored <<-\EOF &&
 	* left
-	| *---.   octopus-merge
-	| |\ \ \
-	|/ / / /
+	| *-.   octopus-merge
+	|/|\ \
 	| | | * 4
 	| | * | 3
 	| | |/
@@ -21,9 +20,8 @@ test_expect_success 'set up merge history' '
 	EOF
 	cat >expect.colors <<-\EOF &&
 	* left
-	<RED>|<RESET> *<BLUE>-<RESET><BLUE>-<RESET><MAGENTA>-<RESET><MAGENTA>.<RESET>   octopus-merge
-	<RED>|<RESET> <RED>|<RESET><YELLOW>\<RESET> <BLUE>\<RESET> <MAGENTA>\<RESET>
-	<RED>|<RESET><RED>/<RESET> <YELLOW>/<RESET> <BLUE>/<RESET> <MAGENTA>/<RESET>
+	<RED>|<RESET> *<MAGENTA>-<RESET><MAGENTA>.<RESET>   octopus-merge
+	<RED>|<RESET><RED>/<RESET><YELLOW>|<RESET><BLUE>\<RESET> <MAGENTA>\<RESET>
 	<RED>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET> * 4
 	<RED>|<RESET> <YELLOW>|<RESET> * <MAGENTA>|<RESET> 3
 	<RED>|<RESET> <YELLOW>|<RESET> <MAGENTA>|<RESET><MAGENTA>/<RESET>
