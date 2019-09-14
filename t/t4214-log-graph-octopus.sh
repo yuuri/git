@@ -12,9 +12,9 @@ test_expect_success 'set up merge history' '
 	| | | * 4
 	| | * | 3
 	| | |/
-	| * | 2
+	| * / 2
 	| |/
-	* | 1
+	* / 1
 	|/
 	* initial
 	EOF
@@ -25,9 +25,9 @@ test_expect_success 'set up merge history' '
 	<RED>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET> * 4
 	<RED>|<RESET> <YELLOW>|<RESET> * <MAGENTA>|<RESET> 3
 	<RED>|<RESET> <YELLOW>|<RESET> <MAGENTA>|<RESET><MAGENTA>/<RESET>
-	<RED>|<RESET> * <MAGENTA>|<RESET> 2
+	<RED>|<RESET> * <MAGENTA>/<RESET> 2
 	<RED>|<RESET> <MAGENTA>|<RESET><MAGENTA>/<RESET>
-	* <MAGENTA>|<RESET> 1
+	* <MAGENTA>/<RESET> 1
 	<MAGENTA>|<RESET><MAGENTA>/<RESET>
 	* initial
 	EOF
@@ -68,9 +68,9 @@ test_expect_success 'log --graph with normal octopus merge, no color' '
 	| | | * 4
 	| | * | 3
 	| | |/
-	| * | 2
+	| * / 2
 	| |/
-	* | 1
+	* / 1
 	|/
 	* initial
 	EOF
@@ -86,9 +86,9 @@ test_expect_success 'log --graph with normal octopus merge with colors' '
 	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET> * 4
 	<RED>|<RESET> <GREEN>|<RESET> * <BLUE>|<RESET> 3
 	<RED>|<RESET> <GREEN>|<RESET> <BLUE>|<RESET><BLUE>/<RESET>
-	<RED>|<RESET> * <BLUE>|<RESET> 2
+	<RED>|<RESET> * <BLUE>/<RESET> 2
 	<RED>|<RESET> <BLUE>|<RESET><BLUE>/<RESET>
-	* <BLUE>|<RESET> 1
+	* <BLUE>/<RESET> 1
 	<BLUE>|<RESET><BLUE>/<RESET>
 	* initial
 	EOF
