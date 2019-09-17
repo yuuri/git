@@ -145,6 +145,11 @@ static int write_patterns_and_update(struct pattern_list *pl)
 	char *sparse_filename;
 	FILE *fp;
 
+	if (!core_apply_sparse_checkout) {
+		warning(_("core.sparseCheckout is disabled, so changes to the sparse-checkout file will have no effect"));
+		warning(_("run 'git sparse-checkout init' to enable the sparse-checkout feature"));
+	}
+
 	sparse_filename = get_sparse_checkout_filename();
 	fp = fopen(sparse_filename, "w");
 	write_patterns_to_file(fp, pl);
@@ -154,16 +159,47 @@ static int write_patterns_and_update(struct pattern_list *pl)
 	return update_working_directory();
 }
 
+static char const * const builtin_sparse_checkout_set_usage[] = {
+	N_("git sparse-checkout set [--stdin|<patterns>]"),
+	NULL
+};
+
+static struct sparse_checkout_set_opts {
+	int use_stdin;
+} set_opts;
+
 static int sparse_checkout_set(int argc, const char **argv, const char *prefix)
 {
 	static const char *empty_base = "";
 	int i;
 	struct pattern_list pl;
 	int result;
+
+	static struct option builtin_sparse_checkout_set_options[] = {
+		OPT_BOOL(0, "stdin", &set_opts.use_stdin,
+			 N_("read patterns from standard in")),
+		OPT_END(),
+	};
+
 	memset(&pl, 0, sizeof(pl));
 
-	for (i = 1; i < argc; i++)
-		add_pattern(argv[i], empty_base, 0, &pl, 0);
+	argc = parse_options(argc, argv, prefix,
+			     builtin_sparse_checkout_set_options,
+			     builtin_sparse_checkout_set_usage,
+			     PARSE_OPT_KEEP_UNKNOWN);
+
+	if (set_opts.use_stdin) {
+		struct strbuf line = STRBUF_INIT;
+
+		while (!strbuf_getline(&line, stdin)) {
+			size_t len;
+			char *buf = strbuf_detach(&line, &len);
+			add_pattern(buf, empty_base, 0, &pl, 0);
+		}
+	} else {
+		for (i = 0; i < argc; i++)
+			add_pattern(argv[i], empty_base, 0, &pl, 0);
+	}
 
 	result = write_patterns_and_update(&pl);
 

@@ -101,6 +101,13 @@ test_expect_success 'clone --sparse' '
 	test_cmp expect dir
 '
 
+test_expect_success 'warn if core.sparseCheckout is disabled' '
+	test_when_finished git -C repo config --worktree core.sparseCheckout true &&
+	git -C repo config --worktree core.sparseCheckout false &&
+	git -C repo sparse-checkout set folder1 2>err &&
+	test_i18ngrep "core.sparseCheckout is disabled" err
+'
+
 test_expect_success 'set sparse-checkout using builtin' '
 	git -C repo sparse-checkout set "/*" "!/*/" "*folder*" &&
 	cat >expect <<-EOF &&
@@ -108,6 +115,26 @@ test_expect_success 'set sparse-checkout using builtin' '
 		!/*/
 		*folder*
 	EOF
+	git -C repo sparse-checkout list >actual &&
+	test_cmp expect actual &&
+	test_cmp expect repo/.git/info/sparse-checkout &&
+	ls repo >dir  &&
+	cat >expect <<-EOF &&
+		a
+		folder1
+		folder2
+	EOF
+	test_cmp expect dir
+'
+
+test_expect_success 'set sparse-checkout using --stdin' '
+	cat >expect <<-EOF &&
+		/*
+		!/*/
+		/folder1/
+		/folder2/
+	EOF
+	git -C repo sparse-checkout set --stdin <expect &&
 	git -C repo sparse-checkout list >actual &&
 	test_cmp expect actual &&
 	test_cmp expect repo/.git/info/sparse-checkout &&
