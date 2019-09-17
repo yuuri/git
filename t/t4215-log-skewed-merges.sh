@@ -137,9 +137,8 @@ cat > expect <<\EOF
 | | * 3_G
 | * | 3_F
 |/| |
-| * |   3_E
-| |\ \
-| | |/
+| * | 3_E
+| |\|
 | | * 3_D
 | * | 3_C
 | |/
@@ -187,6 +186,81 @@ EOF
 
 test_expect_success 'log --graph with right-skewed merge following a left-skewed one' '
 	git log --graph --date-order --pretty=tformat:%s | sed "s/ *$//" > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'setup octopus merge with column joining its penultimate parent' '
+	git checkout --orphan 5_p &&
+	test_commit 5_A &&
+	git branch 5_q &&
+	git branch 5_r &&
+	test_commit 5_B &&
+	git checkout 5_q && test_commit 5_C &&
+	git checkout 5_r && test_commit 5_D &&
+	git checkout 5_p &&
+	git merge --no-ff 5_q 5_r -m 5_E &&
+	git checkout 5_q && test_commit 5_F &&
+	git checkout -b 5_s 5_p^ &&
+	git merge --no-ff 5_p 5_q -m 5_G &&
+	git checkout 5_r &&
+	git merge --no-ff 5_s -m 5_H
+'
+
+cat > expect <<\EOF
+*   5_H
+|\
+| *-.   5_G
+| |\ \
+| | | * 5_F
+| | * |   5_E
+| |/|\ \
+| |_|/ /
+|/| | /
+| | |/
+* | | 5_D
+| | * 5_C
+| |/
+|/|
+| * 5_B
+|/
+* 5_A
+EOF
+
+test_expect_success 'log --graph with octopus merge with column joining its penultimate parent' '
+	git log --graph --pretty=tformat:%s | sed "s/ *$//" > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'setup merge fusing with its left and right neighbors' '
+	git checkout --orphan 6_p &&
+	test_commit 6_A &&
+	test_commit 6_B &&
+	git checkout -b 6_q @^ && test_commit 6_C &&
+	git checkout -b 6_r @^ && test_commit 6_D &&
+	git checkout 6_p && git merge --no-ff 6_q 6_r -m 6_E &&
+	git checkout 6_r && test_commit 6_F &&
+	git checkout 6_p && git merge --no-ff 6_r -m 6_G &&
+	git checkout @^^ && git merge --no-ff 6_p -m 6_H
+'
+
+cat > expect <<\EOF
+*   6_H
+|\
+| *   6_G
+| |\
+| | * 6_F
+| * | 6_E
+|/|\|
+| | * 6_D
+| * | 6_C
+| |/
+* / 6_B
+|/
+* 6_A
+EOF
+
+test_expect_success 'log --graph with merge fusing with its left and right neighbors' '
+	git log --graph --pretty=tformat:%s | sed "s/ *$//" > actual &&
 	test_cmp expect actual
 '
 
