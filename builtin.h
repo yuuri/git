@@ -92,6 +92,31 @@
  *
  * The return value from `cmd_foo()` becomes the exit status of the
  * command.
+ *
+ * Changeset History
+ * -----------------
+ *
+ * The following describes how the documentation has finally been placed
+ * in this file, over the related changesets.
+ *
+ * +-----------------+ *OLD LINK*  +-----------------+
+ * | api-builtin.txt | <~~~~~~~~~~ | api-command.txt |
+ * +-----------------+             +-----------------+
+ *    |                               ~  *  |
+ *    | deleted,                     ~  N   | moved and renamed from
+ *    | contents is taken over      ~  E    | Documentation/technical/
+ *    | by builtin.h               ~  W     | to
+ *    | (this file)               ~         | Documentation/howto/
+ *    |                          ~ L        |
+ *    |                         ~ I         |
+ *    v                        ~ N          v
+ * +-----------+              ~ K  +-----------------+
+ * | builtin.h | <~~~~~~~~~~~~ *   | new-command.txt |
+ * +-----------+                   +-----------------+
+ *
+ * ---> moved to(or renamed to)
+ * ~~~> refers to
+ *
  */
 
 #define DEFAULT_MERGE_LOG_LEN 20
