@@ -441,22 +441,31 @@ static unsigned short graph_find_commit_color(const struct git_graph *graph,
 	return graph_get_current_column_color(graph);
 }
 
+static int graph_find_new_column_by_commit(struct git_graph *graph,
+					   struct commit *commit)
+{
+	int i;
+	for (i = 0; i < graph->num_new_columns; i++) {
+		if (graph->new_columns[i].commit == commit)
+			return i;
+	}
+	return -1;
+}
+
 static void graph_insert_into_new_columns(struct git_graph *graph,
 					  struct commit *commit,
 					  int *mapping_index)
 {
-	int i;
+	int i = graph_find_new_column_by_commit(graph, commit);
 
 	/*
 	 * If the commit is already in the new_columns list, we don't need to
 	 * add it.  Just update the mapping correctly.
 	 */
-	for (i = 0; i < graph->num_new_columns; i++) {
-		if (graph->new_columns[i].commit == commit) {
-			graph->mapping[*mapping_index] = i;
-			*mapping_index += 2;
-			return;
-		}
+	if (i >= 0) {
+		graph->mapping[*mapping_index] = i;
+		*mapping_index += 2;
+		return;
 	}
 
 	/*
@@ -961,17 +970,6 @@ static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 		graph_update_state(graph, GRAPH_COLLAPSING);
 }
 
-static struct column *find_new_column_by_commit(struct git_graph *graph,
-						struct commit *commit)
-{
-	int i;
-	for (i = 0; i < graph->num_new_columns; i++) {
-		if (graph->new_columns[i].commit == commit)
-			return &graph->new_columns[i];
-	}
-	return NULL;
-}
-
 static void graph_output_post_merge_line(struct git_graph *graph, struct strbuf *sb)
 {
 	int seen_this = 0;
@@ -999,20 +997,20 @@ static void graph_output_post_merge_line(struct git_graph *graph, struct strbuf 
 			 * edges.
 			 */
 			struct commit_list *parents = NULL;
-			struct column *par_column;
+			int par_column;
 			seen_this = 1;
 			parents = first_interesting_parent(graph);
 			assert(parents);
-			par_column = find_new_column_by_commit(graph, parents->item);
-			assert(par_column);
+			par_column = graph_find_new_column_by_commit(graph, parents->item);
+			assert(par_column >= 0);
 
-			strbuf_write_column(sb, par_column, '|');
+			strbuf_write_column(sb, &graph->new_columns[par_column], '|');
 			for (j = 0; j < graph->num_parents - 1; j++) {
 				parents = next_interesting_parent(graph, parents);
 				assert(parents);
-				par_column = find_new_column_by_commit(graph, parents->item);
-				assert(par_column);
-				strbuf_write_column(sb, par_column, '\\');
+				par_column = graph_find_new_column_by_commit(graph, parents->item);
+				assert(par_column >= 0);
+				strbuf_write_column(sb, &graph->new_columns[par_column], '\\');
 				strbuf_addch(sb, ' ');
 			}
 		} else if (seen_this) {
