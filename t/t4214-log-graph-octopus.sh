@@ -42,23 +42,74 @@ test_expect_success 'set up merge history' '
 	test_tick &&
 	git merge -m octopus-merge 1 2 3 4 &&
 	git checkout 1 -b L &&
-	test_commit left
+	test_commit left &&
+	git checkout 4 -b R &&
+	test_commit right
 '
 
 test_expect_success 'log --graph with tricky octopus merge with colors' '
 	test_config log.graphColors red,green,yellow,blue,magenta,cyan &&
-	git log --color=always --graph --date-order --pretty=tformat:%s --all >actual.colors.raw &&
+	git log --color=always --graph --date-order --pretty=tformat:%s L merge >actual.colors.raw &&
 	test_decode_color <actual.colors.raw | sed "s/ *\$//" >actual.colors &&
 	test_cmp expect.colors actual.colors
 '
 
 test_expect_success 'log --graph with tricky octopus merge, no color' '
-	git log --color=never --graph --date-order --pretty=tformat:%s --all >actual.raw &&
+	git log --color=never --graph --date-order --pretty=tformat:%s L merge >actual.raw &&
 	sed "s/ *\$//" actual.raw >actual &&
 	test_cmp expect.uncolored actual
 '
 
-# Repeat the previous two tests with "normal" octopus merge (i.e.,
+# Repeat the previous two tests with an octopus merge whose final parent skews left
+
+test_expect_success 'log --graph with left-skewed final parent, no color' '
+	cat >expect.uncolored <<-\EOF &&
+	* right
+	| *---.   octopus-merge
+	| |\ \ \
+	| |_|_|/
+	|/| | |
+	* | | | 4
+	| | | * 3
+	| |_|/
+	|/| |
+	| | * 2
+	| |/
+	|/|
+	| * 1
+	|/
+	* initial
+	EOF
+	git log --color=never --graph --date-order --pretty=tformat:%s R merge >actual.raw &&
+	sed "s/ *\$//" actual.raw >actual &&
+	test_cmp expect.uncolored actual
+'
+
+test_expect_success 'log --graph with left-skewed final parent with colors' '
+	cat >expect.colors <<-\EOF &&
+	* right
+	<RED>|<RESET> *<BLUE>-<RESET><BLUE>-<RESET><RED>-<RESET><RED>.<RESET>   octopus-merge
+	<RED>|<RESET> <GREEN>|<RESET><YELLOW>\<RESET> <BLUE>\<RESET> <RED>\<RESET>
+	<RED>|<RESET> <GREEN>|<RESET><RED>_<RESET><YELLOW>|<RESET><RED>_<RESET><BLUE>|<RESET><RED>/<RESET>
+	<RED>|<RESET><RED>/<RESET><GREEN>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET>
+	* <GREEN>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET> 4
+	<MAGENTA>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET> * 3
+	<MAGENTA>|<RESET> <GREEN>|<RESET><MAGENTA>_<RESET><YELLOW>|<RESET><MAGENTA>/<RESET>
+	<MAGENTA>|<RESET><MAGENTA>/<RESET><GREEN>|<RESET> <YELLOW>|<RESET>
+	<MAGENTA>|<RESET> <GREEN>|<RESET> * 2
+	<MAGENTA>|<RESET> <GREEN>|<RESET><MAGENTA>/<RESET>
+	<MAGENTA>|<RESET><MAGENTA>/<RESET><GREEN>|<RESET>
+	<MAGENTA>|<RESET> * 1
+	<MAGENTA>|<RESET><MAGENTA>/<RESET>
+	* initial
+	EOF
+	test_config log.graphColors red,green,yellow,blue,magenta,cyan &&
+	git log --color=always --graph --date-order --pretty=tformat:%s R merge >actual.colors.raw &&
+	test_decode_color <actual.colors.raw | sed "s/ *\$//" >actual.colors &&
+	test_cmp expect.colors actual.colors
+'
+
+# Repeat the first two tests with "normal" octopus merge (i.e.,
 # without the first parent skewing to the "left" branch column).
 
 test_expect_success 'log --graph with normal octopus merge, no color' '
