@@ -354,4 +354,17 @@ test_expect_success 'discard_index() also discards fsmonitor info' '
 	test_cmp expect actual
 '
 
+# This test covers staging/unstaging files that appear at the end of the index.
+# Test files with names beginning with 'z' are used under the assumption that
+# earlier tests do not add/leave index entries that sort below them. 
+test_expect_success 'status succeeds after staging/unstaging ' '
+	test_commit initial &&
+	removed=$(test_seq 1 100 | sed "s/^/z/") &&
+	touch $removed &&
+	git add $removed &&
+	test_config core.fsmonitor "$TEST_DIRECTORY/t7519/fsmonitor-env" &&
+	FSMONITOR_LIST="$removed" git restore -S $removed &&
+	FSMONITOR_LIST="$removed" git status
+'
+
 test_done
