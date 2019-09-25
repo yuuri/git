@@ -134,6 +134,20 @@ test_expect_success 'git-clean, dirty case' '
 	test_i18ncmp expected result
 '
 
+test_expect_success '--ignore-skip-worktree-entries leaves worktree alone' '
+	test_commit geroff-me &&
+	git update-index --skip-worktree geroff-me.t &&
+	rm geroff-me.t &&
+
+	: ignoring the worktree &&
+	git update-index --remove --ignore-skip-worktree-entries geroff-me.t &&
+	git diff-index --cached --exit-code HEAD &&
+
+	: not ignoring the worktree, a deletion is staged &&
+	git update-index --remove geroff-me.t &&
+	test_must_fail git diff-index --cached --exit-code HEAD
+'
+
 #TODO test_expect_failure 'git-apply adds file' false
 #TODO test_expect_failure 'git-apply updates file' false
 #TODO test_expect_failure 'git-apply removes file' false
