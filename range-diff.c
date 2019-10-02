@@ -50,7 +50,8 @@ static int read_patches(const char *range, struct string_list *list)
 	int offset, len;
 	size_t size;
 
-	argv_array_pushl(&cp.args, "log", "--no-color", "-p", "--no-merges",
+	argv_array_pushl(&cp.args, "-c", "diff.noprefix=false",
+			"log", "--no-color", "-p", "--no-merges",
 			"--reverse", "--date-order", "--decorate=no",
 			/*
 			 * Choose indicators that are not used anywhere
