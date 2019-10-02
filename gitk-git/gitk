@@ -250,8 +250,13 @@ proc parseviewargs {n arglist} {
 		set nextisval 1
 		lappend glflags $arg
 	    }
-	    "--not" - "--all" {
+	    "--not" {
 		lappend revargs $arg
+	    }
+		"--all" {
+		# we recognize this argument;
+		# no expansion needed, use it with 'git log' as-is
+		set allknown 0
 	    }
 	    "--merge" {
 		set vmergeonly($n) 1
