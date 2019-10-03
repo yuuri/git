@@ -262,4 +262,11 @@ test_expect_success 'revert to old sparse-checkout on bad update' '
 	test_cmp dir expect
 '
 
+test_expect_success 'fail when lock is taken' '
+	test_when_finished rm -rf repo/.git/info/sparse-checkout.lock &&
+	touch repo/.git/info/sparse-checkout.lock &&
+	test_must_fail git -C repo sparse-checkout set deep 2>err &&
+	test_i18ngrep "File exists" err
+'
+
 test_done
