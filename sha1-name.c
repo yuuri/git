@@ -98,7 +98,7 @@ static void find_short_object_filename(struct disambiguate_state *ds)
 		loose_objects = odb_loose_cache(odb, &ds->bin_pfx);
 		pos = oid_array_lookup(loose_objects, &ds->bin_pfx);
 		if (pos < 0)
-			pos = -1 - pos;
+			pos = insert_pos_to_index_pos(pos);
 		while (!ds->ambiguous && pos < loose_objects->nr) {
 			const struct object_id *oid;
 			oid = loose_objects->oid + pos;

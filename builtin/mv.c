@@ -102,7 +102,7 @@ static int index_range_of_same_dir(const char *src, int length,
 	if (first >= 0)
 		die(_("%.*s is in index"), len_w_slash, src_w_slash);
 
-	first = -1 - first;
+	first = insert_pos_to_index_pos(first);
 	for (last = first; last < active_nr; last++) {
 		const char *path = active_cache[last]->name;
 		if (strncmp(path, src_w_slash, len_w_slash))

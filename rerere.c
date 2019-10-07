@@ -154,7 +154,7 @@ static struct rerere_dir *find_rerere_dir(const char *hex)
 		rr_dir->status = NULL;
 		rr_dir->status_nr = 0;
 		rr_dir->status_alloc = 0;
-		pos = -1 - pos;
+		pos = insert_pos_to_index_pos(pos);
 
 		/* Make sure the array is big enough ... */
 		ALLOC_GROW(rerere_dir, rerere_dir_nr + 1, rerere_dir_alloc);

@@ -109,8 +109,9 @@ static void verify_working_tree_path(struct repository *r,
 	pos = index_name_pos(r->index, path, strlen(path));
 	if (pos >= 0)
 		; /* path is in the index */
-	else if (-1 - pos < r->index->cache_nr &&
-		 !strcmp(r->index->cache[-1 - pos]->name, path))
+	else if (insert_pos_to_index_pos(pos) < r->index->cache_nr &&
+		 !strcmp(r->index->cache[insert_pos_to_index_pos(pos)]->name,
+			 path))
 		; /* path is in the index, unmerged */
 	else
 		die("no such path '%s' in HEAD", path);

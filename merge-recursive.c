@@ -753,7 +753,7 @@ static int dir_in_way(struct index_state *istate, const char *path,
 	pos = index_name_pos(istate, dirpath.buf, dirpath.len);
 
 	if (pos < 0)
-		pos = -1 - pos;
+		pos = insert_pos_to_index_pos(pos);
 	if (pos < istate->cache_nr &&
 	    !strncmp(dirpath.buf, istate->cache[pos]->name, dirpath.len)) {
 		strbuf_release(&dirpath);
@@ -822,7 +822,7 @@ static int would_lose_untracked(struct merge_options *opt, const char *path)
 	int pos = index_name_pos(istate, path, strlen(path));
 
 	if (pos < 0)
-		pos = -1 - pos;
+		pos = insert_pos_to_index_pos(pos);
 	while (pos < istate->cache_nr &&
 	       !strcmp(path, istate->cache[pos]->name)) {
 		/*

@@ -553,7 +553,7 @@ static int locate_in_src_index(const struct cache_entry *ce,
 	int len = ce_namelen(ce);
 	int pos = index_name_pos(index, ce->name, len);
 	if (pos < 0)
-		pos = -1 - pos;
+		pos = insert_pos_to_index_pos(pos);
 	return pos;
 }
 

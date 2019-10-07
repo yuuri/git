@@ -37,7 +37,7 @@ int is_gitmodules_unmerged(const struct index_state *istate)
 {
 	int pos = index_name_pos(istate, GITMODULES_FILE, strlen(GITMODULES_FILE));
 	if (pos < 0) { /* .gitmodules not found or isn't merged */
-		pos = -1 - pos;
+		pos = insert_pos_to_index_pos(pos);
 		if (istate->cache_nr > pos) {  /* there is a .gitmodules */
 			const struct cache_entry *ce = istate->cache[pos];
 			if (ce_namelen(ce) == strlen(GITMODULES_FILE) &&

@@ -738,6 +738,11 @@ static inline int index_pos_to_insert_pos(uintmax_t pos)
 	return -1 - (int)pos;
 }
 
+static inline int insert_pos_to_index_pos(int pos)
+{
+	return -1 - pos;
+}
+
 #define ADD_CACHE_OK_TO_ADD 1		/* Ok to add */
 #define ADD_CACHE_OK_TO_REPLACE 2	/* Ok to replace file/directory */
 #define ADD_CACHE_SKIP_DFCHECK 4	/* Ok to skip DF conflict checks */
