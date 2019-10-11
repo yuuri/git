@@ -319,18 +319,18 @@ static const char *format_time(timestamp_t time, const char *tz_str,
 	return time_buf.buf;
 }
 
-#define OUTPUT_ANNOTATE_COMPAT	001
-#define OUTPUT_LONG_OBJECT_NAME	002
-#define OUTPUT_RAW_TIMESTAMP	004
-#define OUTPUT_PORCELAIN	010
-#define OUTPUT_SHOW_NAME	020
-#define OUTPUT_SHOW_NUMBER	040
-#define OUTPUT_SHOW_SCORE	0100
-#define OUTPUT_NO_AUTHOR	0200
-#define OUTPUT_SHOW_EMAIL	0400
-#define OUTPUT_LINE_PORCELAIN	01000
-#define OUTPUT_COLOR_LINE	02000
-#define OUTPUT_SHOW_AGE_WITH_COLOR	04000
+#define OUTPUT_ANNOTATE_COMPAT      (1<<0)
+#define OUTPUT_LONG_OBJECT_NAME     (1<<1)
+#define OUTPUT_RAW_TIMESTAMP        (1<<2)
+#define OUTPUT_PORCELAIN            (1<<3)
+#define OUTPUT_SHOW_NAME            (1<<4)
+#define OUTPUT_SHOW_NUMBER          (1<<5)
+#define OUTPUT_SHOW_SCORE           (1<<6)
+#define OUTPUT_NO_AUTHOR            (1<<7)
+#define OUTPUT_SHOW_EMAIL           (1<<8)
+#define OUTPUT_LINE_PORCELAIN       (1<<9)
+#define OUTPUT_COLOR_LINE           (1<<10)
+#define OUTPUT_SHOW_AGE_WITH_COLOR  (1<<11)
 
 static void emit_porcelain_details(struct blame_origin *suspect, int repeat)
 {
