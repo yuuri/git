@@ -1931,6 +1931,16 @@ static char *apply_dir_rename(struct dir_rename_entry *entry,
 		return NULL;
 
 	oldlen = strlen(entry->dir);
+	if (entry->new_dir.len == 0)
+		/*
+		 * If someone renamed/merged a subdirectory into the root
+		 * directory (e.g. 'some/subdir' -> ''), then we want to
+		 * avoid returning
+		 *     '' + '/filename'
+		 * as the rename; we need to make old_path + oldlen advance
+		 * past the '/' character.
+		 */
+		oldlen++;
 	newlen = entry->new_dir.len + (strlen(old_path) - oldlen) + 1;
 	strbuf_grow(&new_path, newlen);
 	strbuf_addbuf(&new_path, &entry->new_dir);
@@ -1979,6 +1989,25 @@ static void get_renamed_dir_portion(const char *old_path, const char *new_path,
 	if (end_of_old == old_path && end_of_new == new_path &&
 	    *end_of_old == *end_of_new)
 		return; /* We haven't modified *old_dir or *new_dir yet. */
+
+	/*
+	 * If end_of_new got back to the beginning of its string, and
+	 * end_of_old got back to the beginning of some subdirectory, then
+	 * we have a rename/merge of a subdirectory into the root, which
+	 * needs slightly special handling.
+	 *
+	 * Note: There is no need to consider the opposite case, with a
+	 * rename/merge of the root directory into some subdirectory.
+	 * Our rule elsewhere that a directory which still exists is not
+	 * considered to have been renamed means the root directory can
+	 * never be renamed (because the root directory always exists).
+	 */
+	if (end_of_new == new_path &&
+	    end_of_old != old_path && end_of_old[-1] == '/') {
+		*old_dir = xstrndup(old_path, end_of_old-1 - old_path);
+		*new_dir = xstrndup(new_path, end_of_new - new_path);
+		return;
+	}
 
 	/*
 	 * We've found the first non-matching character in the directory
