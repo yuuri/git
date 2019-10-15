@@ -349,10 +349,16 @@ static int check_common(const char *unmatched, void *value, void *baton)
 static void update_common_dir(struct strbuf *buf, int git_dir_len,
 			      const char *common_dir)
 {
-	char *base = buf->buf + git_dir_len;
+	char *base = buf->buf + git_dir_len, *base2 = NULL;
+
+	if (ends_with(base, ".lock"))
+		base = base2 = xstrndup(base, strlen(base) - 5);
+
 	init_common_trie();
 	if (trie_find(&common_trie, base, check_common, NULL) > 0)
 		replace_dir(buf, git_dir_len, common_dir);
+
+	free(base2);
 }
 
 void report_linked_checkout_garbage(void)
