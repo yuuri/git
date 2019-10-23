@@ -583,6 +583,23 @@ test_expect_success 'fetch.writeCommitGraph' '
 	)
 '
 
+test_expect_failure 'fetch.writeCommitGraph with submodules' '
+	pwd="$(pwd)" &&
+	git clone dups super &&
+	(
+		cd super &&
+		git submodule add "file://$pwd/three" &&
+		git commit -m "add submodule"
+	) &&
+	git clone "super" writeError &&
+	(
+		cd writeError &&
+		test_path_is_missing .git/objects/info/commit-graphs/commit-graph-chain &&
+		git -c fetch.writeCommitGraph=true fetch origin &&
+		test_path_is_file .git/objects/info/commit-graphs/commit-graph-chain
+	)
+'
+
 # configured prune tests
 
 set_config_tristate () {
