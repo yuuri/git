@@ -393,11 +393,24 @@ proc revert_helper {txt paths} {
 
 	if {![lock_index begin-update]} return
 
+	# If an action is taken that implicitly unlocks the index, this gets cleared. Either way, it is executed at the end of the procedure.
+	set epilogue [list]
+	lappend epilogue {unlock_index}
+
+	proc already_unlocked {} { upvar epilogue epilogue; set epilogue [lsearch -inline -all -not -exact $epilogue {unlock_index}] }
+
 	set pathList [list]
+	set untrackedList [list]
 	set after {}
 	foreach path $paths {
 		switch -glob -- [lindex $file_states($path) 0] {
 		U? {continue}
+		?O {
+			lappend untrackedList $path
+			if {$path eq $current_diff_path} {
+				set after {reshow_diff;}
+			}
+		}
 		?M -
 		?T -
 		?D {
@@ -410,45 +423,101 @@ proc revert_helper {txt paths} {
 	}
 
 
-	# Split question between singular and plural cases, because
-	# such distinction is needed in some languages. Previously, the
-	# code used "Revert changes in" for both, but that can't work
-	# in languages where 'in' must be combined with word from
-	# rest of string (in different way for both cases of course).
-	#
-	# FIXME: Unfortunately, even that isn't enough in some languages
-	# as they have quite complex plural-form rules. Unfortunately,
-	# msgcat doesn't seem to support that kind of string translation.
-	#
-	set n [llength $pathList]
-	if {$n == 0} {
-		unlock_index
-		return
-	} elseif {$n == 1} {
-		set query [mc "Revert changes in file %s?" [short_path [lindex $pathList]]]
-	} else {
-		set query [mc "Revert changes in these %i files?" $n]
-	}
+	set numPaths [llength $pathList]
+	set numUntracked [llength $untrackedList]
 
-	set reply [tk_dialog \
-		.confirm_revert \
-		"[appname] ([reponame])" \
-		"$query
+	if {$numPaths > 0} {
+		# Split question between singular and plural cases, because
+		# such distinction is needed in some languages. Previously, the
+		# code used "Revert changes in" for both, but that can't work
+		# in languages where 'in' must be combined with word from
+		# rest of string (in different way for both cases of course).
+		#
+		# FIXME: Unfortunately, even that isn't enough in some languages
+		# as they have quite complex plural-form rules. Unfortunately,
+		# msgcat doesn't seem to support that kind of string translation.
+		if {$numPaths == 1} {
+			set query [mc "Revert changes in file %s?" [short_path [lindex $pathList]]]
+		} else {
+			set query [mc "Revert changes in these %i files?" $numPaths]
+		}
+
+		set reply [tk_dialog \
+			.confirm_revert \
+			"[appname] ([reponame])" \
+			"$query
 
 [mc "Any unstaged changes will be permanently lost by the revert."]" \
-		question \
-		1 \
-		[mc "Do Nothing"] \
-		[mc "Revert Changes"] \
-		]
-	if {$reply == 1} {
-		checkout_index \
-			$txt \
-			$pathList \
-			[concat $after [list ui_ready]]
-	} else {
-		unlock_index
+			question \
+			1 \
+			[mc "Do Nothing"] \
+			[mc "Revert Changes"] \
+			]
+
+		if {$reply == 1} {
+			checkout_index \
+				$txt \
+				$pathList \
+				[concat $after [list ui_ready]]
+
+			already_unlocked
+		}
 	}
+
+	if {$numUntracked > 0} {
+		# Split question between singular and plural cases, because
+		# such distinction is needed in some languages.
+		#
+		# FIXME: Unfortunately, even that isn't enough in some languages
+		# as they have quite complex plural-form rules. Unfortunately,
+		# msgcat doesn't seem to support that kind of string translation.
+		if {$numUntracked == 1} {
+			set query [mc "Delete untracked file %s?" [short_path [lindex $untrackedList]]]
+		} else {
+			set query [mc "Delete these %i untracked files?" $numUntracked]
+		}
+
+		set reply [tk_dialog \
+			.confirm_revert \
+			"[appname] ([reponame])" \
+			"$query
+
+[mc "Files will be permanently deleted."]" \
+			question \
+			1 \
+			[mc "Do Nothing"] \
+			[mc "Delete Files"] \
+			]
+
+		if {$reply == 1} {
+			file delete -- {*}$untrackedList
+
+			foreach path $untrackedList {
+				set directoryPath [file dirname $path]
+
+				while {$directoryPath != $path} {
+					set contents [glob -nocomplain -dir $path *]
+
+					if {[llength $contents] > 0} { break }
+
+					try {
+						file delete -- $path
+					}
+					catch {
+						# This is just a best effort, don't annoy the user with failure to remove empty directories.
+						break
+					}
+
+					set path $directoryPath
+					set directoryPath [file dirname $path]
+				}
+			}
+
+			lappend epilogue {ui_do_rescan}
+		}
+	}
+
+	foreach epilogueCommand $epilogue { {*}$epilogueCommand }
 }
 
 proc do_revert_selection {} {
