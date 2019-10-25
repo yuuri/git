@@ -10,13 +10,19 @@ void vreportf(const char *prefix, const char *err, va_list params)
 {
 	char msg[4096];
 	char *p;
-
-	vsnprintf(msg, sizeof(msg), err, params);
+	size_t off = strlcpy(msg, prefix, sizeof(msg));
+	int ret = vsnprintf(msg + off, sizeof(msg) - off, err, params);
 	for (p = msg; *p; p++) {
 		if (iscntrl(*p) && *p != '\t' && *p != '\n')
 			*p = '?';
 	}
-	fprintf(stderr, "%s%s\n", prefix, msg);
+	if (ret > 0) {
+		if (off + ret > sizeof(msg) - 1)
+			ret = sizeof(msg) - 1 - off;
+		msg[off + ret] = '\n'; /* we no longer need a NUL */
+		fflush(stderr);
+		xwrite(2, msg, off + ret + 1);
+	}
 }
 
 static NORETURN void usage_builtin(const char *err, va_list params)
