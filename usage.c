@@ -9,14 +9,21 @@
 void vreportf(const char *prefix, const char *err, va_list params)
 {
 	char msg[4096];
-	char *p;
+	size_t off = strlcpy(msg, prefix, sizeof(msg));
+	char *p, *pend = msg + sizeof(msg);
 
-	vsnprintf(msg, sizeof(msg), err, params);
-	for (p = msg; *p; p++) {
+	p = msg + off < pend ? msg + off : pend - 1;
+	if (vsnprintf(p, pend - p, err, params) < 0)
+		return; /* vsnprintf() failed, there is nothing we can do */
+
+	for (; p != pend - 1 && *p; p++) {
 		if (iscntrl(*p) && *p != '\t' && *p != '\n')
 			*p = '?';
 	}
-	fprintf(stderr, "%s%s\n", prefix, msg);
+
+	*(p++) = '\n'; /* we no longer need a NUL */
+	fflush(stderr);
+	xwrite(2, msg, p - msg);
 }
 
 static NORETURN void usage_builtin(const char *err, va_list params)
