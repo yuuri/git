@@ -393,11 +393,20 @@ proc revert_helper {txt paths} {
 
 	if {![lock_index begin-update]} return
 
+	# The index is now locked. Some of the paths below include calls that
+	# unlock the index (e.g. checked_index). If we reach the end and the
+	# index is still locked, we need to unlock it before returning.
+	set need_unlock_index 1
+
 	set path_list [list]
+	set untracked_list [list]
 	set after {}
 	foreach path $paths {
 		switch -glob -- [lindex $file_states($path) 0] {
 		U? {continue}
+		?O {
+			lappend untracked_list $path
+		}
 		?M -
 		?T -
 		?D {
@@ -409,45 +418,225 @@ proc revert_helper {txt paths} {
 		}
 	}
 
+	set path_cnt [llength $path_list]
+	set untracked_cnt [llength $untracked_list]
 
-	# Split question between singular and plural cases, because
-	# such distinction is needed in some languages. Previously, the
-	# code used "Revert changes in" for both, but that can't work
-	# in languages where 'in' must be combined with word from
-	# rest of string (in different way for both cases of course).
-	#
-	# FIXME: Unfortunately, even that isn't enough in some languages
-	# as they have quite complex plural-form rules. Unfortunately,
-	# msgcat doesn't seem to support that kind of string translation.
-	#
-	set n [llength $path_list]
-	if {$n == 0} {
-		unlock_index
-		return
-	} elseif {$n == 1} {
-		set query [mc "Revert changes in file %s?" [short_path [lindex $path_list]]]
-	} else {
-		set query [mc "Revert changes in these %i files?" $n]
-	}
+	if {$path_cnt > 0} {
+		# Split question between singular and plural cases, because
+		# such distinction is needed in some languages. Previously, the
+		# code used "Revert changes in" for both, but that can't work
+		# in languages where 'in' must be combined with word from
+		# rest of string (in different way for both cases of course).
+		#
+		# FIXME: Unfortunately, even that isn't enough in some languages
+		# as they have quite complex plural-form rules. Unfortunately,
+		# msgcat doesn't seem to support that kind of string
+		# translation.
+		#
+		if {$path_cnt == 1} {
+			set query [mc \
+				"Revert changes in file %s?" \
+				[short_path [lindex $path_list]] \
+				]
+		} else {
+			set query [mc \
+				"Revert changes in these %i files?" \
+				$path_cnt]
+		}
 
-	set reply [tk_dialog \
-		.confirm_revert \
-		"[appname] ([reponame])" \
-		"$query
+		set reply [tk_dialog \
+			.confirm_revert \
+			"[appname] ([reponame])" \
+			"$query
 
 [mc "Any unstaged changes will be permanently lost by the revert."]" \
-		question \
-		1 \
-		[mc "Do Nothing"] \
-		[mc "Revert Changes"] \
-		]
-	if {$reply == 1} {
-		checkout_index \
-			$txt \
+			question \
+			1 \
+			[mc "Do Nothing"] \
+			[mc "Revert Changes"] \
+			]
+
+		if {$reply == 1} {
+			checkout_index \
+				$txt \
+				$path_list \
+				[concat $after [list ui_ready]]
+
+			set need_unlock_index 0
+		}
+	}
+
+	if {$need_unlock_index} { unlock_index }
+
+	if {$untracked_cnt > 0} {
+		# Split question between singular and plural cases, because
+		# such distinction is needed in some languages.
+		#
+		# FIXME: Unfortunately, even that isn't enough in some languages
+		# as they have quite complex plural-form rules. Unfortunately,
+		# msgcat doesn't seem to support that kind of string
+		# translation.
+		#
+		if {$untracked_cnt == 1} {
+			set query [mc \
+				"Delete untracked file %s?" \
+				[short_path [lindex $untracked_list]] \
+				]
+		} else {
+			set query [mc \
+				"Delete these %i untracked files?" \
+				$untracked_cnt \
+				]
+		}
+
+		set reply [tk_dialog \
+			.confirm_revert \
+			"[appname] ([reponame])" \
+			"$query
+
+[mc "Files will be permanently deleted."]" \
+			question \
+			1 \
+			[mc "Do Nothing"] \
+			[mc "Delete Files"] \
+			]
+
+		if {$reply == 1} {
+			delete_files $untracked_list
+		}
+	}
+}
+
+# Delete all of the specified files, performing deletion in batches to allow the
+# UI to remain responsive and updated.
+proc delete_files {path_list} {
+	# Enable progress bar status updates
+	$::main_status start [mc "Deleting"] [mc "files"]
+
+	set path_index 0
+	set deletion_errors [list]
+	set deletion_error_path "not yet captured"
+	set batch_size 50
+
+	delete_helper \
+		$path_list \
+		$path_index \
+		$deletion_errors \
+		$deletion_error_path \
+		$batch_size
+}
+
+# Helper function to delete a list of files in batches. Each call deletes one
+# batch of files, and then schedules a call for the next batch after any UI
+# messages have been processed.
+proc delete_helper \
+	{path_list path_index deletion_errors deletion_error_path batch_size} {
+	global file_states
+
+	set path_cnt [llength $path_list]
+
+	set batch_remaining $batch_size
+
+	while {$batch_remaining > 0} {
+		if {$path_index >= $path_cnt} { break }
+
+		set path [lindex $path_list $path_index]
+
+		set deletion_failed [catch {file delete -- $path} deletion_error]
+
+		if {$deletion_failed} {
+			lappend deletion_errors $deletion_error
+
+			# Optimistically capture the path that failed, in case
+			# there's only one.
+			set deletion_error_path $path
+		} else {
+			remove_empty_directories [file dirname $path]
+
+			# Don't assume the deletion worked. Remove the file from
+			# the UI, but only if it no longer exists.
+			if {![lexists $path]} {
+				unset file_states($path)
+				display_file $path __
+			}
+		}
+
+		incr path_index 1
+		incr batch_remaining -1
+	}
+
+	# Update the progress bar to indicate that this batch has been
+	# completed. The update will be visible when this procedure returns
+	# and allows the UI thread to process messages.
+	$::main_status update $path_index $path_cnt
+
+	if {$path_index < $path_cnt} {
+		# The Tcler's Wiki lists this as the best practice for keeping
+		# a UI active and processing messages during a long-running
+		# operation.
+
+		after idle [list after 0 [list \
+			delete_helper \
 			$path_list \
-			[concat $after [list ui_ready]]
+			$path_index \
+			$deletion_errors \
+			$deletion_error_path \
+			$batch_size \
+			]]
 	} else {
-		unlock_index
+		# Finish the status bar operation.
+		$::main_status stop
+
+		# Report error, if any, based on how many deletions failed.
+		set deletion_error_cnt [llength $deletion_errors]
+
+		if {$deletion_error_cnt == 1} {
+			error_popup [mc \
+				"File %s could not be deleted: %s" \
+				$deletion_error_path \
+				[lindex $deletion_errors 0] \
+				]
+		} elseif {$deletion_error_cnt == $path_cnt} {
+			error_popup [mc \
+				"None of the selected files could be deleted." \
+				]
+		} elseif {$deletion_error_cnt > 1} {
+			error_popup [mc \
+				"%d of the selected files could not be deleted." \
+				$deletion_error_cnt]
+		}
+
+		reshow_diff
+		ui_ready
+	}
+}
+
+# This function is from the TCL documentation:
+#
+#   https://wiki.tcl-lang.org/page/file+exists
+#
+# [file exists] returns false if the path does exist but is a symlink to a path
+# that doesn't exist. This proc returns true if the path exists, regardless of
+# whether it is a symlink and whether it is broken.
+proc lexists name {
+	expr {![catch {file lstat $name finfo}]}
+}
+
+# Remove as many empty directories as we can starting at the specified path.
+# If we encounter a directory that is not empty, or if a directory deletion
+# fails, then we stop the operation and return to the caller. Even if this
+# procedure fails to delete any directories at all, it does not report failure.
+proc remove_empty_directories {directory_path} {
+	set parent_path [file dirname $directory_path]
+
+	while {$parent_path != $directory_path} {
+		set contents [glob -nocomplain -dir $directory_path *]
+
+		if {[llength $contents] > 0} { break }
+		if {[catch {file delete -- $directory_path}]} { break }
+
+		set directory_path $parent_path
+		set parent_path [file dirname $directory_path]
 	}
 }
 
