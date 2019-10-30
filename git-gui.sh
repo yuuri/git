@@ -30,8 +30,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.}]
 ##
 ## Tcl/Tk sanity check
 
-if {[catch {package require Tcl 8.4} err]
- || [catch {package require Tk  8.4} err]
+if {[catch {package require Tcl 8.6} err]
+ || [catch {package require Tk  8.6} err]
 } {
 	catch {wm withdraw .}
 	tk_messageBox \
@@ -4158,6 +4158,9 @@ if {[is_enabled retcode]} {
 if {$picked && [is_config_true gui.autoexplore]} {
 	do_explore
 }
+
+# Clear "Initializing..." status
+after idle {after 500 {$main_status show ""}}
 
 # Local variables:
 # mode: tcl
