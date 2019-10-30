@@ -31,6 +31,7 @@
 static const char * const git_reset_usage[] = {
 	N_("git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"),
 	N_("git reset [-q] [<tree-ish>] [--] <paths>..."),
+	N_("git reset [-q] [--pathspec-from-file [--pathspec-file-null]] [<tree-ish>]"),
 	N_("git reset --patch [<tree-ish>] [--] [<paths>...]"),
 	NULL
 };
@@ -284,8 +285,8 @@ static int git_reset_config(const char *var, const char *value, void *cb)
 int cmd_reset(int argc, const char **argv, const char *prefix)
 {
 	int reset_type = NONE, update_ref_status = 0, quiet = 0;
-	int patch_mode = 0, unborn;
-	const char *rev;
+	int patch_mode = 0, pathspec_file_null = 0, unborn;
+	const char *rev, *pathspec_from_file = NULL;
 	struct object_id oid;
 	struct pathspec pathspec;
 	int intent_to_add = 0;
@@ -306,6 +307,10 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('p', "patch", &patch_mode, N_("select hunks interactively")),
 		OPT_BOOL('N', "intent-to-add", &intent_to_add,
 				N_("record only the fact that removed paths will be added later")),
+		OPT_FILENAME(0, "pathspec-from-file", &pathspec_from_file,
+				N_("read pathspecs from file")),
+		OPT_BOOL(0, "pathspec-file-null", &pathspec_file_null,
+				N_("with --pathspec-from-file, pathspecs are separated with NUL character")),
 		OPT_END()
 	};
 
@@ -315,6 +320,19 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, git_reset_usage,
 						PARSE_OPT_KEEP_DASHDASH);
 	parse_args(&pathspec, argv, prefix, patch_mode, &rev);
+
+	if (pathspec_from_file) {
+		if (patch_mode)
+			die(_("--pathspec-from-file is incompatible with --patch"));
+
+		if (pathspec.nr)
+			die(_("--pathspec-from-file is incompatible with path arguments"));
+
+		parse_pathspec_file(&pathspec, 0,
+				    PATHSPEC_PREFER_FULL,
+				    prefix, pathspec_from_file, pathspec_file_null);
+	} else if (pathspec_file_null)
+		die(_("--pathspec-file-null requires --pathspec-from-file"));
 
 	unborn = !strcmp(rev, "HEAD") && get_oid("HEAD", &oid);
 	if (unborn) {
