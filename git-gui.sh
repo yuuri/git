@@ -1797,10 +1797,10 @@ proc ui_status {msg} {
 	}
 }
 
-proc ui_ready {{test {}}} {
+proc ui_ready {} {
 	global main_status
 	if {[info exists main_status]} {
-		$main_status show [mc "Ready."] $test
+		$main_status show [mc "Ready."]
 	}
 }
 
@@ -4158,6 +4158,9 @@ if {[is_enabled retcode]} {
 if {$picked && [is_config_true gui.autoexplore]} {
 	do_explore
 }
+
+# Clear "Initializing..." status
+after 500 {$main_status show ""}
 
 # Local variables:
 # mode: tcl
