@@ -669,6 +669,8 @@ static void mark_complete_and_common_ref(struct fetch_negotiator *negotiator,
 
 	save_commit_buffer = 0;
 
+	trace2_region_enter("fetch-pack", "mark_complete_and_common_ref", NULL);
+
 	for (ref = *refs; ref; ref = ref->next) {
 		struct object *o;
 
@@ -690,6 +692,10 @@ static void mark_complete_and_common_ref(struct fetch_negotiator *negotiator,
 		}
 	}
 
+	/* This block marks all local refs as COMPLETE, and then recursively marks all
+	 * parents of those refs as COMPLETE.
+	 */
+	trace2_region_enter("fetch-pack", "mark_complete_local_refs", NULL);
 	if (!args->deepen) {
 		for_each_ref(mark_complete_oid, NULL);
 		for_each_cached_alternate(NULL, mark_alternate_complete);
@@ -697,6 +703,7 @@ static void mark_complete_and_common_ref(struct fetch_negotiator *negotiator,
 		if (cutoff)
 			mark_recent_complete_commits(args, cutoff);
 	}
+	trace2_region_leave("fetch-pack", "mark_complete_local_refs", NULL);
 
 	/*
 	 * Mark all complete remote refs as common refs.
@@ -716,6 +723,7 @@ static void mark_complete_and_common_ref(struct fetch_negotiator *negotiator,
 	}
 
 	save_commit_buffer = old_save_commit_buffer;
+	trace2_region_leave("fetch-pack", "mark_complete_and_common_ref", NULL);
 }
 
 /*
