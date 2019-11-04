@@ -604,7 +604,7 @@ static void adjust_refcol_width(const struct ref *ref)
 {
 	int max, rlen, llen, len;
 
-	/* uptodate lines are only shown on high verbosity level */
+	/* up-to-date lines are only shown on high verbosity level */
 	if (!verbosity && oideq(&ref->peer_ref->old_oid, &ref->old_oid))
 		return;
 

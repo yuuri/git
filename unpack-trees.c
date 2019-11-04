@@ -29,7 +29,7 @@ static const char *unpack_plumbing_errors[NB_UNPACK_TREES_ERROR_TYPES] = {
 	"Entry '%s' would be overwritten by merge. Cannot merge.",
 
 	/* ERROR_NOT_UPTODATE_FILE */
-	"Entry '%s' not uptodate. Cannot merge.",
+	"Entry '%s' not up-to-date. Cannot merge.",
 
 	/* ERROR_NOT_UPTODATE_DIR */
 	"Updating '%s' would lose untracked files in it",
@@ -44,7 +44,7 @@ static const char *unpack_plumbing_errors[NB_UNPACK_TREES_ERROR_TYPES] = {
 	"Entry '%s' overlaps with '%s'.  Cannot bind.",
 
 	/* ERROR_SPARSE_NOT_UPTODATE_FILE */
-	"Entry '%s' not uptodate. Cannot update sparse checkout.",
+	"Entry '%s' not up-to-date. Cannot update sparse checkout.",
 
 	/* ERROR_WOULD_LOSE_ORPHANED_OVERWRITTEN */
 	"Working tree file '%s' would be overwritten by sparse checkout update.",
@@ -2027,7 +2027,7 @@ static int merged_entry(const struct cache_entry *ce,
 	} else if (!(old->ce_flags & CE_CONFLICTED)) {
 		/*
 		 * See if we can re-use the old CE directly?
-		 * That way we get the uptodate stat info.
+		 * That way we get the up-to-date stat info.
 		 *
 		 * This also removes the UPDATE flag on a match; otherwise
 		 * we will end up overwriting local changes in the work tree.

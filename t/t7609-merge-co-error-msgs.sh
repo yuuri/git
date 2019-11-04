@@ -98,7 +98,7 @@ Please commit your changes or stash them before you switch branches.
 Aborting
 EOF
 
-test_expect_success 'not uptodate file porcelain checkout error' '
+test_expect_success 'not up-to-date file porcelain checkout error' '
 	git add rep/one rep/two &&
 	test_must_fail git checkout branch 2>out &&
 	test_i18ncmp out expect

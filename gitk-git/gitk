@@ -9696,7 +9696,7 @@ proc cherrypick {} {
     if {[catch {exec sh -c "git cherry-pick -r $rowmenuid 2>&1"} err]} {
 	notbusy cherrypick
 	if {[regexp -line \
-		 {Entry '(.*)' (would be overwritten by merge|not uptodate)} \
+		 {Entry '(.*)' (would be overwritten by merge|not up-to-date)} \
 		 $err msg fname]} {
 	    error_popup [mc "Cherry-pick failed because of local changes\
 			to file '%s'.\nPlease commit, reset or stash\
