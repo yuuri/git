@@ -487,7 +487,7 @@ Try and run `./bin-wrappers/git psuh -h`. Your command should crash at the end.
 That's because `-h` is a special case which your command should handle by
 printing usage.
 
-Take a look at `Documentation/technical/api-parse-options.txt`. This is a handy
+Take a look at `parse-options.h`. This is a handy
 tool for pulling out options you need to be able to handle, and it takes a
 usage string.
 
