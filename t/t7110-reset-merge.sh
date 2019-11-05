@@ -173,7 +173,7 @@ test_expect_success 'reset --merge fails with changes in file it touches' '
     sed -e "s/line 1/changed line 1/" <file1 >file3 &&
     mv file3 file1 &&
     test_must_fail git reset --merge HEAD^ 2>err.log &&
-    grep file1 err.log | grep "not uptodate"
+    grep file1 err.log | grep "not up to date"
 '
 
 # The next test will test the following:
@@ -189,7 +189,7 @@ test_expect_success 'reset --keep fails with changes in file it touches' '
     sed -e "s/line 1/changed line 1/" <file1 >file3 &&
     mv file3 file1 &&
     test_must_fail git reset --keep HEAD^ 2>err.log &&
-    grep file1 err.log | grep "not uptodate"
+    grep file1 err.log | grep "not up to date"
 '
 
 test_expect_success 'setup 3 different branches' '
