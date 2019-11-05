@@ -61,10 +61,8 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 	};
 
 	int i = 0;
-	int verbose;
-	int normalize;
-	int allow_onelevel;
-	int refspec_pattern;
+	int verbose = 0;
+	int normalize = 0;
 	int flags = 0;
 	const char *refname;
 
@@ -73,12 +71,13 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 		OPT_GROUP(""),
 		OPT_CMDMODE( 0 , "branch", &check_ref_format_branch, N_("branch"), CHECK_REF_FORMAT_BRANCH),
 		OPT_BOOL( 0 , "normalize", &normalize, N_("normalize tracked files")),
-		OPT_BOOL( 0 , "allow-onelevel", &allow_onelevel, N_("allow one level")),
-		OPT_BOOL( 0 , "refspec-pattern", &refspec_pattern, N_("refspec pattern")),
+		OPT_BIT( 0 , "allow-onelevel", &flags, N_("allow one level"), REFNAME_ALLOW_ONELEVEL),
+		OPT_NEGBIT( 0, "no-allow-onelevel", &flags, N_("no allow one level"), REFNAME_ALLOW_ONELEVEL),
+		OPT_BIT( 0 , "refspec-pattern", &flags, N_("refspec pattern"), REFNAME_REFSPEC_PATTERN),
 		OPT_END(),
 	};
 
-	argc = parse_options(argc, argv, prefix, options, builtin_check_ref_format_usage, PARSE_OPT_KEEP_ARGV0);
+	argc = parse_options(argc, argv, prefix, options, builtin_check_ref_format_usage, 0);
 
 	refname = argv[i];
 	if (normalize)
