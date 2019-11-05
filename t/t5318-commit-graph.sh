@@ -130,12 +130,6 @@ test_expect_success 'commit-graph write progress off for redirected stderr' '
 	test_line_count = 0 err
 '
 
-test_expect_success 'commit-graph write force progress on for stderr' '
-	cd "$TRASH_DIRECTORY/full" &&
-	git commit-graph write --progress 2>err &&
-	test_file_not_empty err
-'
-
 test_expect_success 'commit-graph write with the --no-progress option' '
 	cd "$TRASH_DIRECTORY/full" &&
 	git commit-graph write --no-progress 2>err &&

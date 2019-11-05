@@ -102,20 +102,6 @@ test_expect_success 'auto gc with too many loose objects does not attempt to cre
 	test_line_count = 2 new # There is one new pack and its .idx
 '
 
-test_expect_success 'gc --no-quiet' '
-	git -c gc.writeCommitGraph=true gc --no-quiet >stdout 2>stderr &&
-	test_must_be_empty stdout &&
-	test_line_count = 1 stderr &&
-	test_i18ngrep "Computing commit graph generation numbers" stderr
-'
-
-test_expect_success TTY 'with TTY: gc --no-quiet' '
-	test_terminal git -c gc.writeCommitGraph=true gc --no-quiet >stdout 2>stderr &&
-	test_must_be_empty stdout &&
-	test_i18ngrep "Enumerating objects" stderr &&
-	test_i18ngrep "Computing commit graph generation numbers" stderr
-'
-
 test_expect_success 'gc --quiet' '
 	git -c gc.writeCommitGraph=true gc --quiet >stdout 2>stderr &&
 	test_must_be_empty stdout &&
