@@ -666,6 +666,7 @@ static void mark_complete_and_common_ref(struct fetch_negotiator *negotiator,
 	struct ref *ref;
 	int old_save_commit_buffer = save_commit_buffer;
 	timestamp_t cutoff = 0;
+
 	save_commit_buffer = 0;
 
 	trace2_region_enter("fetch-pack", "mark_complete_and_common_ref", NULL);
