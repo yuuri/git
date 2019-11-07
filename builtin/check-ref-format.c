@@ -61,18 +61,15 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 		CHECK_REF_FORMAT_BRANCH,
 	} mode = CHECK_REFNAME_FORMAT;
 
-	int verbose = 0;
 	int normalize = 0;
 	int flags = 0;
 	const char *refname;
 
 	struct option options[] = {
-		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT_GROUP(""),
-		OPT_CMDMODE(0 , "branch", &mode, N_("branch"), CHECK_REF_FORMAT_BRANCH),
+		OPT_CMDMODE(0 , "branch", &mode, N_("check for valid branch name"), CHECK_REF_FORMAT_BRANCH),
 		OPT_BOOL(0 , "normalize", &normalize, N_("normalize tracked files")),
 		OPT_BIT(0 , "allow-onelevel", &flags, N_("allow one level"), REFNAME_ALLOW_ONELEVEL),
-		OPT_NEGBIT(0, "no-allow-onelevel", &flags, N_("no allow one level"), REFNAME_ALLOW_ONELEVEL),
 		OPT_BIT(0 , "refspec-pattern", &flags, N_("refspec pattern"), REFNAME_REFSPEC_PATTERN),
 		OPT_END(),
 	};
@@ -81,7 +78,7 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 
 	refname = argv[0];
 	if (mode)
-		return  check_ref_format_branch(argv[2]);
+		return check_ref_format_branch(argv[2]);
 	if (normalize)
 		refname = collapse_slashes(refname);
 	if (check_refname_format(refname, flags))
