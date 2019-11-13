@@ -547,6 +547,11 @@ git-p4.retries::
 	Set the value to 0 to disable retries or if your p4 version
 	does not support retries (pre 2012.2).
 
+git-p4.binary::
+	Specifies the p4 executable used by git-p4 to process commands.
+	The default value for Windows is `p4.exe` and for all other
+	systems the default is `p4`. 
+
 Clone and sync variables
 ~~~~~~~~~~~~~~~~~~~~~~~~
 git-p4.syncFromOrigin::

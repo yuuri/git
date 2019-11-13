@@ -26,6 +26,8 @@ import zipfile
 import zlib
 import ctypes
 import errno
+import os.path
+from os import path
 
 # support basestring in python3
 try:
@@ -85,7 +87,17 @@ def p4_build_cmd(cmd):
     location. It means that hooking into the environment, or other configuration
     can be done more easily.
     """
-    real_cmd = ["p4"]
+    # Look for the P4 binary
+    p4bin = gitConfig("git-p4.binary")
+    real_cmd = []
+    if p4bin != "":
+        if path.exists(p4bin):
+            real_cmd = [p4bin]
+    if real_cmd == []:
+        if (platform.system() == "Windows"):
+            real_cmd = ["p4.exe"]    
+        else:
+            real_cmd = ["p4"]
 
     user = gitConfig("git-p4.user")
     if len(user) > 0:
