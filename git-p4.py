@@ -36,12 +36,22 @@ except NameError:
     unicode = str
     bytes = bytes
     basestring = (str,bytes)
+    isunicode = True
+    def ustring(text):
+        """Returns the byte string as a unicode string"""
+        if text == '' or text == b'':
+            return ''
+        return unicode(text, "utf-8")
 else:
     # 'unicode' exists, must be Python 2
     str = str
     unicode = unicode
     bytes = str
     basestring = basestring
+    isunicode = False
+    def ustring(text):
+        """Returns the byte string unchanged"""
+        return text
 
 try:
     from subprocess import CalledProcessError
@@ -196,6 +206,8 @@ def read_pipe_full(c):
     expand = isinstance(c,basestring)
     p = subprocess.Popen(c, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=expand)
     (out, err) = p.communicate()
+    out = ustring(out)
+    err = ustring(err)
     return (p.returncode, out, err)
 
 def read_pipe(c, ignore_error=False):
@@ -263,6 +275,7 @@ def p4_has_move_command():
     cmd = p4_build_cmd(["move", "-k", "@from", "@to"])
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (out, err) = p.communicate()
+    err = ustring(err)
     # return code will be 1 in either case
     if err.find("Invalid option") >= 0:
         return False
@@ -646,10 +659,18 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None, skip_info=False,
             if skip_info:
                 if 'code' in entry and entry['code'] == 'info':
                     continue
+                if b'code' in entry and entry[b'code'] == b'info':
+                    continue
             if cb is not None:
                 cb(entry)
             else:
-                result.append(entry)
+                if isunicode:
+                    out = {}
+                    for key, value in entry.items():
+                        out[ustring(key)] = ustring(value)
+                    result.append(out)
+                else:
+                    result.append(entry)
     except EOFError:
         pass
     exitCode = p4.wait()
@@ -792,7 +813,7 @@ def gitConfig(key, typeSpecifier=None):
         cmd += [ key ]
         s = read_pipe(cmd, ignore_error=True)
         _gitConfig[key] = s.strip()
-    return _gitConfig[key]
+    return ustring(_gitConfig[key])
 
 def gitConfigBool(key):
     """Return a bool, using git config --bool.  It is True only if the
@@ -860,6 +881,7 @@ def branch_exists(branch):
     cmd = [ "git", "rev-parse", "--symbolic", "--verify", branch ]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, _ = p.communicate()
+    out = ustring(out)
     if p.returncode:
         return False
     # expect exactly one line of output: the branch name
