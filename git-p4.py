@@ -39,6 +39,8 @@ except NameError:
     isunicode = True
     def ustring(text):
         """Returns the byte string as a unicode string"""
+        if isinstance(text, unicode):
+            return text
         if text == '' or text == b'':
             return ''
         return unicode(text, "utf-8")
@@ -813,7 +815,7 @@ def gitConfig(key, typeSpecifier=None):
         cmd += [ key ]
         s = read_pipe(cmd, ignore_error=True)
         _gitConfig[key] = s.strip()
-    return ustring(_gitConfig[key])
+    return _gitConfig[key]
 
 def gitConfigBool(key):
     """Return a bool, using git config --bool.  It is True only if the
