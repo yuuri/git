@@ -88,7 +88,7 @@ def p4_build_cmd(cmd):
     can be done more easily.
     """
     # Look for the P4 binary
-    p4bin = gitConfig("git-p4.binary")
+    p4bin = gitConfig("git-p4.p4program")
     real_cmd = []
     if p4bin != "":
         if path.exists(p4bin):
