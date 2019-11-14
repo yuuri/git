@@ -180,6 +180,11 @@ def die(msg):
         sys.exit(1)
 
 def write_pipe(c, stdin):
+    """Writes stdin to the command's stdin
+    Returns the number of bytes written.
+
+    Be aware - the byte count may change between 
+    Python2 and Python3"""
     if verbose:
         sys.stderr.write('Writing pipe: %s\n' % str(c))
 
@@ -249,6 +254,11 @@ def read_pipe_lines(c):
     val = pipe.readlines()
     if pipe.close() or p.wait():
         die('Command failed: %s' % str(c))
+    # Unicode conversion from str
+    # Iterate and fix in-place to avoid a second list in memory.
+    if isunicode:
+        for i in range(len(val)):
+            val[i] = ustring(val[i])
 
     return val
 
@@ -1268,7 +1278,7 @@ class GitLFS(LargeFileSystem):
             ['git', 'lfs', 'pointer', '--file=' + contentFile],
             stdout=subprocess.PIPE
         )
-        pointerFile = pointerProcess.stdout.read()
+        pointerFile = ustring(pointerProcess.stdout.read())
         if pointerProcess.wait():
             os.remove(contentFile)
             die('git-lfs pointer command failed. Did you install the extension?')
