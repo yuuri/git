@@ -60,10 +60,7 @@ gitweb_run () {
 	REQUEST_METHOD='GET'
 	QUERY_STRING=$1
 	PATH_INFO=$2
-<<<<<<< HEAD
 	REQUEST_URI=/gitweb.cgi$PATH_INFO
-=======
->>>>>>> t/gitweb-lib.sh: drop confusing quotes
 	export GATEWAY_INTERFACE HTTP_ACCEPT REQUEST_METHOD \
 		QUERY_STRING PATH_INFO REQUEST_URI
 
