@@ -72,8 +72,8 @@ git-submodule will correctly locate the submodule using the relative
 URL in `.gitmodules`.
 
 status [--cached] [--recursive] [--] [<path>...]::
-	Show the status of the submodules. This will print the SHA-1 of the
-	currently checked out commit for each submodule, along with the
+	Show the status of the submodules. This will print the SHA-1
+	recorded in the superproject for each submodule, along with the
 	submodule path and the output of 'git describe' for the
 	SHA-1. Each SHA-1 will possibly be prefixed with `-` if the submodule is
 	not initialized, `+` if the currently checked out submodule commit
