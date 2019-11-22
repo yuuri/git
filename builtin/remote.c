@@ -309,8 +309,6 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 			int v = git_parse_maybe_bool(value);
 			if (v >= 0)
 				info->rebase = v;
-			else if (!strcmp(value, "preserve"))
-				info->rebase = NORMAL_REBASE;
 			else if (!strcmp(value, "merges"))
 				info->rebase = REBASE_MERGES;
 			else if (!strcmp(value, "interactive"))
