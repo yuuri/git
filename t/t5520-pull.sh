@@ -509,7 +509,7 @@ test_expect_success '--rebase=false create a new merge commit' '
 
 test_expect_success '--rebase=true rebases and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
+	test_config pull.rebase merges &&
 	git pull --rebase=true . copy &&
 	test "$(git rev-parse HEAD^^)" = "$(git rev-parse copy)" &&
 	test file3 = "$(git show HEAD:file3.t)"
@@ -529,9 +529,9 @@ test_expect_success '--rebase=invalid fails' '
 	! git pull --rebase=invalid . copy
 '
 
-test_expect_success '--rebase overrides pull.rebase=preserve and flattens keep-merge' '
+test_expect_success '--rebase overrides pull.rebase=merges and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
+	test_config pull.rebase merges &&
 	git pull --rebase . copy &&
 	test "$(git rev-parse HEAD^^)" = "$(git rev-parse copy)" &&
 	test file3 = "$(git show HEAD:file3.t)"
