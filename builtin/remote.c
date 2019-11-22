@@ -315,6 +315,9 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 				info->rebase = REBASE_MERGES;
 			else if (!strcmp(value, "interactive"))
 				info->rebase = INTERACTIVE_REBASE;
+			else
+				warning(_("unhandled branch.%s.rebase=%s"),
+					name, value);
 		}
 	}
 	return 0;
