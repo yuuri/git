@@ -356,6 +356,25 @@ test_expect_success 'status should only print one line' '
 	test_line_count = 1 lines
 '
 
+test_expect_success 'status from subdirectory should have the same SHA1' '
+	test_when_finished "rmdir addtest/subdir" &&
+	(
+		cd addtest &&
+		git status > /tmp/foo &&
+		git submodule status | awk "{print \$1}" >expected &&
+		mkdir subdir &&
+		cd subdir &&
+		git submodule status | awk "{print \$1}" >../actual &&
+		test_cmp ../expected ../actual &&
+		git -C ../submod checkout @^ &&
+		git submodule status | awk "{print \$1}" >../actual2 &&
+		cd .. &&
+		git submodule status | awk "{print \$1}" >expected2 &&
+		test_cmp actual2 expected2 &&
+		test_must_fail test_cmp actual actual2
+	)
+'
+
 test_expect_success 'setup - fetch commit name from submodule' '
 	rev1=$(cd .subrepo && git rev-parse HEAD) &&
 	printf "rev1: %s\n" "$rev1" &&
