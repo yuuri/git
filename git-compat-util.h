@@ -320,10 +320,6 @@ char *gitdirname(char *);
 #define PATH_MAX 4096
 #endif
 
-#ifndef PRIuMAX
-#define PRIuMAX "llu"
-#endif
-
 #ifndef SCNuMAX
 #define SCNuMAX PRIuMAX
 #endif
