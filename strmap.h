@@ -6,6 +6,7 @@
 
 struct strmap {
 	struct hashmap map;
+	unsigned int strdup_strings:1;
 };
 
 struct str_entry {
@@ -14,9 +15,10 @@ struct str_entry {
 };
 
 /*
- * Initialize an empty strmap
+ * Initialize the members of the strmap, set `strdup_strings`
+ * member according to the value of the second parameter.
  */
-void strmap_init(struct strmap *map);
+void strmap_init(struct strmap *map, int strdup_strings);
 
 /*
  * Remove all entries from the map, releasing any allocated resources.
@@ -29,8 +31,7 @@ void strmap_free(struct strmap *map, int free_values);
 void strmap_clear(struct strmap *map, int free_values);
 
 /*
- * Insert "str" into the map, pointing to "data". A copy of "str" is made, so
- * it does not need to persist after the this function is called.
+ * Insert "str" into the map, pointing to "data".
  *
  * If an entry for "str" already exists, its data pointer is overwritten, and
  * the original data pointer returned. Otherwise, returns NULL.
