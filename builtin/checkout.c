@@ -1152,7 +1152,6 @@ static int parse_branchname_arg(int argc, const char **argv,
 				struct object_id *rev)
 {
 	const char **new_branch = &opts->new_branch;
-	int argcount = 0;
 	const char *arg;
 	int dash_dash_pos;
 	int has_dash_dash = 0;
@@ -1211,17 +1210,21 @@ static int parse_branchname_arg(int argc, const char **argv,
 	arg = argv[0];
 	dash_dash_pos = -1;
 	for (i = 0; i < argc; i++) {
-		if (opts->accept_pathspec && !strcmp(argv[i], "--")) {
+		if (!strcmp(argv[i], "--")) {
 			dash_dash_pos = i;
 			break;
 		}
 	}
-	if (dash_dash_pos == 0)
-		return 1; /* case (2) */
-	else if (dash_dash_pos == 1)
-		has_dash_dash = 1; /* case (3) or (1) */
-	else if (dash_dash_pos >= 2)
-		die(_("only one reference expected, %d given."), dash_dash_pos);
+
+	if (opts->accept_pathspec) {
+	    if (dash_dash_pos == 0)
+		    return 1; /* case (2) */
+	    else if (dash_dash_pos == 1)
+		    has_dash_dash = 1; /* case (3) or (1) */
+	    else if (dash_dash_pos >= 2)
+		    die(_("only one reference expected, %d given."), dash_dash_pos);
+	}
+
 	opts->count_checkout_paths = !opts->quiet && !has_dash_dash;
 
 	if (!strcmp(arg, "-"))
@@ -1268,14 +1271,9 @@ static int parse_branchname_arg(int argc, const char **argv,
 		if (!recover_with_dwim) {
 			if (has_dash_dash)
 				die(_("invalid reference: %s"), arg);
-			return argcount;
+			return 0;
 		}
 	}
-
-	/* we can't end up being in (2) anymore, eat the argument */
-	argcount++;
-	argv++;
-	argc--;
 
 	setup_new_branch_info_and_source_tree(new_branch_info, opts, rev, arg);
 
@@ -1289,15 +1287,11 @@ static int parse_branchname_arg(int argc, const char **argv,
 		 * even if there happen to be a file called 'branch';
 		 * it would be extremely annoying.
 		 */
-		if (argc)
+		if (argc > 1)
 			verify_non_filename(opts->prefix, arg);
-	} else if (opts->accept_pathspec) {
-		argcount++;
-		argv++;
-		argc--;
 	}
 
-	return argcount;
+	return (dash_dash_pos == 1) ? 2 : 1;
 }
 
 static int switch_unborn_to_new_branch(const struct checkout_opts *opts)
