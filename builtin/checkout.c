@@ -1123,7 +1123,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 	const char **new_branch = &opts->new_branch;
 	const char *arg;
 	int dash_dash_pos;
-	int has_dash_dash = 0;
+	int has_dash_dash = 0, expect_commit_only = 0;
 	int i;
 
 	/*
@@ -1194,7 +1194,10 @@ static int parse_branchname_arg(int argc, const char **argv,
 		    die(_("only one reference expected, %d given."), dash_dash_pos);
 	}
 
-	opts->count_checkout_paths = !opts->quiet && !has_dash_dash;
+	if (has_dash_dash)
+	    expect_commit_only = 1;
+
+	opts->count_checkout_paths = !opts->quiet && !expect_commit_only;
 
 	if (!strcmp(arg, "-"))
 		arg = "@{-1}";
@@ -1210,10 +1213,10 @@ static int parse_branchname_arg(int argc, const char **argv,
 		 */
 		int recover_with_dwim = dwim_new_local_branch_ok;
 
-		int could_be_checkout_paths = !has_dash_dash &&
+		int could_be_checkout_paths = !expect_commit_only &&
 			check_filename(opts->prefix, arg);
 
-		if (!has_dash_dash && !no_wildcard(arg))
+		if (!expect_commit_only && !no_wildcard(arg))
 			recover_with_dwim = 0;
 
 		/*
@@ -1242,7 +1245,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 		}
 
 		if (!recover_with_dwim) {
-			if (has_dash_dash)
+			if (expect_commit_only)
 				die(_("invalid reference: %s"), arg);
 			return 0;
 		}
@@ -1253,7 +1256,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 	if (!opts->source_tree)                   /* case (1): want a tree */
 		die(_("reference is not a tree: %s"), arg);
 
-	if (!has_dash_dash) {	/* case (3).(d) -> (1) */
+	if (!expect_commit_only) {	/* case (3).(d) -> (1) */
 		/*
 		 * Do not complain the most common case
 		 *	git checkout branch
