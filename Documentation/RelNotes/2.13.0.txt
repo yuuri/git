@@ -38,7 +38,7 @@ UI, Workflows & Features
 
  * Deletion of a branch "foo/bar" could remove .git/refs/heads/foo
    once there no longer is any other branch whose name begins with
-   "foo/", but we didn't do so so far.  Now we do.
+   "foo/", but we didn't do that so far.  Now we do.
 
  * When "git merge" detects a path that is renamed in one history
    while the other history deleted (or modified) it, it now reports
