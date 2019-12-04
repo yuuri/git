@@ -711,7 +711,23 @@ def isModeExecChanged(src_mode, dst_mode):
     return isModeExec(src_mode) != isModeExec(dst_mode)
 
 def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None, skip_info=False,
-        errors_as_exceptions=False):
+        errors_as_exceptions=False, encode_data=True):
+    """ Executes a P4 command:  'cmd' optionally passing 'stdin' to the command's
+        standard input via a temporary file with 'stdin_mode' mode.
+
+        Output from the command is optionally passed to the callback function 'cb'.
+        If 'cb' is None, the response from the command is parsed into a list
+        of resulting dictionaries. (For each block read from the process pipe.)
+
+        If 'skip_info' is true, information in a block read that has a code type of
+        'info' will be skipped.
+
+        If 'errors_as_exceptions' is set to true (the default is false) the error
+        code returned from the execution will generate an exception.
+
+        If 'encode_data' is set to true (the default) the data that is returned 
+        by this function will be passed through the "as_string" function.
+    """
 
     if not isinstance(cmd, list):
         cmd = "-G " + cmd
@@ -734,7 +750,7 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None, skip_info=False,
             stdin_file.write(stdin)
         else:
             for i in stdin:
-                stdin_file.write(i + '\n')
+                stdin_file.write(as_bytes(i) + b'\n')
         stdin_file.flush()
         stdin_file.seek(0)
 
@@ -748,12 +764,15 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None, skip_info=False,
         while True:
             entry = marshal.load(p4.stdout)
             if skip_info:
-                if 'code' in entry and entry['code'] == 'info':
+                if b'code' in entry and entry[b'code'] == b'info':
                     continue
             if cb is not None:
                 cb(entry)
             else:
-                result.append(entry)
+                out = {}
+                for key, value in entry.items():
+                    out[as_string(key)] = (as_string(value) if encode_data else value)
+                result.append(out)
     except EOFError:
         pass
     exitCode = p4.wait()
