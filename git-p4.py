@@ -237,6 +237,8 @@ def die(msg):
         sys.exit(1)
 
 def write_pipe(c, stdin):
+    """ Executes the command 'c', passing 'stdin' on the standard input
+    """
     if verbose:
         sys.stderr.write('Writing pipe: %s\n' % str(c))
 
@@ -248,11 +250,12 @@ def write_pipe(c, stdin):
     if p.wait():
         die('Command failed: %s' % str(c))
 
-    return val
 
 def p4_write_pipe(c, stdin):
+    """ Runs a P4 command 'c', passing 'stdin' data to P4
+    """
     real_cmd = p4_build_cmd(c)
-    return write_pipe(real_cmd, stdin)
+    write_pipe(real_cmd, stdin)
 
 def read_pipe_full(c):
     """ Read output from  command. Returns a tuple
@@ -653,6 +656,38 @@ def isModeExec(mode):
     # otherwise False.
     return mode[-3:] == "755"
 
+def encodeWithUTF8(path, verbose = False):
+    """ Ensure that the path is encoded as a UTF-8 string
+
+        Returns bytes(P3)/str(P2)
+    """
+   
+    if isunicode:
+        try:
+            if isinstance(path, unicode):
+                # It is already unicode, cast it as a bytes
+                # that is encoded as utf-8.
+                return path.encode('utf-8', 'strict')
+            path.decode('ascii', 'strict')
+        except:
+            encoding = 'utf8'
+            if gitConfig('git-p4.pathEncoding'):
+                encoding = gitConfig('git-p4.pathEncoding')
+            path = path.decode(encoding, 'replace').encode('utf8', 'replace')
+            if verbose:
+                print('\nNOTE:Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, to_unicode(path)))
+    else:    
+        try:
+            path.decode('ascii')
+        except:
+            encoding = 'utf8'
+            if gitConfig('git-p4.pathEncoding'):
+                encoding = gitConfig('git-p4.pathEncoding')
+            path = path.decode(encoding, 'replace').encode('utf8', 'replace')
+            if verbose:
+                print('Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, path))
+    return path
+
 class P4Exception(Exception):
     """ Base class for exceptions from the p4 client """
     def __init__(self, exit_code):
@@ -890,6 +925,11 @@ def gitConfigList(key):
         if _gitConfig[key] == ['']:
             _gitConfig[key] = []
     return _gitConfig[key]
+
+def gitConfigSet(key, value):
+    """ Set the git configuration key 'key' to 'value' for this session
+    """
+    _gitConfig[key] = value
 
 def p4BranchesInGit(branchesAreInRemotes=True):
     """Find all the branches whose names start with "p4/", looking
@@ -2814,24 +2854,12 @@ class P4Sync(Command, P4UserMap):
             self.gitStream.write(d)
         self.gitStream.write('\n')
 
-    def encodeWithUTF8(self, path):
-        try:
-            path.decode('ascii')
-        except:
-            encoding = 'utf8'
-            if gitConfig('git-p4.pathEncoding'):
-                encoding = gitConfig('git-p4.pathEncoding')
-            path = path.decode(encoding, 'replace').encode('utf8', 'replace')
-            if self.verbose:
-                print('Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, path))
-        return path
-
     # output one file from the P4 stream
     # - helper for streamP4Files
 
     def streamOneP4File(self, file, contents):
         relPath = self.stripRepoPath(file['depotFile'], self.branchPrefixes)
-        relPath = self.encodeWithUTF8(relPath)
+        relPath = encodeWithUTF8(relPath, self.verbose)
         if verbose:
             if 'fileSize' in self.stream_file:
                 size = int(self.stream_file['fileSize'])
@@ -2914,7 +2942,7 @@ class P4Sync(Command, P4UserMap):
 
     def streamOneP4Deletion(self, file):
         relPath = self.stripRepoPath(file['path'], self.branchPrefixes)
-        relPath = self.encodeWithUTF8(relPath)
+        relPath = encodeWithUTF8(relPath, self.verbose)
         if verbose:
             sys.stdout.write("delete %s\n" % relPath)
             sys.stdout.flush()
