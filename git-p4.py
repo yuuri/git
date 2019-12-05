@@ -167,6 +167,17 @@ def die(msg):
         sys.stderr.write(msg + "\n")
         sys.exit(1)
 
+def prompt(prompt_text, choices = []):
+    """ Prompt the user to choose one of the choices
+    """
+    while True:
+        response = raw_input(prompt_text).strip().lower()
+        if len(response) == 0:
+            continue
+        response = response[0]
+        if response in choices:
+            return response
+
 def write_pipe(c, stdin):
     if verbose:
         sys.stderr.write('Writing pipe: %s\n' % str(c))
@@ -1779,7 +1790,7 @@ class P4Submit(Command, P4UserMap):
             return True
 
         while True:
-            response = raw_input("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ")
+            response = prompt("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ", ["y", "n"])
             if response == 'y':
                 return True
             if response == 'n':
@@ -2350,8 +2361,8 @@ class P4Submit(Command, P4UserMap):
                         # prompt for what to do, or use the option/variable
                         if self.conflict_behavior == "ask":
                             print("What do you want to do?")
-                            response = raw_input("[s]kip this commit but apply"
-                                                 " the rest, or [q]uit? ")
+                            response = prompt("[s]kip this commit but apply"
+                                                 " the rest, or [q]uit? ", ["s", "q"])
                             if not response:
                                 continue
                         elif self.conflict_behavior == "skip":
