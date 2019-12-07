@@ -72,7 +72,7 @@ test_expect_success 'git ls-files -o --directory untracked_dir does not recurse'
 	test_cmp expect actual
 '
 
-test_expect_failure 'git ls-files -o --directory untracked_dir/ does not recurse' '
+test_expect_success 'git ls-files -o --directory untracked_dir/ does not recurse' '
 	echo untracked_dir/ >expect &&
 	git ls-files -o --directory untracked_dir/ >actual &&
 	test_cmp expect actual
@@ -84,7 +84,7 @@ test_expect_success 'git ls-files -o untracked_repo does not recurse' '
 	test_cmp expect actual
 '
 
-test_expect_failure 'git ls-files -o untracked_repo/ does not recurse' '
+test_expect_success 'git ls-files -o untracked_repo/ does not recurse' '
 	echo untracked_repo/ >expect &&
 	git ls-files -o untracked_repo/ >actual &&
 	test_cmp expect actual
@@ -124,7 +124,7 @@ test_expect_success 'git ls-files -o .git shows nothing' '
 	test_cmp expect actual
 '
 
-test_expect_failure 'git ls-files -o .git/ shows nothing' '
+test_expect_success 'git ls-files -o .git/ shows nothing' '
 	>expect &&
 	git ls-files -o .git/ >actual &&
 	test_cmp expect actual
