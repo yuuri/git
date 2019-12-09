@@ -150,6 +150,10 @@ expecting patterns of these types. Git will warn if the patterns do not match.
 If the patterns do match the expected format, then Git will use faster hash-
 based algorithms to compute inclusion in the sparse-checkout.
 
+If `core.ignoreCase=true`, then the 'git sparse-checkout set' command will
+correct for incorrect case when assigning patterns to the sparse-checkout
+file.
+
 SEE ALSO
 --------
 

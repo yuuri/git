@@ -304,4 +304,17 @@ test_expect_success 'sparse-checkout (init|set|disable) fails with dirty status'
 	git -C dirty sparse-checkout disable
 '
 
+test_expect_success 'cone mode: set with core.ignoreCase=true' '
+	test_when_finished git -C repo config --unset core.ignoreCase &&
+	git -C repo sparse-checkout init --cone &&
+	git -C repo config core.ignoreCase true &&
+	git -C repo sparse-checkout set Folder1 &&
+	cat >expect <<-EOF &&
+		/*
+		!/*/
+		/folder1/
+	EOF
+	test_cmp expect repo/.git/info/sparse-checkout
+'
+
 test_done

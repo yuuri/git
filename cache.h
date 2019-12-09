@@ -728,6 +728,7 @@ int repo_index_has_changes(struct repository *repo,
 int verify_path(const char *path, unsigned mode);
 int strcmp_offset(const char *s1, const char *s2, size_t *first_change);
 int index_dir_exists(struct index_state *istate, const char *name, int namelen);
+const char *index_dir_matching_name(struct index_state *istate, const char *name, int namelen);
 void adjust_dirname_case(struct index_state *istate, char *name);
 struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int igncase);
 

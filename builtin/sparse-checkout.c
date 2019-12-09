@@ -336,6 +336,22 @@ static void insert_recursive_pattern(struct pattern_list *pl, struct strbuf *pat
 	}
 }
 
+static void sanitize_cone_input(struct strbuf *line)
+{
+	if (ignore_case) {
+		struct index_state *istate = the_repository->index;
+		const char *name = index_dir_matching_name(istate, line->buf, line->len);
+
+		if (name) {
+			strbuf_setlen(line, 0);
+			strbuf_addstr(line, name);
+		}
+	}
+
+	if (line->buf[0] != '/')
+		strbuf_insert(line, 0, "/", 1);
+}
+
 static void strbuf_to_cone_pattern(struct strbuf *line, struct pattern_list *pl)
 {
 	strbuf_trim(line);
@@ -345,8 +361,7 @@ static void strbuf_to_cone_pattern(struct strbuf *line, struct pattern_list *pl)
 	if (!line->len)
 		return;
 
-	if (line->buf[0] != '/')
-		strbuf_insert(line, 0, "/", 1);
+	sanitize_cone_input(line);
 
 	insert_recursive_pattern(pl, line);
 }
