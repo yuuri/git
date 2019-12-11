@@ -430,9 +430,9 @@ __git_ps1 ()
 		__git_eread "$g/rebase-merge/msgnum" step
 		__git_eread "$g/rebase-merge/end" total
 		if [ -f "$g/rebase-merge/interactive" ]; then
-			r="|REBASE-i"
+			r="|REBASE"
 		else
-			r="|REBASE-m"
+			r="|REBASE"
 		fi
 	else
 		if [ -d "$g/rebase-apply" ]; then
