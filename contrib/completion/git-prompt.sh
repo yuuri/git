@@ -440,7 +440,7 @@ __git_ps1 ()
 			__git_eread "$g/rebase-apply/last" total
 			if [ -f "$g/rebase-apply/rebasing" ]; then
 				__git_eread "$g/rebase-apply/head-name" b
-				r="|REBASE"
+				r="|REBASE-a"
 			elif [ -f "$g/rebase-apply/applying" ]; then
 				r="|AM"
 			else
