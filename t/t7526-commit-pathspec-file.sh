@@ -72,6 +72,9 @@ test_expect_success 'error conditions' '
 	test_must_fail git commit --pathspec-from-file=- --patch -m "Commit" <list 2>err &&
 	test_i18ngrep "\-\-pathspec-from-file is incompatible with \-\-interactive/\-\-patch" err &&
 
+	test_must_fail git commit --pathspec-from-file=- --all -m "Commit" <list 2>err &&
+	test_i18ngrep "\-\-pathspec-from-file with \-a does not make sense" err &&
+
 	test_must_fail git commit --pathspec-from-file=- -m "Commit" -- fileA.t <list 2>err &&
 	test_i18ngrep "\-\-pathspec-from-file is incompatible with pathspec arguments" err &&
 
