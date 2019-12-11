@@ -10,9 +10,8 @@ test_description='tests to ensure compatibility between am and interactive backe
 GIT_AUTHOR_DATE="1999-04-02T08:03:20+05:30"
 export GIT_AUTHOR_DATE
 
-# This is a special case in which both am and interactive backends
-# provide the same output. It was done intentionally because
-# both the backends fall short of optimal behaviour.
+# This is a common case in which both am and interactive backends
+# provide the same output with --ignore-whitespace.
 test_expect_success 'setup' '
 	git checkout -b topic &&
 	q_to_tab >file <<-\EOF &&
