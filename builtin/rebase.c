@@ -50,8 +50,16 @@ enum rebase_type {
 	REBASE_PRESERVE_MERGES
 };
 
+enum empty_type {
+	EMPTY_UNSPECIFIED = -1,
+	EMPTY_DROP,
+	EMPTY_KEEP,
+	EMPTY_ASK
+};
+
 struct rebase_options {
 	enum rebase_type type;
+	enum empty_type empty;
 	const char *state_dir;
 	struct commit *upstream;
 	const char *upstream_name;
@@ -77,7 +85,6 @@ struct rebase_options {
 	const char *action;
 	int signoff;
 	int allow_rerere_autoupdate;
-	int keep_empty;
 	int autosquash;
 	int ignore_whitespace;
 	char *gpg_sign_opt;
@@ -95,6 +102,7 @@ struct rebase_options {
 
 #define REBASE_OPTIONS_INIT {			  	\
 		.type = REBASE_UNSPECIFIED,	  	\
+		.empty = EMPTY_UNSPECIFIED,	  	\
 		.flags = REBASE_NO_QUIET, 		\
 		.git_am_opts = ARGV_ARRAY_INIT,		\
 		.git_format_patch_opt = STRBUF_INIT	\
@@ -114,6 +122,10 @@ static struct replay_opts get_replay_opts(const struct rebase_options *opts)
 		replay.allow_rerere_auto = opts->allow_rerere_autoupdate;
 	replay.allow_empty = 1;
 	replay.allow_empty_message = opts->allow_empty_message;
+	replay.drop_redundant_commits = (opts->empty == EMPTY_DROP);
+	replay.keep_redundant_commits = (opts->empty == EMPTY_KEEP);
+	replay.ask_on_initially_empty = (opts->empty == EMPTY_ASK &&
+					 !(opts->flags & REBASE_INTERACTIVE_EXPLICIT));
 	replay.verbose = opts->flags & REBASE_VERBOSE;
 	replay.reschedule_failed_exec = opts->reschedule_failed_exec;
 	replay.committer_date_is_author_date =
@@ -389,7 +401,10 @@ static int run_rebase_interactive(struct rebase_options *opts,
 
 	git_config_get_bool("rebase.abbreviatecommands", &abbreviate_commands);
 
-	flags |= opts->keep_empty ? TODO_LIST_KEEP_EMPTY : 0;
+	flags |= (opts->empty == EMPTY_DROP) ? TODO_LIST_DROP_EMPTY : 0;
+	flags |= (opts->empty == EMPTY_ASK &&
+		  opts->flags & REBASE_INTERACTIVE_EXPLICIT) ?
+			TODO_LIST_ASK_EMPTY : 0;
 	flags |= abbreviate_commands ? TODO_LIST_ABBREVIATE_CMDS : 0;
 	flags |= opts->rebase_merges ? TODO_LIST_REBASE_MERGES : 0;
 	flags |= opts->rebase_cousins > 0 ? TODO_LIST_REBASE_COUSINS : 0;
@@ -453,6 +468,19 @@ static int run_rebase_interactive(struct rebase_options *opts,
 	return ret;
 }
 
+static int parse_opt_keep_empty(const struct option *opt, const char *arg,
+				int unset)
+{
+	struct rebase_options *opts = opt->value;
+
+	BUG_ON_OPT_NEG(unset);
+	BUG_ON_OPT_ARG(arg);
+
+	opts->empty = EMPTY_KEEP;
+	opts->type = REBASE_INTERACTIVE;
+	return 0;
+}
+
 static const char * const builtin_rebase_interactive_usage[] = {
 	N_("git rebase--interactive [<options>]"),
 	NULL
@@ -466,7 +494,10 @@ int cmd_rebase__interactive(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT_NEGBIT(0, "ff", &opts.flags, N_("allow fast-forward"),
 			   REBASE_FORCE),
-		OPT_BOOL(0, "keep-empty", &opts.keep_empty, N_("keep empty commits")),
+		{ OPTION_CALLBACK, 'k', "keep-empty", &options, NULL,
+			N_("(DEPRECATED) keep empty commits"),
+			PARSE_OPT_NOARG | PARSE_OPT_NONEG | PARSE_OPT_HIDDEN,
+			parse_opt_keep_empty },
 		OPT_BOOL(0, "allow-empty-message", &opts.allow_empty_message,
 			 N_("allow commits with empty messages")),
 		OPT_BOOL(0, "rebase-merges", &opts.rebase_merges, N_("rebase merge commits")),
@@ -1166,7 +1197,7 @@ static int run_specific_rebase(struct rebase_options *opts, enum action action)
 		opts->allow_rerere_autoupdate ?
 			opts->allow_rerere_autoupdate == RERERE_AUTOUPDATE ?
 			"--rerere-autoupdate" : "--no-rerere-autoupdate" : "");
-	add_var(&script_snippet, "keep_empty", opts->keep_empty ? "yes" : "");
+	add_var(&script_snippet, "empty", opts->empty == EMPTY_KEEP ? "yes" : "");
 	add_var(&script_snippet, "autosquash", opts->autosquash ? "t" : "");
 	add_var(&script_snippet, "gpg_sign_opt", opts->gpg_sign_opt);
 	add_var(&script_snippet, "cmd", opts->cmd);
@@ -1360,6 +1391,29 @@ static int parse_opt_interactive(const struct option *opt, const char *arg,
 	return 0;
 }
 
+static enum empty_type parse_empty_value(const char *value)
+{
+	if (!strcasecmp(value, "drop"))
+		return EMPTY_DROP;
+	else if (!strcasecmp(value, "keep"))
+		return EMPTY_KEEP;
+	else if (!strcasecmp(value, "ask"))
+		return EMPTY_ASK;
+
+	die(_("unrecognized empty type '%s'; valid values are \"drop\", \"keep\", and \"ask\"."), value);
+}
+
+static int parse_opt_empty(const struct option *opt, const char *arg, int unset)
+{
+	struct rebase_options *options = opt->value;
+	enum empty_type value = parse_empty_value(arg);
+
+	BUG_ON_OPT_NEG(unset);
+
+	options->empty = value;
+	return 0;
+}
+
 static void NORETURN error_on_missing_default_upstream(void)
 {
 	struct branch *current_branch = branch_get(NULL);
@@ -1505,8 +1559,13 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 				 "ignoring them"),
 			      REBASE_PRESERVE_MERGES, PARSE_OPT_HIDDEN),
 		OPT_RERERE_AUTOUPDATE(&options.allow_rerere_autoupdate),
-		OPT_BOOL('k', "keep-empty", &options.keep_empty,
-			 N_("preserve empty commits during rebase")),
+		OPT_CALLBACK_F(0, "empty", &options, N_("{drop,keep,ask}"),
+			       N_("how to handle empty commits"),
+			       PARSE_OPT_NONEG, parse_opt_empty),
+		{ OPTION_CALLBACK, 'k', "keep-empty", &options, NULL,
+			N_("(DEPRECATED) keep empty commits"),
+			PARSE_OPT_NOARG | PARSE_OPT_NONEG | PARSE_OPT_HIDDEN,
+			parse_opt_keep_empty },
 		OPT_BOOL(0, "autosquash", &options.autosquash,
 			 N_("move commits that begin with "
 			    "squash!/fixup! under -i")),
@@ -1770,8 +1829,8 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 	if (!(options.flags & REBASE_NO_QUIET))
 		argv_array_push(&options.git_am_opts, "-q");
 
-	if (options.keep_empty)
-		imply_interactive(&options, "--keep-empty");
+	if (options.empty != EMPTY_UNSPECIFIED)
+		imply_interactive(&options, "--empty");
 
 	if (gpg_sign) {
 		free(options.gpg_sign_opt);
@@ -1856,6 +1915,14 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 		break;
 	}
 
+	if (options.empty == EMPTY_UNSPECIFIED) {
+		if (options.flags & REBASE_INTERACTIVE_EXPLICIT)
+			options.empty = EMPTY_ASK;
+		else if (exec.nr > 0)
+			options.empty = EMPTY_KEEP;
+		else
+			options.empty = EMPTY_DROP;
+	}
 	if (reschedule_failed_exec > 0 && !is_interactive(&options))
 		die(_("--reschedule-failed-exec requires "
 		      "--exec or --interactive"));
