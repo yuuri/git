@@ -258,9 +258,25 @@ See also INCOMPATIBLE OPTIONS below.
 	original branch. The index and working tree are also left
 	unchanged as a result.
 
+--empty={drop,keep,ask}::
+	How to handle commits that become empty (because they contain a
+	subset of already upstream changes) or start empty.  With drop
+	(the default), commits that start or become empty are dropped.
+	With keep (implied by --exec), such commits are kept.  With ask
+	(implied by --interactive), the rebase will halt when an empty
+	commit is applied allowing you to choose whether to drop it or
+	commit it.  Also with ask, if the rebase is interactive then
+	commits which start empty will be commented out in the todo
+	action list (giving you a chance to uncomment).
++
+Note that this has no effect on commits which are already upstream (as
+can be checked via `git log --cherry-mark ...`), which are always
+dropped by rebase.
++
+See also INCOMPATIBLE OPTIONS below.
+
 --keep-empty::
-	Keep the commits that do not change anything from its
-	parents in the result.
+	Deprecated alias for what is now known as --empty=keep.
 +
 See also INCOMPATIBLE OPTIONS below.
 
@@ -569,6 +585,7 @@ are incompatible with the following options:
  * --interactive
  * --exec
  * --keep-empty
+ * --empty=
  * --edit-todo
  * --root when used in combination with --onto
 
@@ -580,6 +597,7 @@ In addition, the following pairs of options are incompatible:
  * --preserve-merges and --ignore-whitespace
  * --preserve-merges and --committer-date-is-author-date
  * --preserve-merges and --ignore-date
+ * --preserve-merges and --empty=
  * --keep-base and --onto
  * --keep-base and --root
 
@@ -587,19 +605,6 @@ BEHAVIORAL DIFFERENCES
 -----------------------
 
 There are some subtle differences how the backends behave.
-
-Empty commits
-~~~~~~~~~~~~~
-
-The am backend drops any "empty" commits, regardless of whether the
-commit started empty (had no changes relative to its parent to
-start with) or ended empty (all changes were already applied
-upstream in other commits).
-
-The interactive backend drops commits by default that
-started empty and halts if it hits a commit that ended up empty.
-The `--keep-empty` option exists for the interactive backend to allow
-it to keep commits that started empty.
 
 Directory rename detection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
