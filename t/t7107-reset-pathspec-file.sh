@@ -74,4 +74,18 @@ test_expect_success '--pathspec-from-file is not compatible with --soft or --har
 	test_must_fail git reset --hard --pathspec-from-file=list
 '
 
+test_expect_success 'error conditions' '
+	restore_checkpoint &&
+	echo fileA.t >list &&
+
+	test_must_fail git reset --pathspec-from-file=- --patch <list 2>err &&
+	test_i18ngrep "\-\-pathspec-from-file is incompatible with \-\-patch" err &&
+
+	test_must_fail git reset --pathspec-from-file=- -- fileA.t <list 2>err &&
+	test_i18ngrep "\-\-pathspec-from-file is incompatible with pathspec arguments" err &&
+
+	test_must_fail git reset --pathspec-file-nul 2>err &&
+	test_i18ngrep "\-\-pathspec-file-nul requires \-\-pathspec-from-file" err
+'
+
 test_done
