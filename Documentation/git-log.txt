@@ -76,7 +76,8 @@ produced by `--stat`, etc.
 	(or the function name regex <funcname>) within the <file>.  You may
 	not give any pathspec limiters.  This is currently limited to
 	a walk starting from a single revision, i.e., you may only
-	give zero or one positive revision arguments.
+	give zero or one positive revision arguments, and any given regex for
+	<start> or <end> (or <funcname>) must match in the starting revision.
 	You can specify this option more than once. Implies `--patch`.
 	If ``:<funcname>'' is given, implies `--function-context`.
 	Patch output can be suppressed using `-s`, but other diff formats
