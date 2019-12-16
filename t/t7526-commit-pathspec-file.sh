@@ -61,4 +61,28 @@ test_expect_success 'only touches what was listed' '
 	verify_expect
 '
 
+test_expect_success 'error conditions' '
+	restore_checkpoint &&
+	echo fileA.t >list &&
+	>empty_list &&
+
+	test_must_fail git commit --pathspec-from-file=- --interactive -m "Commit" <list 2>err &&
+	test_i18ngrep -e "--pathspec-from-file is incompatible with --interactive/--patch" err &&
+
+	test_must_fail git commit --pathspec-from-file=- --patch -m "Commit" <list 2>err &&
+	test_i18ngrep -e "--pathspec-from-file is incompatible with --interactive/--patch" err &&
+
+	test_must_fail git commit --pathspec-from-file=- -m "Commit" -- fileA.t <list 2>err &&
+	test_i18ngrep -e "--pathspec-from-file is incompatible with pathspec arguments" err &&
+
+	test_must_fail git commit --pathspec-file-nul -m "Commit" 2>err &&
+	test_i18ngrep -e "--pathspec-file-nul requires --pathspec-from-file" err &&
+
+	test_must_fail git commit --pathspec-from-file=- --include -m "Commit" <empty_list 2>err &&
+	test_i18ngrep -e "No paths with --include/--only does not make sense." err &&
+
+	test_must_fail git commit --pathspec-from-file=- --only -m "Commit" <empty_list 2>err &&
+	test_i18ngrep -e "No paths with --include/--only does not make sense." err
+'
+
 test_done
