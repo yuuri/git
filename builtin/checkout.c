@@ -1155,7 +1155,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 	int argcount = 0;
 	const char *arg;
 	int dash_dash_pos;
-	int has_dash_dash = 0;
+	int arg0_cant_be_pathspec = 0;
 	int i;
 
 	/*
@@ -1205,24 +1205,28 @@ static int parse_branchname_arg(int argc, const char **argv,
 	if (!opts->accept_pathspec) {
 		if (argc > 1)
 			die(_("only one reference expected"));
-		has_dash_dash = 1; /* helps disambiguate */
+		arg0_cant_be_pathspec = 1;
 	}
 
 	arg = argv[0];
 	dash_dash_pos = -1;
 	for (i = 0; i < argc; i++) {
-		if (opts->accept_pathspec && !strcmp(argv[i], "--")) {
+		if (!strcmp(argv[i], "--")) {
 			dash_dash_pos = i;
 			break;
 		}
 	}
-	if (dash_dash_pos == 0)
-		return 1; /* case (2) */
-	else if (dash_dash_pos == 1)
-		has_dash_dash = 1; /* case (3) or (1) */
-	else if (dash_dash_pos >= 2)
-		die(_("only one reference expected, %d given."), dash_dash_pos);
-	opts->count_checkout_paths = !opts->quiet && !has_dash_dash;
+
+	if (opts->accept_pathspec) {
+		if (dash_dash_pos == 0)
+			return 1; /* case (2) */
+		else if (dash_dash_pos == 1)
+			arg0_cant_be_pathspec = 1; /* case (3) or (1) */
+		else if (dash_dash_pos >= 2)
+			die(_("only one reference expected, %d given."), dash_dash_pos);
+	}
+
+	opts->count_checkout_paths = !opts->quiet && !arg0_cant_be_pathspec;
 
 	if (!strcmp(arg, "-"))
 		arg = "@{-1}";
@@ -1238,18 +1242,18 @@ static int parse_branchname_arg(int argc, const char **argv,
 		 */
 		int recover_with_dwim = dwim_new_local_branch_ok;
 
-		int could_be_checkout_paths = !has_dash_dash &&
+		int could_be_checkout_paths = !arg0_cant_be_pathspec &&
 			check_filename(opts->prefix, arg);
 
-		if (!has_dash_dash && !no_wildcard(arg))
+		if (!arg0_cant_be_pathspec && !no_wildcard(arg))
 			recover_with_dwim = 0;
 
 		/*
 		 * Accept "git checkout foo", "git checkout foo --"
 		 * and "git switch foo" as candidates for dwim.
 		 */
-		if (!(argc == 1 && !has_dash_dash) &&
-		    !(argc == 2 && has_dash_dash) &&
+		if (!(argc == 1 && dash_dash_pos == -1) &&
+		    !(argc == 2 && dash_dash_pos == 1) &&
 		    opts->accept_pathspec)
 			recover_with_dwim = 0;
 
@@ -1266,7 +1270,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 		}
 
 		if (!recover_with_dwim) {
-			if (has_dash_dash)
+			if (arg0_cant_be_pathspec)
 				die(_("invalid reference: %s"), arg);
 			return argcount;
 		}
@@ -1282,7 +1286,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 	if (!opts->source_tree)                   /* case (1): want a tree */
 		die(_("reference is not a tree: %s"), arg);
 
-	if (!has_dash_dash) {	/* case (3).(d) -> (1) */
+	if (!arg0_cant_be_pathspec) {	/* case (3).(d) -> (1) */
 		/*
 		 * Do not complain the most common case
 		 *	git checkout branch
