@@ -3,6 +3,9 @@
 test_description='commit graph with bloom filters'
 . ./test-lib.sh
 
+GIT_TEST_COMMIT_GRAPH=0
+GIT_TEST_COMMIT_GRAPH_BLOOM_FILTERS=0
+
 test_expect_success 'setup repo' '
 	git init &&
 	git config core.commitGraph true &&
