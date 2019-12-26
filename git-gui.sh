@@ -2248,8 +2248,8 @@ proc do_git_gui {} {
 	}
 }
 
-proc do_explore {} {
-	global _gitworktree
+# Get the system-specific explorer app/command.
+proc get_explorer {} {
 	set explorer {}
 	if {[is_Cygwin] || [is_Windows]} {
 		set explorer "explorer.exe"
@@ -2259,7 +2259,23 @@ proc do_explore {} {
 		# freedesktop.org-conforming system is our best shot
 		set explorer "xdg-open"
 	}
+	return $explorer
+}
+
+proc do_explore {} {
+	global _gitworktree
+	set explorer [get_explorer]
 	eval exec $explorer [list [file nativename $_gitworktree]] &
+}
+
+# Trigger opening a file (relative to the working tree) by the default
+# associated app of the OS (e.g. a text editor or IDE).
+# FIXME: What about executables (will be run, not opened for editing)?
+proc do_file_open {file} {
+	global _gitworktree
+	set explorer [get_explorer]
+	set full_file_path [file join $_gitworktree $file]
+	eval exec $explorer [list [file nativename $full_file_path]] &
 }
 
 set is_quitting 0
@@ -3530,8 +3546,14 @@ $ctxm add command \
 			-type STRING \
 			-- $current_diff_path
 	}
+$ctxm add command \
+	-label [mc Open] \
+	-command {
+		do_file_open $current_diff_path
+	}
 lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
 bind_button3 .vpane.lower.diff.header.path "tk_popup $ctxm %X %Y"
+bind .vpane.lower.diff.header.path <Double-1> {do_file_open $current_diff_path}
 
 # -- Diff Body
 #
