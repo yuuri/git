@@ -100,7 +100,10 @@ test_expect_success 'CRLF delimiters' '
 test_expect_success 'quotes' '
 	restore_checkpoint &&
 
-	printf "\"file\\101.t\"" | git commit --pathspec-from-file=- -m "Commit" &&
+	# shell  takes \\\\101 and spits \\101
+	# printf takes   \\101 and spits  \101
+	# git    takes    \101 and spits     A
+	printf "\"file\\\\101.t\"" | git commit --pathspec-from-file=- -m "Commit" &&
 
 	cat >expect <<-\EOF &&
 	A	fileA.t
@@ -111,7 +114,9 @@ test_expect_success 'quotes' '
 test_expect_success 'quotes not compatible with --pathspec-file-nul' '
 	restore_checkpoint &&
 
-	printf "\"file\\101.t\"" >list &&
+	# shell  takes \\\\101 and spits \\101
+	# printf takes   \\101 and spits  \101
+	printf "\"file\\\\101.t\"" >list &&
 	test_must_fail git commit --pathspec-from-file=list --pathspec-file-nul -m "Commit"
 '
 

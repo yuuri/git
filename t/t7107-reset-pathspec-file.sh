@@ -105,8 +105,11 @@ test_expect_success 'CRLF delimiters' '
 test_expect_success 'quotes' '
 	restore_checkpoint &&
 
+	# shell  takes \\\\101 and spits \\101
+	# printf takes   \\101 and spits  \101
+	# git    takes    \101 and spits     A
 	git rm fileA.t &&
-	printf "\"file\\101.t\"" | git reset --pathspec-from-file=- &&
+	printf "\"file\\\\101.t\"" | git reset --pathspec-from-file=- &&
 
 	cat >expect <<-\EOF &&
 	 D fileA.t
@@ -117,8 +120,10 @@ test_expect_success 'quotes' '
 test_expect_success 'quotes not compatible with --pathspec-file-nul' '
 	restore_checkpoint &&
 
+	# shell  takes \\\\101 and spits \\101
+	# printf takes   \\101 and spits  \101
 	git rm fileA.t &&
-	printf "\"file\\101.t\"" >list &&
+	printf "\"file\\\\101.t\"" >list &&
 	# Note: "git reset" has not yet learned to fail on wrong pathspecs
 	git reset --pathspec-from-file=list --pathspec-file-nul &&
 
