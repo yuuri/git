@@ -240,6 +240,20 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 				error(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
 				      bname.buf, wt->path);
+				if (advice_delete_checkedout_branch) {
+					if (wt->is_current) {
+						advise(_("The branch you are trying to delete is already "
+							"checked out, run the following command to "
+							"checkout a different branch then try again:\n"
+							"git switch <branch>"));
+					}
+					else {
+						advise(_("The branch you are trying to delete is checked "
+							"out on another worktree, run the following command "
+							"to checkout a different branch then try again:\n"
+							"git -C %s switch <branch>"), wt->path);
+					}
+				}
 				ret = 1;
 				continue;
 			}
