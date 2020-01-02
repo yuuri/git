@@ -808,7 +808,8 @@ test_expect_success 'test deleting branch without config' '
 test_expect_success 'deleting currently checked out branch fails' '
 	git worktree add -b my7 my7 &&
 	test_must_fail git -C my7 branch -d my7 &&
-	test_must_fail git branch -d my7 &&
+	test_must_fail git branch -d my7 >actual.out 2>actual.err &&
+	test_i18ngrep "hint: Checkout another branch" actual.err &&
 	rm -r my7 &&
 	git worktree prune
 '

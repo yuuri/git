@@ -240,6 +240,8 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 				error(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
 				      bname.buf, wt->path);
+				advise(_("Checkout another branch before deleting this "
+						 "one: git checkout <branch_name>"));
 				ret = 1;
 				continue;
 			}
