@@ -12,6 +12,13 @@ list_files() {
 	(cd "$1" && printf '%s\n' *)
 }
 
+check_files() {
+	DIR=$1
+	printf "%s\n" $2 >expect &&
+	list_files $DIR >actual &&
+	test_cmp expect actual
+}
+
 test_expect_success 'setup' '
 	git init repo &&
 	(
@@ -39,11 +46,11 @@ test_expect_success 'git sparse-checkout list (empty)' '
 
 test_expect_success 'git sparse-checkout list (populated)' '
 	test_when_finished rm -f repo/.git/info/sparse-checkout &&
-	cat >repo/.git/info/sparse-checkout <<-EOF &&
-		/folder1/*
-		/deep/
-		**/a
-		!*bin*
+	cat >repo/.git/info/sparse-checkout <<-\EOF &&
+	/folder1/*
+	/deep/
+	**/a
+	!*bin*
 	EOF
 	cp repo/.git/info/sparse-checkout expect &&
 	git -C repo sparse-checkout list >list &&
@@ -52,22 +59,20 @@ test_expect_success 'git sparse-checkout list (populated)' '
 
 test_expect_success 'git sparse-checkout init' '
 	git -C repo sparse-checkout init &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
 	EOF
 	test_cmp expect repo/.git/info/sparse-checkout &&
 	test_cmp_config -C repo true core.sparsecheckout &&
-	list_files repo >dir  &&
-	echo a >expect &&
-	test_cmp expect dir
+	check_files repo a
 '
 
 test_expect_success 'git sparse-checkout list after init' '
 	git -C repo sparse-checkout list >actual &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
 	EOF
 	test_cmp expect actual
 '
@@ -75,32 +80,24 @@ test_expect_success 'git sparse-checkout list after init' '
 test_expect_success 'init with existing sparse-checkout' '
 	echo "*folder*" >> repo/.git/info/sparse-checkout &&
 	git -C repo sparse-checkout init &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		*folder*
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	*folder*
 	EOF
 	test_cmp expect repo/.git/info/sparse-checkout &&
-	list_files repo >dir  &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files repo "a folder1 folder2"
 '
 
 test_expect_success 'clone --sparse' '
 	git clone --sparse repo clone &&
 	git -C clone sparse-checkout list >actual &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
 	EOF
 	test_cmp expect actual &&
-	list_files clone >dir &&
-	echo a >expect &&
-	test_cmp expect dir
+	check_files clone a
 '
 
 test_expect_success 'set enables config' '
@@ -119,41 +116,29 @@ test_expect_success 'set enables config' '
 
 test_expect_success 'set sparse-checkout using builtin' '
 	git -C repo sparse-checkout set "/*" "!/*/" "*folder*" &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		*folder*
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	*folder*
 	EOF
 	git -C repo sparse-checkout list >actual &&
 	test_cmp expect actual &&
 	test_cmp expect repo/.git/info/sparse-checkout &&
-	list_files repo >dir  &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files repo "a folder1 folder2"
 '
 
 test_expect_success 'set sparse-checkout using --stdin' '
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		/folder1/
-		/folder2/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	/folder1/
+	/folder2/
 	EOF
 	git -C repo sparse-checkout set --stdin <expect &&
 	git -C repo sparse-checkout list >actual &&
 	test_cmp expect actual &&
 	test_cmp expect repo/.git/info/sparse-checkout &&
-	list_files repo >dir  &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files repo "a folder1 folder2"
 '
 
 test_expect_success 'cone mode: match patterns' '
@@ -162,13 +147,7 @@ test_expect_success 'cone mode: match patterns' '
 	git -C repo read-tree -mu HEAD 2>err &&
 	test_i18ngrep ! "disabling cone patterns" err &&
 	git -C repo reset --hard &&
-	list_files repo >dir  &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files repo "a folder1 folder2"
 '
 
 test_expect_success 'cone mode: warn on bad pattern' '
@@ -185,14 +164,7 @@ test_expect_success 'sparse-checkout disable' '
 	test_path_is_file repo/.git/info/sparse-checkout &&
 	git -C repo config --list >config &&
 	test_must_fail git config core.sparseCheckout &&
-	list_files repo >dir &&
-	cat >expect <<-EOF &&
-		a
-		deep
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files repo "a deep folder1 folder2"
 '
 
 test_expect_success 'cone mode: init and set' '
@@ -204,52 +176,31 @@ test_expect_success 'cone mode: init and set' '
 	test_cmp expect dir &&
 	git -C repo sparse-checkout set deep/deeper1/deepest/ 2>err &&
 	test_must_be_empty err &&
-	list_files repo >dir  &&
-	cat >expect <<-EOF &&
-		a
-		deep
-	EOF
-	test_cmp expect dir &&
-	list_files repo/deep >dir  &&
-	cat >expect <<-EOF &&
-		a
-		deeper1
-	EOF
-	test_cmp expect dir &&
-	list_files repo/deep/deeper1 >dir  &&
-	cat >expect <<-EOF &&
-		a
-		deepest
-	EOF
-	test_cmp expect dir &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		/deep/
-		!/deep/*/
-		/deep/deeper1/
-		!/deep/deeper1/*/
-		/deep/deeper1/deepest/
+	check_files repo "a deep" &&
+	check_files repo/deep "a deeper1" &&
+	check_files repo/deep/deeper1 "a deepest" &&
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	/deep/
+	!/deep/*/
+	/deep/deeper1/
+	!/deep/deeper1/*/
+	/deep/deeper1/deepest/
 	EOF
 	test_cmp expect repo/.git/info/sparse-checkout &&
-	git -C repo sparse-checkout set --stdin 2>err <<-EOF &&
-		folder1
-		folder2
+	git -C repo sparse-checkout set --stdin 2>err <<-\EOF &&
+	folder1
+	folder2
 	EOF
 	test_must_be_empty err &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-		folder2
-	EOF
-	list_files repo >dir &&
-	test_cmp expect dir
+	check_files repo "a folder1 folder2"
 '
 
 test_expect_success 'cone mode: list' '
-	cat >expect <<-EOF &&
-		folder1
-		folder2
+	cat >expect <<-\EOF &&
+	folder1
+	folder2
 	EOF
 	git -C repo sparse-checkout set --stdin <expect &&
 	git -C repo sparse-checkout list >actual 2>err &&
@@ -260,10 +211,10 @@ test_expect_success 'cone mode: list' '
 test_expect_success 'cone mode: set with nested folders' '
 	git -C repo sparse-checkout set deep deep/deeper1/deepest 2>err &&
 	test_line_count = 0 err &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		/deep/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	/deep/
 	EOF
 	test_cmp repo/.git/info/sparse-checkout expect
 '
@@ -275,13 +226,7 @@ test_expect_success 'revert to old sparse-checkout on bad update' '
 	test_must_fail git -C repo sparse-checkout set deep/deeper1 2>err &&
 	test_i18ngrep "cannot set sparse-checkout patterns" err &&
 	test_cmp repo/.git/info/sparse-checkout expect &&
-	list_files repo/deep >dir &&
-	cat >expect <<-EOF &&
-		a
-		deeper1
-		deeper2
-	EOF
-	test_cmp dir expect
+	check_files repo/deep "a deeper1 deeper2"
 '
 
 test_expect_success 'revert to old sparse-checkout on empty update' '
@@ -326,18 +271,13 @@ test_expect_success 'sparse-checkout (init|set|disable) fails with dirty status'
 test_expect_success 'cone mode: set with core.ignoreCase=true' '
 	git -C repo sparse-checkout init --cone &&
 	git -C repo -c core.ignoreCase=true sparse-checkout set folder1 &&
-	cat >expect <<-EOF &&
-		/*
-		!/*/
-		/folder1/
+	cat >expect <<-\EOF &&
+	/*
+	!/*/
+	/folder1/
 	EOF
 	test_cmp expect repo/.git/info/sparse-checkout &&
-	list_files repo >dir &&
-	cat >expect <<-EOF &&
-		a
-		folder1
-	EOF
-	test_cmp expect dir
+	check_files repo "a folder1"
 '
 
 test_expect_success 'interaction with submodules' '
@@ -351,21 +291,8 @@ test_expect_success 'interaction with submodules' '
 		git sparse-checkout init --cone &&
 		git sparse-checkout set folder1
 	) &&
-	list_files super >dir &&
-	cat >expect <<-\EOF &&
-		a
-		folder1
-		modules
-	EOF
-	test_cmp expect dir &&
-	list_files super/modules/child >dir &&
-	cat >expect <<-\EOF &&
-		a
-		deep
-		folder1
-		folder2
-	EOF
-	test_cmp expect dir
+	check_files super "a folder1 modules" &&
+	check_files super/modules/child "a deep folder1 folder2"
 '
 
 test_done
