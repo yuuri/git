@@ -20,7 +20,7 @@
 /*
  * List of all available backends
  */
-static struct ref_storage_be *refs_backends = &refs_be_files;
+static struct ref_storage_be *refs_backends = &refs_be_reftable;
 
 static struct ref_storage_be *find_ref_storage_backend(const char *name)
 {
@@ -1839,10 +1839,22 @@ static struct ref_store *lookup_ref_store_map(struct hashmap *map,
 static struct ref_store *ref_store_init(const char *gitdir,
 					unsigned int flags)
 {
-	const char *be_name = "files";
-	struct ref_storage_be *be = find_ref_storage_backend(be_name);
+	struct strbuf refs_path = STRBUF_INIT;
+
+        // XXX this should probably come from a git config setting and not
+        // default to reftable.
+	const char *be_name = "reftable";
+	struct ref_storage_be *be;
 	struct ref_store *refs;
 
+	strbuf_addstr(&refs_path, gitdir);
+	strbuf_addstr(&refs_path, "/refs");
+
+	if (!is_directory(refs_path.buf)) {
+		be_name = "reftable";
+	}
+	strbuf_release(&refs_path);
+	be = find_ref_storage_backend(be_name);
 	if (!be)
 		BUG("reference backend %s is unknown", be_name);
 
