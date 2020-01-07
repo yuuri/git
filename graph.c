@@ -6,6 +6,8 @@
 #include "revision.h"
 #include "argv-array.h"
 
+#define graph_assert(exp) if (!(exp)) { BUG("assert failed: "#exp""); }
+
 /* Internal API */
 
 /*
@@ -316,7 +318,7 @@ static struct strbuf *diff_output_prefix_callback(struct diff_options *opt, void
 	struct git_graph *graph = data;
 	static struct strbuf msgbuf = STRBUF_INIT;
 
-	assert(opt);
+	graph_assert(opt);
 
 	strbuf_reset(&msgbuf);
 	if (opt->line_prefix)
@@ -865,13 +867,13 @@ static void graph_output_pre_commit_line(struct git_graph *graph,
 	 *
 	 * We need 2 extra rows for every parent over 2.
 	 */
-	assert(graph->num_parents >= 3);
+	graph_assert(graph->num_parents >= 3);
 
 	/*
 	 * graph->expansion_row tracks the current expansion row we are on.
 	 * It should be in the range [0, num_expansion_rows - 1]
 	 */
-	assert(0 <= graph->expansion_row &&
+	graph_assert(0 <= graph->expansion_row &&
 	       graph->expansion_row < graph_num_expansion_rows(graph));
 
 	/*
@@ -923,13 +925,13 @@ static void graph_output_commit_char(struct git_graph *graph, struct graph_line 
 	 * (We should only see boundary commits when revs->boundary is set.)
 	 */
 	if (graph->commit->object.flags & BOUNDARY) {
-		assert(graph->revs->boundary);
+		graph_assert(graph->revs->boundary);
 		graph_line_addch(line, 'o');
 		return;
 	}
 
 	/*
-	 * get_revision_mark() handles all other cases without assert()
+	 * get_revision_mark() handles all other cases without graph_assert()
 	 */
 	graph_line_addstr(line, get_revision_mark(graph->revs, graph->commit));
 }
@@ -1094,7 +1096,7 @@ static void graph_output_post_merge_line(struct git_graph *graph, struct graph_l
 
 			for (j = 0; j < graph->num_parents; j++) {
 				par_column = graph_find_new_column_by_commit(graph, parents->item);
-				assert(par_column >= 0);
+				graph_assert(par_column >= 0);
 
 				c = merge_chars[idx];
 				graph_line_write_column(line, &graph->new_columns[par_column], c);
@@ -1172,14 +1174,14 @@ static void graph_output_collapsing_line(struct git_graph *graph, struct graph_l
 		 * the graph much more legible, since whenever branches
 		 * cross, only one is moving directions.
 		 */
-		assert(target * 2 <= i);
+		graph_assert(target * 2 <= i);
 
 		if (target * 2 == i) {
 			/*
 			 * This column is already in the
 			 * correct place
 			 */
-			assert(graph->mapping[i] == -1);
+			graph_assert(graph->mapping[i] == -1);
 			graph->mapping[i] = target;
 		} else if (graph->mapping[i - 1] < 0) {
 			/*
@@ -1225,8 +1227,8 @@ static void graph_output_collapsing_line(struct git_graph *graph, struct graph_l
 			 * The space just to the left of this
 			 * branch should always be empty.
 			 */
-			assert(graph->mapping[i - 1] > target);
-			assert(graph->mapping[i - 2] < 0);
+			graph_assert(graph->mapping[i - 1] > target);
+			graph_assert(graph->mapping[i - 2] < 0);
 			graph->mapping[i - 2] = target;
 			/*
 			 * Mark this branch as the horizontal edge to
