@@ -48,6 +48,8 @@ static const char *scope_name(enum config_scope scope)
 		return "repo";
 	case CONFIG_SCOPE_WORKTREE:
 		return "worktree";
+	case CONFIG_SCOPE_SUBMODULE:
+		return "submodule";
 	case CONFIG_SCOPE_COMMAND:
 		return "command";
 	default:
