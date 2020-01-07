@@ -79,6 +79,21 @@ PATTERNS("java",
 	 "|[-+0-9.e]+[fFlL]?|0[xXbB]?[0-9a-fA-F]+[lL]?"
 	 "|[-+*/<>%&^|=!]="
 	 "|--|\\+\\+|<<=?|>>>?=?|&&|\\|\\|"),
+PATTERNS("julia",
+	 "^[ \t]*(((mutable[ \t]+)?struct|(@.+[ \t])?function|macro)[ \t].*)$",
+	 /* -- */
+	 /* Binary literals */
+	 "[-+]?0b[01]+"
+	 /* Hexadecimal literals */
+	 "|[-+]?0x[0-9a-fA-F]+"
+	 /* Real and complex literals */
+	 "|[-+0-9.e_(im)]+"
+	 /* Should theoretically allow Unicode characters as part of
+	  * a word, such as U+2211. However, Julia reserves most of the
+	  * U+2200-U+22FF range (as well as others) as user-defined operators,
+	  * therefore they are not handled in this regex. */
+	 "|[a-zA-Z_][a-zA-Z0-9_!]*"
+	 "|--|\\+\\+|<<=?|>>>=?|>>=?|\\\\\\\\=?|//=?|&&|\\|\\||::|->|[-+*/<>%^&|=!$]=?"),
 PATTERNS("matlab",
 	 /*
 	  * Octave pattern is mostly the same as matlab, except that '%%%' and

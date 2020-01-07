@@ -1,0 +1,5 @@
+macro RIGHT()
+    # First comment
+    # Second comment
+    return :( println("ChangeMe") )
+end

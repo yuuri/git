@@ -1,0 +1,5 @@
+@inline function RIGHT()
+    # Prints Hello, then something else.
+    println("Hello")
+    println("ChangeMe")
+end

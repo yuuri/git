@@ -1,0 +1,8 @@
+function outer_function()
+    function RIGHT()
+        for i = 1:10
+            print(i)
+        end
+        # ChangeMe
+    end
+end

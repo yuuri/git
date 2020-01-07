@@ -38,6 +38,7 @@ diffpatterns="
 	golang
 	html
 	java
+	julia
 	matlab
 	objc
 	pascal

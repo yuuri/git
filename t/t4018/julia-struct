@@ -1,0 +1,5 @@
+struct RIGHT
+    x
+    y::Int
+    ChangeMe
+end

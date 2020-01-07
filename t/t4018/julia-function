@@ -1,0 +1,5 @@
+function RIGHT()
+    # A comment
+    # Another comment
+    return ChangeMe
+end
