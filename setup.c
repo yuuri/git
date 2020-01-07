@@ -304,22 +304,23 @@ int get_common_dir_noenv(struct strbuf *sb, const char *gitdir)
  *  - either an objects/ directory _or_ the proper
  *    GIT_OBJECT_DIRECTORY environment variable
  *  - a refs/ directory
- *  - either a HEAD symlink or a HEAD file that is formatted as
- *    a proper "ref:", or a regular file HEAD that has a properly
- *    formatted sha1 object name.
+ *  - a reftable/ director or, either a HEAD ref.
+ *    The HEAD ref should be a HEAD symlink or a HEAD file that is formatted as
+ *    a proper "ref:", or a regular file HEAD that has a properly formatted sha1
+ *    object name.
  */
 int is_git_directory(const char *suspect)
 {
 	struct strbuf path = STRBUF_INIT;
 	int ret = 0;
+        int have_head = 0;
 	size_t len;
 
 	/* Check worktree-related signatures */
 	strbuf_addstr(&path, suspect);
 	strbuf_complete(&path, '/');
 	strbuf_addstr(&path, "HEAD");
-	if (validate_headref(path.buf))
-		goto done;
+	have_head = !validate_headref(path.buf);
 
 	strbuf_reset(&path);
 	get_common_dir(&path, suspect);
@@ -339,8 +340,15 @@ int is_git_directory(const char *suspect)
 
 	strbuf_setlen(&path, len);
 	strbuf_addstr(&path, "/refs");
-	if (access(path.buf, X_OK))
+	if (access(path.buf, R_OK))
 		goto done;
+
+        if (!have_head) {
+                strbuf_setlen(&path, len);
+                strbuf_addstr(&path, "/reftable");
+                if (access(path.buf, X_OK))
+                        goto done;
+        }
 
 	ret = 1;
 done:
