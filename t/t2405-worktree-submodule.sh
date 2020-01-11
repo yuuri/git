@@ -6,32 +6,16 @@ test_description='Combination of submodules and multiple worktrees'
 
 base_path=$(pwd -P)
 
-test_expect_success 'setup: make origin'  '
-	mkdir -p origin/sub &&
-	(
-		cd origin/sub && git init &&
-		echo file1 >file1 &&
-		git add file1 &&
-		git commit -m file1
-	) &&
-	mkdir -p origin/main &&
-	(
-		cd origin/main && git init &&
-		git submodule add ../sub &&
-		git commit -m "add sub"
-	) &&
-	(
-		cd origin/sub &&
-		echo file1updated >file1 &&
-		git add file1 &&
-		git commit -m "file1 updated"
-	) &&
+test_expect_success 'setup: create origin repos'  '
+	git init origin/sub &&
+	test_commit -C origin/sub file1 &&
+	git init origin/main &&
+	git -C origin/main submodule add ../sub &&
+	git -C origin/main commit -m "add sub" &&
+	test_commit -C origin/sub "file1-updated" file1 file1updated &&
 	git -C origin/main/sub pull &&
-	(
-		cd origin/main &&
-		git add sub &&
-		git commit -m "sub updated"
-	)
+	git -C origin/main add sub &&
+	git -C origin/main commit -m "sub updated"
 '
 
 test_expect_success 'setup: clone' '
@@ -49,7 +33,7 @@ test_expect_success 'checkout main' '
 
 test_expect_failure 'can see submodule diffs just after checkout' '
 	git -C default_checkout/main diff --submodule master"^!" >out &&
-	grep "file1 updated" out
+	grep "file1-updated" out
 '
 
 test_expect_success 'checkout main and initialize independent clones' '
@@ -60,7 +44,7 @@ test_expect_success 'checkout main and initialize independent clones' '
 
 test_expect_success 'can see submodule diffs after independent cloning' '
 	git -C fully_cloned_submodule/main diff --submodule master"^!" >out &&
-	grep "file1 updated" out
+	grep "file1-updated" out
 '
 
 test_expect_success 'checkout sub manually' '
@@ -71,7 +55,7 @@ test_expect_success 'checkout sub manually' '
 
 test_expect_success 'can see submodule diffs after manual checkout of linked submodule' '
 	git -C linked_submodule/main diff --submodule master"^!" >out &&
-	grep "file1 updated" out
+	grep "file1-updated" out
 '
 
 test_done
