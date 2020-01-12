@@ -6,6 +6,7 @@
 #include "pathspec.h"
 #include "color.h"
 #include "diff.h"
+#include "sigchain.h"
 
 enum prompt_mode_type {
 	PROMPT_MODE_CHANGE = 0, PROMPT_DELETION, PROMPT_HUNK,
@@ -1578,6 +1579,7 @@ int run_add_p(struct repository *r, enum add_p_mode mode,
 	};
 	size_t i, binary_count = 0;
 
+	sigchain_push(SIGPIPE, SIG_IGN);
 	init_add_i_state(&s.s, r);
 
 	if (mode == ADD_P_STASH)
@@ -1612,6 +1614,7 @@ int run_add_p(struct repository *r, enum add_p_mode mode,
 	    parse_diff(&s, ps) < 0) {
 		strbuf_release(&s.plain);
 		strbuf_release(&s.colored);
+		sigchain_pop(SIGPIPE);
 		return -1;
 	}
 
@@ -1630,5 +1633,6 @@ int run_add_p(struct repository *r, enum add_p_mode mode,
 	strbuf_release(&s.buf);
 	strbuf_release(&s.plain);
 	strbuf_release(&s.colored);
+	sigchain_pop(SIGPIPE);
 	return 0;
 }
