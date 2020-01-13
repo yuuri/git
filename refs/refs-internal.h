@@ -269,6 +269,9 @@ int refs_rename_ref_available(struct ref_store *refs,
  * to the next entry, ref_iterator_advance() aborts the iteration,
  * frees the ref_iterator, and returns ITER_ERROR.
  *
+ * Ref iterators cannot return symref targets, so symbolic refs must be
+ * dereferenced during the iteration.
+ *
  * The reference currently being looked at can be peeled by calling
  * ref_iterator_peel(). This function is often faster than peel_ref(),
  * so it should be preferred when iterating over references.
