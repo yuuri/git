@@ -125,7 +125,11 @@ static enum commit_msg_cleanup_mode cleanup_mode;
 static const char *cleanup_arg;
 
 static enum commit_whence whence;
-static int sequencer_in_use, rebase_in_progress;
+static enum {
+	SINGLE_PICK,
+	MULTI_PICK,
+	REBASE
+} pick_state;
 static int use_editor = 1, include_status = 1;
 static int have_option_m;
 static struct strbuf message = STRBUF_INIT;
@@ -184,10 +188,12 @@ static void determine_whence(struct wt_status *s)
 		whence = FROM_MERGE;
 	else if (file_exists(git_path_cherry_pick_head(the_repository))) {
 		whence = FROM_CHERRY_PICK;
-		if (file_exists(git_path_seq_dir()))
-			sequencer_in_use = 1;
 		if (file_exists(git_path_rebase_merge_dir()))
-			rebase_in_progress = 1;
+			pick_state = REBASE;
+		else if (file_exists(git_path_seq_dir()))
+			pick_state = MULTI_PICK;
+		else
+			pick_state = SINGLE_PICK;
 	}
 	else
 		whence = FROM_COMMIT;
@@ -459,7 +465,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 		if (whence == FROM_MERGE)
 			die(_("cannot do a partial commit during a merge."));
 		else if (whence == FROM_CHERRY_PICK) {
-			if (rebase_in_progress && !sequencer_in_use)
+			if (pick_state == REBASE)
 				die(_("cannot do a partial commit during a rebase."));
 			die(_("cannot do a partial commit during a cherry-pick."));
 		}
@@ -958,9 +964,9 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 			fputs(_(empty_amend_advice), stderr);
 		else if (whence == FROM_CHERRY_PICK) {
 			fputs(_(empty_cherry_pick_advice), stderr);
-			if (sequencer_in_use)
+			if (pick_state == MULTI_PICK)
 				fputs(_(empty_cherry_pick_advice_multi), stderr);
-			else if (rebase_in_progress)
+			else if (pick_state == REBASE)
 				fputs(_(empty_rebase_advice), stderr);
 			else
 				fputs(_(empty_cherry_pick_advice_single), stderr);
@@ -1167,7 +1173,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		if (whence == FROM_MERGE)
 			die(_("You are in the middle of a merge -- cannot amend."));
 		else if (whence == FROM_CHERRY_PICK) {
-			if (rebase_in_progress && !sequencer_in_use)
+			if (pick_state == REBASE)
 				die(_("You are in the middle of a rebase -- cannot amend."));
 			die(_("You are in the middle of a cherry-pick -- cannot amend."));
 		}
@@ -1643,7 +1649,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		if (!reflog_msg)
 			reflog_msg = (whence != FROM_CHERRY_PICK)
 					? "commit"
-					: rebase_in_progress && !sequencer_in_use
+					: pick_state == REBASE
 					? "commit (rebase)"
 					: "commit (cherry-pick)";
 		commit_list_insert(current_head, &parents);
