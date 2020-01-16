@@ -383,6 +383,17 @@ test_expect_success 'use "update --recursive nested1" to checkout all submodules
 		git rev-parse --resolve-git-dir nested1/nested2/nested3/submodule/.git
 	)
 '
+test_expect_success 'use "git clone" with submodule.recurse=true to checkout all submodules' '
+	git clone -c submodule.recurse=true super clone7 &&
+	(
+		git -C clone7 rev-parse --resolve-git-dir .git --resolve-git-dir nested1/nested2/nested3/submodule/.git >actual &&
+		cat >expect <<-EOF &&
+		.git
+		$(pwd)/clone7/.git/modules/nested1/modules/nested2/modules/nested3/modules/submodule
+		EOF
+		test_cmp expect actual
+	)
+'
 
 test_expect_success 'command passed to foreach retains notion of stdin' '
 	(
