@@ -88,4 +88,36 @@ static inline unsigned int strmap_get_size(struct strmap *map)
 		var = hashmap_iter_next_entry_offset(iter, \
 						OFFSETOF_VAR(var, ent)))
 
+/*
+ * Helper functions for using strmap as map of string -> int, using the void*
+ * field to store the int instead of allocating an int and having the void*
+ * member point to the allocated int.
+ */
+
+static inline int strintmap_get(struct strmap *map, const char *str,
+				int default_value)
+{
+	struct string_list_item *result = strmap_get_item(map, str);
+	if (!result)
+		return default_value;
+	return (intptr_t)result->util;
+}
+
+static inline void strintmap_set(struct strmap *map, const char *str, intptr_t v)
+{
+	strmap_put(map, str, (void *)v);
+}
+
+void strintmap_incr(struct strmap *map, const char *str, intptr_t amt);
+
+static inline void strintmap_clear(struct strmap *map)
+{
+	strmap_clear(map, 0);
+}
+
+static inline void strintmap_free(struct strmap *map)
+{
+	strmap_free(map, 0);
+}
+
 #endif /* STRMAP_H */

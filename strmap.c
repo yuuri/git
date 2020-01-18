@@ -113,3 +113,14 @@ void strmap_remove(struct strmap *map, const char *str, int free_util)
 		free(ret->item.util);
 	free(ret);
 }
+
+void strintmap_incr(struct strmap *map, const char *str, intptr_t amt)
+{
+	struct str_entry *entry = find_str_entry(map, str);
+	if (entry) {
+		intptr_t *whence = (intptr_t*)&entry->item.util;
+		*whence += amt;
+	}
+	else
+		strintmap_set(map, str, amt);
+}
