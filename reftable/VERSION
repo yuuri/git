@@ -1,0 +1,5 @@
+commit ccce3b3eb763e79b23a3b4677d65ecceb4155ba3
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Tue Feb 25 20:42:29 2020 +0100
+
+    C: rephrase the hash ID API in terms of a uint32_t
