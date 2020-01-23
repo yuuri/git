@@ -1,0 +1,5 @@
+commit b68690acad769d59e80cbb4f79c442ece133e6bd
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Mon Apr 20 21:33:11 2020 +0200
+
+    C: fix search/replace error in dump.c
