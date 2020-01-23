@@ -1,0 +1,8 @@
+commit fe15c65dd95b6a13de92b4baf711e50338ef20ae
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Thu May 28 19:28:24 2020 +0200
+
+    C: add 'canary' to struct slice
+    
+    This enforces that all slices are initialized explicitly with
+    SLICE_INIT, for future compatibility with git's strbuf.
