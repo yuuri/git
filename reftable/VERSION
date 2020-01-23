@@ -1,0 +1,5 @@
+commit 06dd91a8377b0f920d9835b9835d0d650f928dce
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Wed May 6 21:27:32 2020 +0200
+
+    C: fix small memory leak in stack.c error path
