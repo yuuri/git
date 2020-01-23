@@ -1,0 +1,11 @@
+commit 42aa04f301a682197f0698867b9771b78ce4fdaf
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Mon Feb 17 16:05:22 2020 +0100
+
+    C: simplify system and config header handling
+    
+    reftable.h only depends on <stdint.h>
+    
+    system.h is only included from .c files. The git-core specific code is
+    guarded by a #if REFTABLE_IN_GITCORE, which we'll edit with a sed
+    script on the git-core side.
