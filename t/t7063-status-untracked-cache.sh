@@ -84,10 +84,6 @@ dthree/
 dtwo/
 three
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-three
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 
 test_expect_success 'status first time (empty cache)' '
@@ -147,10 +143,10 @@ A  two
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 0
 directory invalidation: 1
-opendir: 1
+opendir: 3
 EOF
 	test_cmp ../trace.expect ../trace
 
@@ -169,10 +165,6 @@ dtwo/
 four
 three
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-three
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
@@ -194,7 +186,7 @@ A  two
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 1
 directory invalidation: 1
 opendir: 4
@@ -216,15 +208,11 @@ dthree/
 dtwo/
 three
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-three
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
 
-test_expect_failure 'new info/exclude invalidates everything' '
+test_expect_success 'new info/exclude invalidates everything' '
 	avoid_racy &&
 	echo three >>.git/info/exclude &&
 	: >../trace &&
@@ -240,7 +228,7 @@ A  two
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 1
 directory invalidation: 0
 opendir: 4
@@ -248,7 +236,7 @@ EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'verify untracked cache dump' '
+test_expect_success 'verify untracked cache dump' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -260,9 +248,6 @@ flags 00000006
 dthree/
 dtwo/
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
@@ -277,14 +262,11 @@ exclude_per_dir .gitignore
 flags 00000006
 / e6fcc8f2ee31bae321d66afd183fcb7237afae6e recurse
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
 
-test_expect_failure 'status after the move' '
+test_expect_success 'status after the move' '
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
 	git status --porcelain >../actual &&
@@ -298,15 +280,15 @@ A  one
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 0
 directory invalidation: 0
-opendir: 1
+opendir: 3
 EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'verify untracked cache dump' '
+test_expect_success 'verify untracked cache dump' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -319,9 +301,6 @@ dthree/
 dtwo/
 two
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
@@ -336,14 +315,11 @@ exclude_per_dir .gitignore
 flags 00000006
 / e6fcc8f2ee31bae321d66afd183fcb7237afae6e recurse
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
 
-test_expect_failure 'status after the move' '
+test_expect_success 'status after the move' '
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
 	git status --porcelain >../actual &&
@@ -357,15 +333,15 @@ A  two
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 0
 directory invalidation: 0
-opendir: 1
+opendir: 3
 EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'verify untracked cache dump' '
+test_expect_success 'verify untracked cache dump' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -377,9 +353,6 @@ flags 00000006
 dthree/
 dtwo/
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
@@ -392,7 +365,7 @@ test_expect_success 'set up for sparse checkout testing' '
 	git commit -m "first commit"
 '
 
-test_expect_failure 'status after commit' '
+test_expect_success 'status after commit' '
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
 	git status --porcelain >../actual &&
@@ -403,15 +376,15 @@ test_expect_failure 'status after commit' '
 EOF
 	test_cmp ../status.expect ../actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 0
 directory invalidation: 0
-opendir: 2
+opendir: 4
 EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'untracked cache correct after commit' '
+test_expect_success 'untracked cache correct after commit' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -423,9 +396,6 @@ flags 00000006
 dthree/
 dtwo/
 /done/ 0000000000000000000000000000000000000000 recurse valid
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
@@ -450,7 +420,7 @@ test_expect_success 'create/modify files, some of which are gitignored' '
 	sync_mtime
 '
 
-test_expect_failure 'test sparse status with untracked cache' '
+test_expect_success 'test sparse status with untracked cache' '
 	: >../trace &&
 	avoid_racy &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
@@ -464,15 +434,15 @@ test_expect_failure 'test sparse status with untracked cache' '
 EOF
 	test_cmp ../status.expect ../status.actual &&
 	cat >../trace.expect <<EOF &&
-node creation: 0
+node creation: 2
 gitignore invalidation: 1
 directory invalidation: 2
-opendir: 2
+opendir: 4
 EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'untracked cache correct after status' '
+test_expect_success 'untracked cache correct after status' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -485,14 +455,11 @@ dthree/
 dtwo/
 /done/ 1946f0437f90c5005533cbe1736a6451ca301714 recurse valid
 five
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect ../actual
 '
 
-test_expect_failure 'test sparse status again with untracked cache' '
+test_expect_success 'test sparse status again with untracked cache' '
 	avoid_racy &&
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
@@ -520,7 +487,7 @@ test_expect_success 'set up for test of subdir and sparse checkouts' '
 	echo "sub" > done/sub/sub/file
 '
 
-test_expect_failure 'test sparse status with untracked cache and subdir' '
+test_expect_success 'test sparse status with untracked cache and subdir' '
 	avoid_racy &&
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
@@ -543,7 +510,7 @@ EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'verify untracked cache dump (sparse/subdirs)' '
+test_expect_success 'verify untracked cache dump (sparse/subdirs)' '
 	test-tool dump-untracked-cache >../actual &&
 	cat >../expect-from-test-dump <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
@@ -557,18 +524,11 @@ dtwo/
 /done/ 1946f0437f90c5005533cbe1736a6451ca301714 recurse valid
 five
 sub/
-/done/sub/ 0000000000000000000000000000000000000000 recurse check_only valid
-sub/
-/done/sub/sub/ 0000000000000000000000000000000000000000 recurse check_only valid
-file
-/dthree/ 0000000000000000000000000000000000000000 recurse check_only valid
-/dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
-two
 EOF
 	test_cmp ../expect-from-test-dump ../actual
 '
 
-test_expect_failure 'test sparse status again with untracked cache and subdir' '
+test_expect_success 'test sparse status again with untracked cache and subdir' '
 	avoid_racy &&
 	: >../trace &&
 	GIT_TRACE_UNTRACKED_STATS="$TRASH_DIRECTORY/trace" \
@@ -583,7 +543,7 @@ EOF
 	test_cmp ../trace.expect ../trace
 '
 
-test_expect_failure 'move entry in subdir from untracked to cached' '
+test_expect_success 'move entry in subdir from untracked to cached' '
 	git add dtwo/two &&
 	git status --porcelain >../status.actual &&
 	cat >../status.expect <<EOF &&
@@ -597,7 +557,7 @@ EOF
 	test_cmp ../status.expect ../status.actual
 '
 
-test_expect_failure 'move entry in subdir from cached to untracked' '
+test_expect_success 'move entry in subdir from cached to untracked' '
 	git rm --cached dtwo/two &&
 	git status --porcelain >../status.actual &&
 	cat >../status.expect <<EOF &&
@@ -624,7 +584,7 @@ test_expect_success 'git status does not change anything' '
 	test_cmp ../expect-no-uc ../actual
 '
 
-test_expect_failure 'setting core.untrackedCache to true and using git status creates the cache' '
+test_expect_success 'setting core.untrackedCache to true and using git status creates the cache' '
 	git config core.untrackedCache true &&
 	test-tool dump-untracked-cache >../actual &&
 	test_cmp ../expect-no-uc ../actual &&
@@ -657,7 +617,7 @@ test_expect_success 'using --untracked-cache does not fail when core.untrackedCa
 	test_cmp ../expect-empty ../actual
 '
 
-test_expect_failure 'setting core.untrackedCache to keep' '
+test_expect_success 'setting core.untrackedCache to keep' '
 	git config core.untrackedCache keep &&
 	git update-index --untracked-cache &&
 	test-tool dump-untracked-cache >../actual &&
