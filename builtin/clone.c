@@ -26,6 +26,8 @@
 #include "dir-iterator.h"
 #include "iterator.h"
 #include "sigchain.h"
+#include "submodule-config.h"
+#include "submodule.h"
 #include "branch.h"
 #include "remote.h"
 #include "run-command.h"
@@ -929,6 +931,18 @@ static int path_exists(const char *path)
 	return !stat(path, &sb);
 }
 
+/**
+ * Read config variables.
+ */
+static int git_clone_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "submodule.recurse") && git_config_bool(var, value)) {
+		string_list_append(&option_recurse_submodules, "true");
+		return 0;
+	}
+	return git_default_config(var, value, cb);
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
@@ -1103,7 +1117,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	write_config(&option_config);
 
-	git_config(git_default_config, NULL);
+	git_config(git_clone_config, NULL);
 
 	if (option_bare) {
 		if (option_mirror)
