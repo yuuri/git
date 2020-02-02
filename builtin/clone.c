@@ -26,6 +26,8 @@
 #include "dir-iterator.h"
 #include "iterator.h"
 #include "sigchain.h"
+#include "submodule-config.h"
+#include "submodule.h"
 #include "branch.h"
 #include "remote.h"
 #include "run-command.h"
@@ -44,6 +46,12 @@
 static const char * const builtin_clone_usage[] = {
 	N_("git clone [<options>] [--] <repo> [<dir>]"),
 	NULL
+};
+
+struct option_submodules
+{
+	struct string_list option;
+	int status;
 };
 
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
@@ -66,7 +74,7 @@ static struct string_list option_required_reference = STRING_LIST_INIT_NODUP;
 static struct string_list option_optional_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
-static struct string_list option_recurse_submodules = STRING_LIST_INIT_NODUP;
+static struct option_submodules option_recurse_submodules = {STRING_LIST_INIT_NODUP, RECURSE_SUBMODULES_DEFAULT};
 static struct list_objects_filter_options filter_options;
 static struct string_list server_options = STRING_LIST_INIT_NODUP;
 static int option_remote_submodules;
@@ -74,13 +82,20 @@ static int option_remote_submodules;
 static int recurse_submodules_cb(const struct option *opt,
 				 const char *arg, int unset)
 {
-	if (unset)
-		string_list_clear((struct string_list *)opt->value, 0);
-	else if (arg)
-		string_list_append((struct string_list *)opt->value, arg);
-	else
-		string_list_append((struct string_list *)opt->value,
-				   (const char *)opt->defval);
+	struct option_submodules *list = (struct option_submodules *)(opt->value);
+
+	if (unset) {
+		string_list_clear(&list->option, 0);
+		list->status = RECURSE_SUBMODULES_OFF;
+	}
+	else if (arg) {
+		string_list_append(&list->option, arg);
+		list->status = RECURSE_SUBMODULES_ON_DEMAND;
+	}
+	else {
+		string_list_append(&list->option, (const char *)opt->defval);
+		list->status = RECURSE_SUBMODULES_ON;
+	}
 
 	return 0;
 }
@@ -88,9 +103,9 @@ static int recurse_submodules_cb(const struct option *opt,
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
 	OPT_BOOL(0, "progress", &option_progress,
-		 N_("force progress reporting")),
+		N_("force progress reporting")),
 	OPT_BOOL('n', "no-checkout", &option_no_checkout,
-		 N_("don't create a checkout")),
+		N_("don't create a checkout")),
 	OPT_BOOL(0, "bare", &option_bare, N_("create a bare repository")),
 	OPT_HIDDEN_BOOL(0, "naked", &option_bare,
 			N_("create a bare repository")),
@@ -99,43 +114,43 @@ static struct option builtin_clone_options[] = {
 	OPT_BOOL('l', "local", &option_local,
 		N_("to clone from a local repository")),
 	OPT_BOOL(0, "no-hardlinks", &option_no_hardlinks,
-		    N_("don't use local hardlinks, always copy")),
+			N_("don't use local hardlinks, always copy")),
 	OPT_BOOL('s', "shared", &option_shared,
-		    N_("setup as shared repository")),
+			N_("setup as shared repository")),
 	OPT_ALIAS(0, "recursive", "recurse-submodules"),
 	{ OPTION_CALLBACK, 0, "recurse-submodules", &option_recurse_submodules,
 	  N_("pathspec"), N_("initialize submodules in the clone"),
 	  PARSE_OPT_OPTARG, recurse_submodules_cb, (intptr_t)"." },
 	OPT_INTEGER('j', "jobs", &max_jobs,
-		    N_("number of submodules cloned in parallel")),
+			N_("number of submodules cloned in parallel")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
-		   N_("directory from which templates will be used")),
+			N_("directory from which templates will be used")),
 	OPT_STRING_LIST(0, "reference", &option_required_reference, N_("repo"),
 			N_("reference repository")),
 	OPT_STRING_LIST(0, "reference-if-able", &option_optional_reference,
 			N_("repo"), N_("reference repository")),
 	OPT_BOOL(0, "dissociate", &option_dissociate,
-		 N_("use --reference only while cloning")),
+			N_("use --reference only while cloning")),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
-		   N_("use <name> instead of 'origin' to track upstream")),
+			N_("use <name> instead of 'origin' to track upstream")),
 	OPT_STRING('b', "branch", &option_branch, N_("branch"),
-		   N_("checkout <branch> instead of the remote's HEAD")),
+			N_("checkout <branch> instead of the remote's HEAD")),
 	OPT_STRING('u', "upload-pack", &option_upload_pack, N_("path"),
-		   N_("path to git-upload-pack on the remote")),
+			N_("path to git-upload-pack on the remote")),
 	OPT_STRING(0, "depth", &option_depth, N_("depth"),
-		    N_("create a shallow clone of that depth")),
+			N_("create a shallow clone of that depth")),
 	OPT_STRING(0, "shallow-since", &option_since, N_("time"),
-		    N_("create a shallow clone since a specific time")),
+			N_("create a shallow clone since a specific time")),
 	OPT_STRING_LIST(0, "shallow-exclude", &option_not, N_("revision"),
 			N_("deepen history of shallow clone, excluding rev")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
-		    N_("clone only one branch, HEAD or --branch")),
+			N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "no-tags", &option_no_tags,
-		 N_("don't clone any tags, and make later fetches not to follow them")),
+			N_("don't clone any tags, and make later fetches not to follow them")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
-		    N_("any cloned submodules will be shallow")),
+			N_("any cloned submodules will be shallow")),
 	OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
-		   N_("separate git dir from working tree")),
+			N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
 	OPT_STRING_LIST(0, "server-option", &server_options,
@@ -146,9 +161,9 @@ static struct option builtin_clone_options[] = {
 			TRANSPORT_FAMILY_IPV6),
 	OPT_PARSE_LIST_OBJECTS_FILTER(&filter_options),
 	OPT_BOOL(0, "remote-submodules", &option_remote_submodules,
-		    N_("any cloned submodules will use their remote-tracking branch")),
+			N_("any cloned submodules will use their remote-tracking branch")),
 	OPT_BOOL(0, "sparse", &option_sparse_checkout,
-		    N_("initialize sparse-checkout file to include only files at root")),
+			N_("initialize sparse-checkout file to include only files at root")),
 	OPT_END()
 };
 
@@ -811,7 +826,7 @@ static int checkout(int submodule_progress)
 	err |= run_hook_le(NULL, "post-checkout", oid_to_hex(&null_oid),
 			   oid_to_hex(&oid), "1", NULL);
 
-	if (!err && (option_recurse_submodules.nr > 0)) {
+	if (!err && (option_recurse_submodules.option.nr > 0)) {
 		struct argv_array args = ARGV_ARRAY_INIT;
 		argv_array_pushl(&args, "submodule", "update", "--require-init", "--recursive", NULL);
 
@@ -927,6 +942,16 @@ static int path_exists(const char *path)
 {
 	struct stat sb;
 	return !stat(path, &sb);
+}
+
+static int git_clone_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "submodule.recurse")){
+		if (git_config_bool(var, value) && option_recurse_submodules.status != RECURSE_SUBMODULES_OFF)
+			string_list_append(&option_recurse_submodules.option, ".");
+		return 0;
+	}
+	return git_default_config(var, value, cb);
 }
 
 int cmd_clone(int argc, const char **argv, const char *prefix)
@@ -1060,19 +1085,19 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			fprintf(stderr, _("Cloning into '%s'...\n"), dir);
 	}
 
-	if (option_recurse_submodules.nr > 0) {
+	if (option_recurse_submodules.option.nr > 0) {
 		struct string_list_item *item;
 		struct strbuf sb = STRBUF_INIT;
 
 		/* remove duplicates */
-		string_list_sort(&option_recurse_submodules);
-		string_list_remove_duplicates(&option_recurse_submodules, 0);
+		string_list_sort(&option_recurse_submodules.option);
+		string_list_remove_duplicates(&option_recurse_submodules.option, 0);
 
 		/*
 		 * NEEDSWORK: In a multi-working-tree world, this needs to be
 		 * set in the per-worktree config.
 		 */
-		for_each_string_list_item(item, &option_recurse_submodules) {
+		for_each_string_list_item(item, &option_recurse_submodules.option) {
 			strbuf_addf(&sb, "submodule.active=%s",
 				    item->string);
 			string_list_append(&option_config,
@@ -1103,7 +1128,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	write_config(&option_config);
 
-	git_config(git_default_config, NULL);
+	git_config(git_clone_config, NULL);
 
 	if (option_bare) {
 		if (option_mirror)
