@@ -29,7 +29,6 @@ int advice_ignored_hook = 1;
 int advice_waiting_for_editor = 1;
 int advice_graft_file_deprecated = 1;
 int advice_checkout_ambiguous_remote_branch_name = 1;
-int advice_nested_tag = 1;
 int advice_submodule_alternate_error_strategy_die = 1;
 
 static int advice_use_color = -1;
@@ -89,11 +88,44 @@ static struct {
 	{ "waitingForEditor", &advice_waiting_for_editor },
 	{ "graftFileDeprecated", &advice_graft_file_deprecated },
 	{ "checkoutAmbiguousRemoteBranchName", &advice_checkout_ambiguous_remote_branch_name },
-	{ "nestedTag", &advice_nested_tag },
 	{ "submoduleAlternateErrorStrategyDie", &advice_submodule_alternate_error_strategy_die },
 
 	/* make this an alias for backward compatibility */
 	{ "pushNonFastForward", &advice_push_update_rejected }
+};
+
+static const char *advice_config_keys[] = {
+	[FETCH_SHOW_FORCED_UPDATES]		 = "fetchShowForcedUpdates",
+	[PUSH_UPDATE_REJECTED]			 = "pushUpdateRejected",
+	/* make this an alias for backward compatibility */
+	[PUSH_UPDATE_REJECTED_ALIAS]		 = "pushNonFastForward",
+
+	[PUSH_NON_FF_CURRENT]			 = "pushNonFFCurrent",
+	[PUSH_NON_FF_MATCHING]			 = "pushNonFFMatching",
+	[PUSH_ALREADY_EXISTS]			 = "pushAlreadyExists",
+	[PUSH_FETCH_FIRST]			 = "pushFetchFirst",
+	[PUSH_NEEDS_FORCE]			 = "pushNeedsForce",
+	[PUSH_UNQUALIFIED_REF_NAME]		 = "pushUnqualifiedRefName",
+	[STATUS_HINTS]				 = "statusHints",
+	[STATUS_U_OPTION]			 = "statusUoption",
+	[STATUS_AHEAD_BEHIND_WARNING]		 = "statusAheadBehindWarning",
+	[COMMIT_BEFORE_MERGE]			 = "commitBeforeMerge",
+	[RESET_QUIET_WARNING]			 = "resetQuiet",
+	[RESOLVE_CONFLICT]			 = "resolveConflict",
+	[SEQUENCER_IN_USE]			 = "sequencerInUse",
+	[IMPLICIT_IDENTITY]			 = "implicitIdentity",
+	[DETACHED_HEAD]				 = "detachedHead",
+	[SET_UPSTREAM_FAILURE]			 = "setupStreamFailure",
+	[OBJECT_NAME_WARNING]			 = "objectNameWarning",
+	[AMWORKDIR]				 = "amWorkDir",
+	[RM_HINTS]				 = "rmHints",
+	[ADD_EMBEDDED_REPO]			 = "addEmbeddedRepo",
+	[IGNORED_HOOK]				 = "ignoredHook",
+	[WAITING_FOR_EDITOR] 			 = "waitingForEditor",
+	[GRAFT_FILE_DEPRECATED]			 = "graftFileDeprecated",
+	[CHECKOUT_AMBIGUOUS_REMOTE_BRANCH_NAME]	 = "checkoutAmbiguousRemoteBranchName",
+	[NESTED_TAG]				 = "nestedTag",
+	[SUBMODULE_ALTERNATE_ERROR_STRATEGY_DIE] = "submoduleAlternateErrorStrategyDie"
 };
 
 void advise(const char *advice, ...)
@@ -116,6 +148,58 @@ void advise(const char *advice, ...)
 			np++;
 	}
 	strbuf_release(&buf);
+}
+
+static int get_config_value(enum advice_type type)
+{
+	int value = 1;
+	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
+	git_config_get_bool(key, &value);
+	return value;
+}
+
+int advice_enabled(enum advice_type type)
+{
+	switch(type) {
+	case PUSH_UPDATE_REJECTED:
+		return get_config_value(PUSH_UPDATE_REJECTED) &&
+		       get_config_value(PUSH_UPDATE_REJECTED_ALIAS);
+	default:
+		return get_config_value(type);
+	}
+}
+
+static const char turn_off_instructions[] =
+N_("\n"
+   "Disable this message with \"git config %s false\"");
+
+void advise_if_enabled(enum advice_type type, const char *advice, ...)
+{
+	struct strbuf buf = STRBUF_INIT;
+	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
+	va_list params;
+	const char *cp, *np;
+	
+	if(!advice_enabled(type))
+		return;
+
+	va_start(params, advice);
+	strbuf_vaddf(&buf, advice, params);
+	va_end(params);
+
+	strbuf_addf(&buf, turn_off_instructions, key);
+	
+	for (cp = buf.buf; *cp; cp = np) {
+		np = strchrnul(cp, '\n');
+		fprintf(stderr,	_("%shint: %.*s%s\n"),
+			advise_get_color(ADVICE_COLOR_HINT),
+			(int)(np - cp), cp,
+			advise_get_color(ADVICE_COLOR_RESET));
+		if (*np)
+			np++;
+	}
+	strbuf_release(&buf);
+
 }
 
 int git_default_advice_config(const char *var, const char *value)
@@ -154,8 +238,8 @@ void list_config_advices(struct string_list *list, const char *prefix)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(advice_config); i++)
-		list_config_item(list, prefix, advice_config[i].name);
+	for (i = 0; i < ARRAY_SIZE(advice_config_keys); i++)
+		list_config_item(list, prefix, advice_config_keys[i]);
 }
 
 int error_resolve_conflict(const char *me)
