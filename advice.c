@@ -29,7 +29,6 @@ int advice_ignored_hook = 1;
 int advice_waiting_for_editor = 1;
 int advice_graft_file_deprecated = 1;
 int advice_checkout_ambiguous_remote_branch_name = 1;
-int advice_nested_tag = 1;
 int advice_submodule_alternate_error_strategy_die = 1;
 
 static int advice_use_color = -1;
@@ -89,7 +88,6 @@ static struct {
 	{ "waitingForEditor", &advice_waiting_for_editor },
 	{ "graftFileDeprecated", &advice_graft_file_deprecated },
 	{ "checkoutAmbiguousRemoteBranchName", &advice_checkout_ambiguous_remote_branch_name },
-	{ "nestedTag", &advice_nested_tag },
 	{ "submoduleAlternateErrorStrategyDie", &advice_submodule_alternate_error_strategy_die },
 
 	/* make this an alias for backward compatibility */
@@ -116,6 +114,41 @@ void advise(const char *advice, ...)
 			np++;
 	}
 	strbuf_release(&buf);
+}
+
+static const char turn_off_instructions[] =
+N_("\n"
+"Turn this message off by running\n"
+"\"git config %s false\"");
+
+void advise_ng(const char *key, const char *advice, ...)
+{
+	int value = 1;
+	struct strbuf buf = STRBUF_INIT;
+	va_list params;
+	const char *cp, *np;
+	
+	git_config_get_bool(key, &value);
+	
+	if(value)
+	{
+		va_start(params, advice);
+		strbuf_vaddf(&buf, advice, params);
+		va_end(params);
+
+		strbuf_addf(&buf, turn_off_instructions, key);
+		
+		for (cp = buf.buf; *cp; cp = np) {
+			np = strchrnul(cp, '\n');
+			fprintf(stderr,	_("%shint: %.*s%s\n"),
+				advise_get_color(ADVICE_COLOR_HINT),
+				(int)(np - cp), cp,
+				advise_get_color(ADVICE_COLOR_RESET));
+			if (*np)
+				np++;
+		}
+		strbuf_release(&buf);
+	}
 }
 
 int git_default_advice_config(const char *var, const char *value)
