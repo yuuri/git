@@ -682,6 +682,7 @@ static int in_bitmapped_pack(struct bitmap_index *bitmap_git,
 struct bitmap_index *prepare_bitmap_walk(struct rev_info *revs)
 {
 	unsigned int i;
+	struct repository *r = the_repository;
 
 	struct object_list *wants = NULL;
 	struct object_list *haves = NULL;
@@ -699,7 +700,7 @@ struct bitmap_index *prepare_bitmap_walk(struct rev_info *revs)
 		struct object *object = revs->pending.objects[i].item;
 
 		if (object->type == OBJ_NONE)
-			parse_object_or_die(&object->oid, NULL);
+			parse_object_or_die(r, &object->oid, NULL);
 
 		while (object->type == OBJ_TAG) {
 			struct tag *tag = (struct tag *) object;
@@ -709,7 +710,7 @@ struct bitmap_index *prepare_bitmap_walk(struct rev_info *revs)
 			else
 				object_list_insert(object, &wants);
 
-			object = parse_object_or_die(get_tagged_oid(tag), NULL);
+			object = parse_object_or_die(r, get_tagged_oid(tag), NULL);
 		}
 
 		if (object->flags & UNINTERESTING)
