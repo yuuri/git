@@ -35,6 +35,7 @@ struct object_id;
 
 #define CONFIG_REGEX_NONE ((void *)1)
 
+
 struct git_config_source {
 	unsigned int use_stdin:1;
 	const char *file;
@@ -301,6 +302,7 @@ enum config_scope {
 	CONFIG_SCOPE_REPO,
 	CONFIG_SCOPE_CMDLINE,
 };
+const char *config_scope_name(enum config_scope scope);
 
 enum config_scope current_config_scope(void);
 const char *current_config_origin_type(void);
