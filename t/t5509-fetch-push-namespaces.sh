@@ -152,7 +152,7 @@ test_expect_success 'clone chooses correct HEAD (v2)' '
 	test_cmp expect actual
 '
 
-test_expect_failure 'denyCurrentBranch and unborn branch with ref namespace' '
+test_expect_success 'denyCurrentBranch and unborn branch with ref namespace' '
 	cd original &&
 	git init unborn &&
 	git remote add unborn-namespaced "ext::git --namespace=namespace %s unborn" &&
