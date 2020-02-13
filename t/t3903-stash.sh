@@ -1285,4 +1285,19 @@ test_expect_success 'stash handles skip-worktree entries nicely' '
 	git rev-parse --verify refs/stash:A.t
 '
 
+test_expect_success 'stash handles large files' '
+	x=0123456789abcde\n && # 16
+	x=$x$x$x$x$x$x$x$x  && # 128
+	x=$x$x$x$x$x$x$x$x  && # 1k
+	x=$x$x$x$x$x$x$x$x  && # 8k
+	x=$x$x$x$x$x$x$x$x  && # 64k
+	x=$x$x$x$x$x$x$x$x  && # 512k
+	x=$x$x$x$x$x$x$x$x  && # 4m
+	x=$x$x              && # 8m
+	echo $x >large_file.txt &&
+	unset x             && # release memory
+
+	git stash push --include-untracked -- large_file.txt
+'
+
 test_done
