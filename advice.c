@@ -128,15 +128,20 @@ static const char *advice_config_keys[] = {
 	[SUBMODULE_ALTERNATE_ERROR_STRATEGY_DIE] = "submoduleAlternateErrorStrategyDie"
 };
 
-void advise(const char *advice, ...)
+static const char turn_off_instructions[] =
+N_("\n"
+   "Disable this message with \"git config %s false\"");
+
+static void vadvise(const char *advice, va_list params,
+		    int display_instructions, char *key)
 {
 	struct strbuf buf = STRBUF_INIT;
-	va_list params;
 	const char *cp, *np;
 
-	va_start(params, advice);
 	strbuf_vaddf(&buf, advice, params);
-	va_end(params);
+
+	if(display_instructions)
+		strbuf_addf(&buf, turn_off_instructions, key);
 
 	for (cp = buf.buf; *cp; cp = np) {
 		np = strchrnul(cp, '\n');
@@ -169,37 +174,25 @@ int advice_enabled(enum advice_type type)
 	}
 }
 
-static const char turn_off_instructions[] =
-N_("\n"
-   "Disable this message with \"git config %s false\"");
+void advise(const char *advice, ...)
+{
+	va_list params;
+	va_start(params, advice);
+	vadvise(advice, params, 0, "");
+	va_end(params);
+}
 
 void advise_if_enabled(enum advice_type type, const char *advice, ...)
 {
-	struct strbuf buf = STRBUF_INIT;
-	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
 	va_list params;
-	const char *cp, *np;
-	
+	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
+
 	if(!advice_enabled(type))
 		return;
 
 	va_start(params, advice);
-	strbuf_vaddf(&buf, advice, params);
+	vadvise(advice, params, 1, key);
 	va_end(params);
-
-	strbuf_addf(&buf, turn_off_instructions, key);
-	
-	for (cp = buf.buf; *cp; cp = np) {
-		np = strchrnul(cp, '\n');
-		fprintf(stderr,	_("%shint: %.*s%s\n"),
-			advise_get_color(ADVICE_COLOR_HINT),
-			(int)(np - cp), cp,
-			advise_get_color(ADVICE_COLOR_RESET));
-		if (*np)
-			np++;
-	}
-	strbuf_release(&buf);
-
 }
 
 int git_default_advice_config(const char *var, const char *value)
