@@ -436,7 +436,7 @@ proc revert_helper {txt paths} {
 	#
 	# The asynchronous operations are each indicated below by a comment
 	# before the code block that starts the async operation.
-	set after_chord [SimpleChord new {
+	set after_chord [SimpleChord::new {
 		if {[string trim $err] != ""} {
 			rescan_on_error $err
 		} else {
@@ -521,11 +521,12 @@ proc revert_helper {txt paths} {
 			[mc "Revert Changes"] \
 			]
 
+		set note [$after_chord add_note]
 		if {$reply == 1} {
 			checkout_index \
 				$txt \
 				$path_list \
-				[$after_chord add_note] \
+				[list $note activate] \
 				$capture_error
 		}
 	}
@@ -564,17 +565,18 @@ proc revert_helper {txt paths} {
 			[mc "Delete Files"] \
 			]
 
+		set note [$after_chord add_note]
 		if {$reply == 1} {
 			$after_chord eval { set should_reshow_diff 1 }
 
-			delete_files $untracked_list [$after_chord add_note]
+			delete_files $untracked_list [list $note activate]
 		}
 	}
 
 	# Activate the common note. If no other notes were created, this
 	# completes the chord. If other notes were created, then this common
 	# note prevents a race condition where the chord might complete early.
-	$after_common_note
+	$after_common_note activate
 }
 
 # Delete all of the specified files, performing deletion in batches to allow the
