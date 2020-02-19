@@ -385,7 +385,7 @@ test_expect_failure 'verify fetch succeeds when asking for new tags' '
 	git -C tag-test fetch --tags origin
 '
 
-test_expect_failure 'verify fetch downloads only one pack when updating refs' '
+test_expect_success 'verify fetch downloads only one pack when updating refs' '
 	git clone --filter=blob:none "file://$(pwd)/srv.bare" pack-test &&
 	ls pack-test/.git/objects/pack/*pack >pack-list &&
 	test_line_count = 2 pack-list &&
