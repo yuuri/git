@@ -96,12 +96,55 @@ static struct {
 	{ "pushNonFastForward", &advice_push_update_rejected }
 };
 
-static void vadvise(const char *advice, va_list params)
+static const char *advice_config_keys[] = {
+	[ADD_EMBEDDED_REPO]			 = "addEmbeddedRepo",
+	[AMWORKDIR]				 = "amWorkDir",
+	[CHECKOUT_AMBIGUOUS_REMOTE_BRANCH_NAME]	 = "checkoutAmbiguousRemoteBranchName",
+	[COMMIT_BEFORE_MERGE]			 = "commitBeforeMerge",
+	[DETACHED_HEAD]				 = "detachedHead",
+	[FETCH_SHOW_FORCED_UPDATES]		 = "fetchShowForcedUpdates",
+	[GRAFT_FILE_DEPRECATED]			 = "graftFileDeprecated",
+	[IGNORED_HOOK]				 = "ignoredHook",
+	[IMPLICIT_IDENTITY]			 = "implicitIdentity",
+	[NESTED_TAG]				 = "nestedTag",
+	[OBJECT_NAME_WARNING]			 = "objectNameWarning",
+	[PUSH_ALREADY_EXISTS]			 = "pushAlreadyExists",
+	[PUSH_FETCH_FIRST]			 = "pushFetchFirst",
+	[PUSH_NEEDS_FORCE]			 = "pushNeedsForce",
+
+	/* make this an alias for backward compatibility */
+	[PUSH_UPDATE_REJECTED_ALIAS]		 = "pushNonFastForward",
+
+	[PUSH_NON_FF_CURRENT]			 = "pushNonFFCurrent",
+	[PUSH_NON_FF_MATCHING]			 = "pushNonFFMatching",
+	[PUSH_UNQUALIFIED_REF_NAME]		 = "pushUnqualifiedRefName",
+	[PUSH_UPDATE_REJECTED]			 = "pushUpdateRejected",
+	[RESET_QUIET_WARNING]			 = "resetQuiet",
+	[RESOLVE_CONFLICT]			 = "resolveConflict",
+	[RM_HINTS]				 = "rmHints",
+	[SEQUENCER_IN_USE]			 = "sequencerInUse",
+	[SET_UPSTREAM_FAILURE]			 = "setupStreamFailure",
+	[STATUS_AHEAD_BEHIND_WARNING]		 = "statusAheadBehindWarning",
+	[STATUS_HINTS]				 = "statusHints",
+	[STATUS_U_OPTION]			 = "statusUoption",
+	[SUBMODULE_ALTERNATE_ERROR_STRATEGY_DIE] = "submoduleAlternateErrorStrategyDie",
+	[WAITING_FOR_EDITOR] 			 = "waitingForEditor",
+};
+
+static const char turn_off_instructions[] =
+N_("\n"
+   "Disable this message with \"git config %s false\"");
+
+static void vadvise(const char *advice, int display_instructions,
+		    char *key, va_list params)
 {
 	struct strbuf buf = STRBUF_INIT;
 	const char *cp, *np;
 
 	strbuf_vaddf(&buf, advice, params);
+
+	if (display_instructions)
+		strbuf_addf(&buf, turn_off_instructions, key);
 
 	for (cp = buf.buf; *cp; cp = np) {
 		np = strchrnul(cp, '\n');
@@ -119,8 +162,43 @@ void advise(const char *advice, ...)
 {
 	va_list params;
 	va_start(params, advice);
-	vadvise(advice, params);
+	vadvise(advice, 0, "", params);
 	va_end(params);
+}
+
+static int get_config_value(enum advice_type type)
+{
+	int value = 1;
+	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
+
+	git_config_get_bool(key, &value);
+	free(key);
+	return value;
+}
+
+int advice_enabled(enum advice_type type)
+{
+	switch (type) {
+	case PUSH_UPDATE_REJECTED:
+		return get_config_value(PUSH_UPDATE_REJECTED) &&
+		       get_config_value(PUSH_UPDATE_REJECTED_ALIAS);
+	default:
+		return get_config_value(type);
+	}
+}
+
+void advise_if_enabled(enum advice_type type, const char *advice, ...)
+{
+	char *key = xstrfmt("%s.%s", "advice", advice_config_keys[type]);
+	va_list params;
+
+	if (!advice_enabled(type))
+		return;
+
+	va_start(params, advice);
+	vadvise(advice, 1, key, params);
+	va_end(params);
+	free(key);
 }
 
 int git_default_advice_config(const char *var, const char *value)
@@ -159,8 +237,8 @@ void list_config_advices(struct string_list *list, const char *prefix)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(advice_config); i++)
-		list_config_item(list, prefix, advice_config[i].name);
+	for (i = 0; i < ARRAY_SIZE(advice_config_keys); i++)
+		list_config_item(list, prefix, advice_config_keys[i]);
 }
 
 int error_resolve_conflict(const char *me)
