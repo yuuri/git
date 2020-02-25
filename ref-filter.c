@@ -1166,6 +1166,7 @@ static void find_subpos(const char *buf,
 	const char *eol;
 	const char *end = buf + strlen(buf);
 	const char *sigstart;
+	size_t siglen_;
 
 	/* parse signature first; we might not even have a subject line */
 	parse_signature(buf, end - buf, &payload, &signature);
@@ -1180,7 +1181,7 @@ static void find_subpos(const char *buf,
 	/* skip any empty lines */
 	while (*buf == '\n')
 		buf++;
-	*sig = strbuf_detach(&signature, siglen);
+	*sig = strbuf_detach(&signature, &siglen_);
 	sigstart = buf + parse_signed_buffer(buf, strlen(buf));
 
 	/* subject is first non-empty line */
@@ -1203,6 +1204,7 @@ static void find_subpos(const char *buf,
 	*body = buf;
 	*bodylen = strlen(buf);
 	*nonsiglen = sigstart - buf;
+	*siglen = siglen_;
 }
 
 /*
