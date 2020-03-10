@@ -260,8 +260,7 @@ See also INCOMPATIBLE OPTIONS below.
 
 --apply:
 	Use applying strategies to rebase (calling `git-am`
-	internally).  This option may become a no-op in the future
-	once the merge backend handles everything the apply one does.
+	internally).  This is the default.
 +
 See also INCOMPATIBLE OPTIONS below.
 
@@ -315,7 +314,8 @@ See also INCOMPATIBLE OPTIONS below.
 --merge::
 	Use merging strategies to rebase.  When the recursive (default) merge
 	strategy is used, this allows rebase to be aware of renames on the
-	upstream side.  This is the default.
+	upstream side.  This may become the default in the future
+	once known bugs are shaken out of this backend.
 +
 Note that a rebase merge works by replaying each commit from the working
 branch on top of the <upstream> branch.  Because of this, when a merge
