@@ -39,7 +39,7 @@ test_expect_success 'clone with excess parameters (2)' '
 
 test_expect_success C_LOCALE_OUTPUT 'output from clone' '
 	rm -fr dst &&
-	git clone -n "file://$(pwd)/src" dst >output 2>&1 &&
+	git clone --verbose -n "file://$(pwd)/src" dst >output 2>&1 &&
 	test $(grep Clon output | wc -l) = 1
 '
 
@@ -295,6 +295,11 @@ test_expect_success 'clone from original with relative alternate' '
 	echo ../../../src/.git/objects >nest/src-5/objects/info/alternates &&
 	git clone --bare nest/src-5 target-10 &&
 	grep /src/\\.git/objects target-10/objects/info/alternates
+'
+
+test_expect_success 'clone quietly without terminal' '
+	GIT_PROGRESS_DELAY=0 git clone src progress 2>err &&
+	test_must_be_empty err
 '
 
 test_expect_success 'clone checking out a tag' '

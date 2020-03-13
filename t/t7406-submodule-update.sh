@@ -115,18 +115,10 @@ Submodule path '../super/submodule': checked out '$submodulesha1'
 EOF
 
 cat <<EOF >expect2
-Cloning into '$pwd/recursivesuper/super/merging'...
-Cloning into '$pwd/recursivesuper/super/none'...
-Cloning into '$pwd/recursivesuper/super/rebasing'...
-Cloning into '$pwd/recursivesuper/super/submodule'...
 Submodule 'merging' ($pwd/merging) registered for path '../super/merging'
 Submodule 'none' ($pwd/none) registered for path '../super/none'
 Submodule 'rebasing' ($pwd/rebasing) registered for path '../super/rebasing'
 Submodule 'submodule' ($pwd/submodule) registered for path '../super/submodule'
-done.
-done.
-done.
-done.
 EOF
 
 test_expect_success 'submodule update --init --recursive from subdirectory' '

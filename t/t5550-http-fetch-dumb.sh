@@ -332,7 +332,7 @@ test_expect_success 'redirects can be forbidden/allowed' '
 	test_must_fail git -c http.followRedirects=false \
 		clone $HTTPD_URL/dumb-redir/repo.git dumb-redir &&
 	git -c http.followRedirects=true \
-		clone $HTTPD_URL/dumb-redir/repo.git dumb-redir 2>stderr
+		clone --verbose $HTTPD_URL/dumb-redir/repo.git dumb-redir 2>stderr
 '
 
 test_expect_success 'redirects are reported to stderr' '
