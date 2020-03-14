@@ -28,6 +28,13 @@ enum unpack_trees_error_types {
 	NB_UNPACK_TREES_ERROR_TYPES
 };
 
+enum update_sparsity_result {
+	UPDATE_SPARSITY_SUCCESS = 0,
+	UPDATE_SPARSITY_WARNINGS = 1,
+	UPDATE_SPARSITY_INDEX_UPDATE_FAILURES = -1,
+	UPDATE_SPARSITY_WORKTREE_UPDATE_FAILURES = -2
+};
+
 /*
  * Sets the list of user-friendly error messages to be used by the
  * command "cmd" (either merge or checkout), and show_all_errors to 1.
@@ -87,6 +94,8 @@ struct unpack_trees_options {
 
 int unpack_trees(unsigned n, struct tree_desc *t,
 		 struct unpack_trees_options *options);
+
+int update_sparsity(struct unpack_trees_options *options);
 
 int verify_uptodate(const struct cache_entry *ce,
 		    struct unpack_trees_options *o);
