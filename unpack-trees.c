@@ -255,6 +255,25 @@ static void display_error_msgs(struct unpack_trees_options *o)
 		fprintf(stderr, _("Aborting\n"));
 }
 
+/*
+ * display all the "error" messages as warnings
+ */
+static void display_warning_msgs(struct unpack_trees_options *o)
+{
+	int e, i;
+	for (e = 0; e < NB_UNPACK_TREES_ERROR_TYPES; e++) {
+		struct string_list *rejects = &o->unpack_rejects[e];
+		if (rejects->nr > 0) {
+			struct strbuf path = STRBUF_INIT;
+			for (i = 0; i < rejects->nr; i++)
+				strbuf_addstr(&path, rejects->items[i].string);
+			warning(ERRORMSG(o, e), super_prefixed(path.buf));
+			strbuf_release(&path);
+		}
+		string_list_clear(rejects, 0);
+	}
+}
+
 static int check_submodule_move_head(const struct cache_entry *ce,
 				     const char *old_id,
 				     const char *new_id,
@@ -1706,6 +1725,93 @@ return_failed:
 	if (o->exiting_early)
 		ret = 0;
 	goto done;
+}
+
+/*
+ * Update SKIP_WORKTREE bits according to sparsity patterns, and update
+ * working directory to match.
+ *
+ * Returns
+ *   0: success with no warnings
+ *   1: success with warnings (warnings come either from (a) dirty changes
+ *           present in which case we avoid marking those paths as
+ *           SKIP_WORKTREE, or (b) from untracked files being in the way us
+ *           checking a file out of the index, in which case we leave the file
+ *           in the working tree alone while clearing SKIP_WORKTREE)
+ *   -1: failure to manipulate the resulting index
+ *   -2: failure to reflect the changes to the work tree.
+ *
+ * CE_NEW_SKIP_WORKTREE is used internally.
+ */
+int update_sparsity(struct unpack_trees_options *o)
+{
+	struct pattern_list pl;
+	int i, empty_worktree, ret = 0;
+	unsigned old_show_all_errors;
+
+	old_show_all_errors = o->show_all_errors;
+	o->show_all_errors = 1;
+
+	/* Sanity checks */
+	if (!o->update || o->index_only || o->skip_sparse_checkout)
+		BUG("update_sparsity() is for reflecting sparsity patterns in working directory");
+	if (o->src_index != o->dst_index || o->fn)
+		BUG("update_sparsity() called wrong");
+
+	trace_performance_enter();
+
+	if (!o->pl) {
+		char *sparse = git_pathdup("info/sparse-checkout");
+		memset(&pl, 0, sizeof(pl));
+		pl.use_cone_patterns = core_sparse_checkout_cone;
+		if (add_patterns_from_file_to_list(sparse, "", 0, &pl, NULL) < 0) {
+			/* FIXME: Skip to check_updates()?? */
+			o->skip_sparse_checkout = 1;
+			goto skip_sparse_checkout;
+		} else
+			o->pl = &pl;
+		free(sparse);
+	}
+
+	/* Set NEW_SKIP_WORKTREE on existing entries. */
+	mark_all_ce_unused(o->src_index);
+	mark_new_skip_worktree(o->pl, o->src_index, 0,
+			       CE_NEW_SKIP_WORKTREE, o->verbose_update);
+
+	/* Then loop over entries and update/remove as needed */
+	ret = 0;
+	empty_worktree = 1;
+	for (i = 0; i < o->src_index->cache_nr; i++) {
+		struct cache_entry *ce = o->src_index->cache[i];
+
+		if (apply_sparse_checkout(o->src_index, ce, o))
+			ret = 1;
+
+		if (!ce_skip_worktree(ce))
+			empty_worktree = 0;
+
+	}
+
+	/*
+	 * Sparse checkout is meant to narrow down checkout area
+	 * but it does not make sense to narrow down to empty working
+	 * tree. This is usually a mistake in sparse checkout rules.
+	 * Do not allow users to do that.
+	 */
+	if (o->src_index->cache_nr && empty_worktree) {
+		ret = unpack_failed(o, "Sparse checkout leaves no entry on working directory");
+		goto done;
+	}
+
+skip_sparse_checkout:
+	if (check_updates(o, o->src_index))
+		ret = -2;
+
+done:
+	display_warning_msgs(o);
+	o->show_all_errors = old_show_all_errors;
+	trace_performance_leave("update_sparsity");
+	return ret;
 }
 
 /* Here come the merge functions */

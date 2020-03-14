@@ -90,6 +90,8 @@ struct unpack_trees_options {
 int unpack_trees(unsigned n, struct tree_desc *t,
 		 struct unpack_trees_options *options);
 
+int update_sparsity(struct unpack_trees_options *options);
+
 int verify_uptodate(const struct cache_entry *ce,
 		    struct unpack_trees_options *o);
 
