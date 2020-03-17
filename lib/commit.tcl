@@ -113,6 +113,21 @@ proc do_signoff {} {
 	}
 }
 
+proc get_commit_template {} {
+	set template_file [get_config "commit.template"]
+	puts "Template file: $template_file"
+
+	if {![file exists $template_file]} {
+		return {}
+	}
+
+	if {[catch {set fd [open $template_file]}]} {
+		return {}
+	}
+
+	return [read $fd]
+}
+
 proc create_new_commit {} {
 	global commit_type ui_comm commit_author
 
@@ -121,6 +136,11 @@ proc create_new_commit {} {
 	$ui_comm delete 0.0 end
 	$ui_comm edit reset
 	$ui_comm edit modified false
+
+	# Get the commit message template.
+	# set template [get_commit_template]
+	# $ui_comm insert 0.0 "YOOY"
+
 	rescan ui_ready
 }
 

@@ -1475,10 +1475,11 @@ proc rescan {after {honor_trustmtime 1}} {
 		(![$ui_comm edit modified]
 		|| [string trim [$ui_comm get 0.0 end]] eq {})} {
 		if {[string match amend* $commit_type]} {
-		} elseif {[load_message GITGUI_MSG utf-8]} {
+		} elseif {[load_message [gitdir GITGUI_MSG] utf-8]} {
 		} elseif {[run_prepare_commit_msg_hook]} {
-		} elseif {[load_message MERGE_MSG]} {
-		} elseif {[load_message SQUASH_MSG]} {
+		} elseif {[load_message [gitdir MERGE_MSG]]} {
+		} elseif {[load_message [gitdir SQUASH_MSG]]} {
+		} elseif {[load_commit_template]} {
 		}
 		$ui_comm edit reset
 		$ui_comm edit modified false
@@ -1570,12 +1571,21 @@ proc rescan_stage2 {fd after} {
 	}
 }
 
+proc load_commit_template {{encoding {}}} {
+	set template_file [get_config "commit.template"]
+
+	if {$template_file eq {}} {
+		return 1
+	} else {
+		return [load_message $template_file $encoding]
+	}
+}
+
 proc load_message {file {encoding {}}} {
 	global ui_comm
 
-	set f [gitdir $file]
-	if {[file isfile $f]} {
-		if {[catch {set fd [open $f r]}]} {
+	if {[file isfile $file]} {
+		if {[catch {set fd [open $file r]}]} {
 			return 0
 		}
 		fconfigure $fd -eofchar {}
@@ -1587,6 +1597,7 @@ proc load_message {file {encoding {}}} {
 		regsub -all -line {[ \r\t]+$} $content {} content
 		$ui_comm delete 0.0 end
 		$ui_comm insert end $content
+		puts "loaded file $file"
 		return 1
 	}
 	return 0
@@ -1648,7 +1659,7 @@ proc prepare_commit_msg_hook_wait {fd_ph} {
 			catch {file delete [gitdir PREPARE_COMMIT_MSG]}
 			exit 1
 		} else {
-			load_message PREPARE_COMMIT_MSG
+			load_message [gitdir PREPARE_COMMIT_MSG]
 		}
 		set pch_error {}
 		catch {file delete [gitdir PREPARE_COMMIT_MSG]}
@@ -4079,7 +4090,7 @@ if {[is_enabled transport]} {
 }
 
 if {[winfo exists $ui_comm]} {
-	set GITGUI_BCK_exists [load_message GITGUI_BCK utf-8]
+	set GITGUI_BCK_exists [load_message [gitdir GITGUI_BCK] utf-8]
 
 	# -- If both our backup and message files exist use the
 	#    newer of the two files to initialize the buffer.
@@ -4154,6 +4165,18 @@ if {[winfo exists $ui_comm]} {
 		]
 	}
 	unset -nocomplain spell_cmd spell_fd spell_err spell_dict
+
+	# -- Load the commit message template if we didn't load any backup text
+
+	# Tk automatically adds a newline at the end of data.
+	# if {[$ui_comm count -chars 0.0 end] == 1} {
+	# 	set template [get_commit_template]
+	# 	puts "Template: $template"
+	# 	if {$template ne {}} {
+	# 		$ui_comm insert 0.0 $template
+	# 		$ui_comm mark set insert 0.0
+	# 	}
+	# }
 }
 
 lock_index begin-read
