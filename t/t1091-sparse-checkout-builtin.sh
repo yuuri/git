@@ -342,6 +342,30 @@ test_expect_success 'sparse-checkout (init|set|disable) warns with dirty status'
 	git -C dirty sparse-checkout disable
 '
 
+test_expect_success 'sparse-checkout (init|set|disable) warns with unmerged status' '
+	git clone repo unmerged &&
+
+	cat >input <<-EOF &&
+	0 0000000000000000000000000000000000000000	folder1/a
+	100644 $(git -C unmerged rev-parse HEAD:folder1/a) 1	folder1/a
+	EOF
+	git -C unmerged update-index --index-info <input &&
+
+	git -C unmerged sparse-checkout init 2>err &&
+	test_i18ngrep "warning.*The following paths are unmerged" err &&
+
+	git -C unmerged sparse-checkout set /folder2/* /deep/deeper1/* &&
+	test_i18ngrep "warning.*The following paths are unmerged" err &&
+
+	git -C unmerged sparse-checkout disable &&
+	test_i18ngrep "warning.*The following paths are unmerged" err &&
+
+	git -C unmerged reset --hard &&
+	git -C unmerged sparse-checkout init &&
+	git -C unmerged sparse-checkout set /folder2/* /deep/deeper1/* &&
+	git -C unmerged sparse-checkout disable
+'
+
 test_expect_success 'cone mode: set with core.ignoreCase=true' '
 	rm repo/.git/info/sparse-checkout &&
 	git -C repo sparse-checkout init --cone &&
