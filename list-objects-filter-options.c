@@ -270,6 +270,24 @@ int opt_parse_list_objects_filter(const struct option *opt,
 	return 0;
 }
 
+int opt_set_blob_none_filter(const struct option *opt,
+			     const char *arg, int unset)
+{
+	struct strbuf filter_arg = STRBUF_INIT;
+	struct list_objects_filter_options *filter_options = opt->value;
+	
+	if (unset || !arg || !strcmp(arg, "0")) {
+		parse_list_objects_filter(filter_options, "blob:none");
+		return 0;
+	}
+	
+	strbuf_addf(&filter_arg, "blob:limit=%s", arg);
+	parse_list_objects_filter(filter_options, filter_arg.buf);
+	strbuf_release(&filter_arg);
+
+	return 0;
+}
+
 const char *list_objects_filter_spec(struct list_objects_filter_options *filter)
 {
 	if (!filter->filter_spec.nr)

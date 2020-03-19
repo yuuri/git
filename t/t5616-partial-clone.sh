@@ -33,17 +33,39 @@ test_expect_success 'setup bare clone for server' '
 # confirm we are missing all of the known blobs.
 # confirm partial clone was registered in the local config.
 test_expect_success 'do partial clone 1' '
-	git clone --no-checkout --filter=blob:none "file://$(pwd)/srv.bare" pc1 &&
+	for option in "--filter=blob:none" "--partial"
+	do
+		rm -rf pc1 &&
+		git clone --no-checkout "$option" "file://$(pwd)/srv.bare" pc1 &&
 
-	git -C pc1 rev-list --quiet --objects --missing=print HEAD >revs &&
-	awk -f print_1.awk revs |
-	sed "s/?//" |
-	sort >observed.oids &&
+		git -C pc1 rev-list --quiet --objects --missing=print HEAD >revs &&
+		awk -f print_1.awk revs |
+		sed "s/?//" |
+		sort >observed.oids &&
 
-	test_cmp expect_1.oids observed.oids &&
-	test "$(git -C pc1 config --local core.repositoryformatversion)" = "1" &&
-	test "$(git -C pc1 config --local remote.origin.promisor)" = "true" &&
-	test "$(git -C pc1 config --local remote.origin.partialclonefilter)" = "blob:none"
+		test_cmp expect_1.oids observed.oids &&
+		test "$(git -C pc1 config --local core.repositoryformatversion)" = "1" &&
+		test "$(git -C pc1 config --local remote.origin.promisor)" = "true" &&
+		test "$(git -C pc1 config --local remote.origin.partialclonefilter)" = "blob:none"
+	done
+'
+
+test_expect_success 'do partial clone with size limit' '
+	for option in "--filter=blob:limit=1" "--partial=1"
+	do
+		rm -rf pc-limit &&
+		git clone --no-checkout "$option" "file://$(pwd)/srv.bare" pc-limit &&
+
+		git -C pc-limit rev-list --quiet --objects --missing=print HEAD >revs &&
+		awk -f print_1.awk revs |
+		sed "s/?//" |
+		sort >observed.oids &&
+
+		test_cmp expect_1.oids observed.oids &&
+		test "$(git -C pc-limit config --local core.repositoryformatversion)" = "1" &&
+		test "$(git -C pc-limit config --local remote.origin.promisor)" = "true" &&
+		test "$(git -C pc-limit config --local remote.origin.partialclonefilter)" = "blob:limit=1"
+	done
 '
 
 test_expect_success 'verify that .promisor file contains refs fetched' '

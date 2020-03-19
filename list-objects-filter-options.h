@@ -62,6 +62,7 @@ struct list_objects_filter_options {
 
 /* Normalized command line arguments */
 #define CL_ARG__FILTER "filter"
+#define CL_ARG__PARTIAL "partial"
 
 void list_objects_filter_die_if_populated(
 	struct list_objects_filter_options *filter_options);
@@ -80,11 +81,16 @@ void parse_list_objects_filter(
 
 int opt_parse_list_objects_filter(const struct option *opt,
 				  const char *arg, int unset);
+int opt_set_blob_none_filter(const struct option *opt,
+			     const char *arg, int unset);
 
 #define OPT_PARSE_LIST_OBJECTS_FILTER(fo) \
 	{ OPTION_CALLBACK, 0, CL_ARG__FILTER, fo, N_("args"), \
 	  N_("object filtering"), 0, \
-	  opt_parse_list_objects_filter }
+	  opt_parse_list_objects_filter }, \
+	{ OPTION_CALLBACK, 0, CL_ARG__PARTIAL, fo, N_("size"), \
+	  N_("partial clone with blob filter"), \
+	  PARSE_OPT_OPTARG | PARSE_OPT_NONEG , opt_set_blob_none_filter }
 
 /*
  * Translates abbreviated numbers in the filter's filter_spec into their
