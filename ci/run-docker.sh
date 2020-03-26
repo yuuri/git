@@ -8,6 +8,7 @@
 CI_TARGET=${1:-linux32}
 case "$CI_TARGET" in
 linux32) CI_CONTAINER="daald/ubuntu32:xenial" ;;
+alpine)  CI_CONTAINER="alpine" ;;
 *)       exit 1 ;;
 esac
 
