@@ -9,15 +9,15 @@ git-log - Show commit logs
 SYNOPSIS
 --------
 [verse]
-'git log' [<options>] [<revision range>] [[--] <path>...]
+'git log' [<options>] [<revision range>...] [[--] <path>...]
 
 DESCRIPTION
 -----------
 Shows the commit logs.
 
-The command takes options applicable to the `git rev-list`
+The command takes options applicable to the linkgit:git-rev-list[1]
 command to control what is shown and how, and options applicable to
-the `git diff-*` commands to control how the changes
+the linkgit:git-diff[1] family of commands to control how the changes
 each commit introduces are shown.
 
 
@@ -90,9 +90,9 @@ include::line-range-format.txt[]
 	<revision range> is specified, it defaults to `HEAD` (i.e. the
 	whole history leading to the current commit).  `origin..HEAD`
 	specifies all the commits reachable from the current commit
-	(i.e. `HEAD`), but not from `origin`. For a complete list of
-	ways to spell <revision range>, see the 'Specifying Ranges'
-	section of linkgit:gitrevisions[7].
+	(i.e. `HEAD`), but not from `origin`. You can give more than 
+	one revision range. For a complete list of ways to spell <revision range>,
+	see the 'Specifying Ranges' section of linkgit:gitrevisions[7]. 
 
 [--] <path>...::
 	Show only commits that are enough to explain how the files
