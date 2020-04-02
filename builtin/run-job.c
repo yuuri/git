@@ -327,6 +327,7 @@ static int multi_pack_index_repack(unsigned long batch_size)
 	int result;
 	struct argv_array cmd = ARGV_ARRAY_INIT;
 	struct strbuf batch_arg = STRBUF_INIT;
+	const char *config_value;
 	int count;
 	off_t default_size = get_auto_pack_size(&count);
 
@@ -336,7 +337,11 @@ static int multi_pack_index_repack(unsigned long batch_size)
 	strbuf_addstr(&batch_arg, "--batch-size=");
 
 	if (batch_size != UNSET_BATCH_SIZE)
-		strbuf_addf(&batch_arg, "\"%"PRIuMAX"\"", (uintmax_t)batch_size);
+		strbuf_addf(&batch_arg, "\"%"PRIuMAX"\"", (uintmax_t) batch_size);
+	else if (!repo_config_get_string_const(the_repository,
+					       "job.pack-file.batchsize",
+					       &config_value))
+		strbuf_addf(&batch_arg, "\"%s\"", config_value);
 	else
 		strbuf_addf(&batch_arg, "%"PRIuMAX,
 			    (uintmax_t)default_size);

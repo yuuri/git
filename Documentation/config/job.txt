@@ -1,0 +1,6 @@
+job.pack-files.batchSize::
+	This string value `<size>` will be passed to the
+	`git multi-pack-index repack --batch-size=<size>` command as
+	part of `git run-job pack-files`. If not specified, then a
+	dynamic size calculation is run. See linkgit:git-run-job[1]
+	for more details.
