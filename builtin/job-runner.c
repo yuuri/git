@@ -20,6 +20,9 @@ static int arg_repos_append(const struct option *opt,
 
 static int load_active_repos(struct string_list *repos)
 {
+	struct string_list_item *item;
+	const struct string_list *config_repos;
+
 	if (arg_repos.nr) {
 		struct string_list_item *item;
 		for (item = arg_repos.items;
@@ -28,6 +31,23 @@ static int load_active_repos(struct string_list *repos)
 			string_list_append(repos, item->string);
 		return 0;
 	}
+
+	config_repos = git_config_get_value_multi("job.repo");
+
+	for (item = config_repos->items;
+	     item && item < config_repos->items + config_repos->nr;
+	     item++) {
+		DIR *dir = opendir(item->string);
+
+		if (!dir)
+			continue;
+
+		closedir(dir);
+		string_list_append(repos, item->string);
+	}
+
+	string_list_sort(repos);
+	string_list_remove_duplicates(repos, 0);
 
 	return 0;
 }

@@ -4,3 +4,10 @@ job.pack-files.batchSize::
 	part of `git run-job pack-files`. If not specified, then a
 	dynamic size calculation is run. See linkgit:git-run-job[1]
 	for more details.
+
+job.repo::
+	Store an absolute path to a repository that wants background
+	jobs run by `git job-runner`. This is a multi-valued config
+	option, but it must be stored in a config file seen by the
+	background runner. This may be the global or system config
+	depending on how `git job-runner` is launched on your system.
