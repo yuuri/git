@@ -1,3 +1,13 @@
+job.<job-name>.interval::
+	The minimum number of seconds between runs of
+	`git run-job <job-name>` when running `git job-runner`.
+
+job.<job-name>.lastRun::
+	The Unix epoch for the timestamp of the previous run of
+	`git run-job <job-name>` when running `git job-runner`. You
+	can manually update this to a later time to delay a specific
+	job on this repository.
+
 job.pack-files.batchSize::
 	This string value `<size>` will be passed to the
 	`git multi-pack-index repack --batch-size=<size>` command as

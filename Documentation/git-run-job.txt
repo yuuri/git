@@ -90,6 +90,9 @@ pack-files, the job does not attempt to repack. Otherwise, the batch
 size is the sum of all pack-file sizes minus the largest pack-file size.
 The batch size is capped at two gigabytes. This intends to pack all
 small pack-files into a single pack-file.
++
+The `--batch-size=<size>` option will override the dynamic or configured
+batch size.
 
 
 GIT
