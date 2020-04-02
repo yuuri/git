@@ -66,4 +66,31 @@ test_expect_success 'fetch job' '
 	test_line_count = 2 $chain
 '
 
+test_expect_success 'loose-objects job' '
+	ls client/.git/objects >obj-dir-before &&
+	test_file_not_empty obj-dir-before &&
+	ls client/.git/objects/pack/*.pack >packs-before &&
+	test_line_count = 1 packs-before &&
+
+	# The first run creates a pack-file
+	# but does not delete loose objects.
+	git -C client run-job loose-objects &&
+	ls client/.git/objects >obj-dir-between &&
+	test_cmp obj-dir-before obj-dir-between &&
+	ls client/.git/objects/pack/*.pack >packs-between &&
+	test_line_count = 2 packs-between &&
+
+	# The second run deletes loose objects
+	# but does not create a pack-file.
+	git -C client run-job loose-objects &&
+	ls client/.git/objects >obj-dir-after &&
+	cat >expect <<-\EOF &&
+	info
+	pack
+	EOF
+	test_cmp expect obj-dir-after &&
+	ls client/.git/objects/pack/*.pack >packs-after &&
+	test_cmp packs-between packs-after
+'
+
 test_done

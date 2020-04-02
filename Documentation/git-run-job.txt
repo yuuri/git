@@ -9,7 +9,7 @@ git-run-job - Run a maintenance job. Intended for background operation.
 SYNOPSIS
 --------
 [verse]
-'git run-job (commit-graph|fetch)'
+'git run-job (commit-graph|fetch|loose-objects)'
 
 
 DESCRIPTION
@@ -58,6 +58,18 @@ stored in `refs/hidden/<remote>/`. Also, no tags are updated.
 This means that foreground fetches are still required to update the
 remote refs, but the users is notified when the branches and tags are
 updated on the remote.
+
+'loose-objects'::
+
+The `loose-objects` job cleans up loose objects and places them into
+pack-files. In order to prevent race conditions with concurrent Git
+commands, it follows a two-step process. First, it deletes any loose
+objects that already exist in a pack-file; concurrent Git processes will
+examine the pack-file for the object data instead of the loose object.
+Second, it creates a new pack-file (starting with "loose-") containing
+a batch of loose objects. The batch size is limited to 50 thousand
+objects to prevent the job from taking too long on a repository with
+many loose objects.
 
 GIT
 ---
