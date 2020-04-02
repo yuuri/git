@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "config.h"
+#include "daemon.h"
 #include "parse-options.h"
 #include "run-command.h"
 #include "string-list.h"
@@ -78,7 +79,8 @@ static int try_get_config(const char *job,
 
 	fclose(proc_out);
 
-	result = finish_command(config_proc);
+	/* ignore result as 'git config' fails on non-existent value */
+	finish_command(config_proc);
 
 cleanup:
 	free(config_proc);
@@ -93,7 +95,7 @@ static int try_get_timestamp(const char *job,
 	char *value;
 	int result = try_get_config(job, repo, postfix, &value);
 
-	if (!result) {
+	if (!result && value) {
 		*t = atol(value);
 		free(value);
 	}
@@ -304,6 +306,7 @@ static int initialize_jobs(struct string_list *list)
 	return 0;
 }
 
+static int arg_daemonize = 0;
 int cmd_job_runner(int argc, const char **argv, const char *prefix)
 {
 	int result;
@@ -316,6 +319,8 @@ int cmd_job_runner(int argc, const char **argv, const char *prefix)
 			       PARSE_OPT_NONEG, arg_repos_append),
 		OPT_INTEGER(0, "interval", &arg_interval,
 			    N_("seconds to pause between running any jobs")),
+		OPT_BOOL(0, "daemonize", &arg_daemonize,
+			 N_("request to spawn a background process")),
 		OPT_END(),
 	};
 
@@ -327,6 +332,9 @@ int cmd_job_runner(int argc, const char **argv, const char *prefix)
 			     builtin_job_runner_options,
 			     builtin_job_runner_usage,
 			     0);
+
+	if (arg_daemonize && daemonize())
+		die(_("failed to daemonize; this may not be available on your platform."));
 
 	result = initialize_jobs(&job_list);
 

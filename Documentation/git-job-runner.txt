@@ -39,6 +39,11 @@ OPTIONS
 	If this is not specified, then the default will be found from
 	`jobs.loopInterval` or the default value of 30 minutes.
 
+--daemonize::
+	If supported by your platform, launch an identical
+	`git job-runner` process in the background and close the
+	foreground process immediately.
+
 
 CONFIGURATION
 -------------
