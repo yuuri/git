@@ -1,0 +1,36 @@
+git-run-job(1)
+==============
+
+NAME
+----
+git-run-job - Run a maintenance job. Intended for background operation.
+
+
+SYNOPSIS
+--------
+[verse]
+'git run-job <job-name>'
+
+
+DESCRIPTION
+-----------
+
+Run a maintenance job on the current repository. This is available as a
+command for a few reasons. First, the background job feature can launch
+these commands on a schedule and each process will completely clear its
+memory when complete. Second, an expert user could create their own job
+schedule by running these jobs themselves.
+
+THIS COMMAND IS EXPERIMENTAL. THE SET OF AVAILABLE JOBS OR THEIR EXACT
+BEHAVIOR MAY BE ALTERED IN THE FUTURE.
+
+
+JOBS
+----
+
+TBD
+
+
+GIT
+---
+Part of the linkgit:git[1] suite

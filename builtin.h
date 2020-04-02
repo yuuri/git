@@ -220,6 +220,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix);
 int cmd_rev_parse(int argc, const char **argv, const char *prefix);
 int cmd_revert(int argc, const char **argv, const char *prefix);
 int cmd_rm(int argc, const char **argv, const char *prefix);
+int cmd_run_job(int argc, const char **argv, const char *prefix);
 int cmd_send_pack(int argc, const char **argv, const char *prefix);
 int cmd_shortlog(int argc, const char **argv, const char *prefix);
 int cmd_show(int argc, const char **argv, const char *prefix);

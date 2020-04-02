@@ -144,6 +144,7 @@
 /git-rev-parse
 /git-revert
 /git-rm
+/git-run-job
 /git-send-email
 /git-send-pack
 /git-serve
