@@ -1,13 +1,14 @@
 #include "builtin.h"
 #include "config.h"
 #include "commit-graph.h"
+#include "midx.h"
 #include "object-store.h"
 #include "parse-options.h"
 #include "repository.h"
 #include "run-command.h"
 
 static char const * const builtin_run_job_usage[] = {
-	N_("git run-job (commit-graph|fetch|loose-objects)"),
+	N_("git run-job (commit-graph|fetch|loose-objects|pack-files)"),
 	NULL
 };
 
@@ -238,6 +239,91 @@ static int run_loose_objects_job(void)
 	return prune_packed() || pack_loose();
 }
 
+static int multi_pack_index_write(void)
+{
+	struct argv_array cmd = ARGV_ARRAY_INIT;
+	argv_array_pushl(&cmd, "multi-pack-index", "write",
+			 "--no-progress", NULL);
+	return run_command_v_opt(cmd.argv, RUN_GIT_CMD);
+}
+
+static int rewrite_multi_pack_index(void)
+{
+	char *midx_name = get_midx_filename(the_repository->objects->odb->path);
+
+	unlink(midx_name);
+	free(midx_name);
+
+	if (multi_pack_index_write()) {
+		error(_("failed to rewrite multi-pack-index"));
+		return 1;
+	}
+
+	return 0;
+}
+
+static int multi_pack_index_verify(void)
+{
+	struct argv_array cmd = ARGV_ARRAY_INIT;
+	argv_array_pushl(&cmd, "multi-pack-index", "verify",
+			 "--no-progress", NULL);
+	return run_command_v_opt(cmd.argv, RUN_GIT_CMD);
+}
+
+static int multi_pack_index_expire(void)
+{
+	struct argv_array cmd = ARGV_ARRAY_INIT;
+	argv_array_pushl(&cmd, "multi-pack-index", "expire",
+			 "--no-progress", NULL);
+	return run_command_v_opt(cmd.argv, RUN_GIT_CMD);
+}
+
+static int multi_pack_index_repack(void)
+{
+	int result;
+	struct argv_array cmd = ARGV_ARRAY_INIT;
+	argv_array_pushl(&cmd, "multi-pack-index", "repack",
+			 "--no-progress", "--batch-size=0", NULL);
+	result = run_command_v_opt(cmd.argv, RUN_GIT_CMD);
+
+	if (result && multi_pack_index_verify()) {
+		warning(_("multi-pack-index verify failed after repack"));
+		result = rewrite_multi_pack_index();
+	}
+
+	return result;
+}
+
+static int run_pack_files_job(void)
+{
+	if (multi_pack_index_write()) {
+		error(_("failed to write multi-pack-index"));
+		return 1;
+	}
+
+	if (multi_pack_index_verify()) {
+		warning(_("multi-pack-index verify failed after initial write"));
+		return rewrite_multi_pack_index();
+	}
+
+	if (multi_pack_index_expire()) {
+		error(_("multi-pack-index expire failed"));
+		return 1;
+	}
+
+	if (multi_pack_index_verify()) {
+		warning(_("multi-pack-index verify failed after expire"));
+		return rewrite_multi_pack_index();
+	}
+
+	if (multi_pack_index_repack()) {
+		error(_("multi-pack-index repack failed"));
+		return 1;
+	}
+
+	return 0;
+}
+
 int cmd_run_job(int argc, const char **argv, const char *prefix)
 {
 	static struct option builtin_run_job_options[] = {
@@ -261,6 +347,8 @@ int cmd_run_job(int argc, const char **argv, const char *prefix)
 			return run_fetch_job();
 		if (!strcmp(argv[0], "loose-objects"))
 			return run_loose_objects_job();
+		if (!strcmp(argv[0], "pack-files"))
+			return run_pack_files_job();
 	}
 
 	usage_with_options(builtin_run_job_usage,

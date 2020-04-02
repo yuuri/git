@@ -6,6 +6,7 @@ Testing the background jobs, in the foreground
 '
 
 GIT_TEST_COMMIT_GRAPH=0
+GIT_TEST_MULTI_PACK_INDEX=0
 
 . ./test-lib.sh
 
@@ -91,6 +92,44 @@ test_expect_success 'loose-objects job' '
 	test_cmp expect obj-dir-after &&
 	ls client/.git/objects/pack/*.pack >packs-after &&
 	test_cmp packs-between packs-after
+'
+
+test_expect_success 'pack-files job' '
+	packDir=.git/objects/pack &&
+
+	# Create three disjoint pack-files with size BIG, small, small.
+
+	echo HEAD~2 | git -C client pack-objects --revs $packDir/test-1 &&
+
+	test_tick &&
+	git -C client pack-objects --revs $packDir/test-2 <<-\EOF &&
+	HEAD~1
+	^HEAD~2
+	EOF
+
+	test_tick &&
+	git -C client pack-objects --revs $packDir/test-3 <<-\EOF &&
+	HEAD
+	^HEAD~1
+	EOF
+
+	rm -f client/$packDir/pack-* &&
+	rm -f client/$packDir/loose-* &&
+
+	ls client/$packDir/*.pack >packs-before &&
+	test_line_count = 3 packs-before &&
+
+	# the job repacks the two into a new pack, but does not
+	# delete the old ones.
+	git -C client run-job pack-files &&
+	ls client/$packDir/*.pack >packs-between &&
+	test_line_count = 4 packs-between &&
+
+	# the job deletes the two old packs, and does not write
+	# a new one because only one pack remains.
+	git -C client run-job pack-files &&
+	ls client/.git/objects/pack/*.pack >packs-after &&
+	test_line_count = 1 packs-after
 '
 
 test_done
