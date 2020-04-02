@@ -44,4 +44,26 @@ test_expect_success 'commit-graph job' '
 	)
 '
 
+test_expect_success 'fetch job' '
+	git clone "file://$(pwd)/server" client &&
+
+	# Before fetching, build a client commit-graph
+	git -C client run-job commit-graph &&
+	chain=client/.git/objects/info/commit-graphs/commit-graph-chain &&
+	test_line_count = 1 $chain &&
+
+	git -C client branch -v --remotes >before-refs &&
+	test_commit -C server 24 &&
+
+	git -C client run-job fetch &&
+	git -C client branch -v --remotes >after-refs &&
+	test_cmp before-refs after-refs &&
+	test_cmp server/.git/refs/heads/master \
+		 client/.git/refs/hidden/origin/master &&
+
+	# the hidden ref should trigger a new layer in the commit-graph
+	git -C client run-job commit-graph &&
+	test_line_count = 2 $chain
+'
+
 test_done
