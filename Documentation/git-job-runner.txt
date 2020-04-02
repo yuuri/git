@@ -33,6 +33,12 @@ OPTIONS
 	attempts running jobs on repositories located at the provided
 	`<dir>` values. This option can be specified multiple times.
 
+--interval=<span>::
+	The job runner pauses between each attempt to run jobs. Use the
+	specified `<span>` as a number of seconds between each attempt.
+	If this is not specified, then the default will be found from
+	`jobs.loopInterval` or the default value of 30 minutes.
+
 
 CONFIGURATION
 -------------

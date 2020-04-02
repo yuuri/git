@@ -258,10 +258,15 @@ static int run_job_loop_step(struct string_list *list)
 	return result;
 }
 
+static unsigned int arg_interval = 0;
+
 static unsigned int get_loop_interval(void)
 {
 	/* Default: 30 minutes */
 	timestamp_t interval = 30 * 60;
+
+	if (arg_interval)
+		return arg_interval;
 
 	try_get_timestamp(NULL, ".", "loopinterval", &interval);
 
@@ -287,6 +292,8 @@ int cmd_job_runner(int argc, const char **argv, const char *prefix)
 			       N_("<path>"),
 			       N_("run jobs on the repository at <path>"),
 			       PARSE_OPT_NONEG, arg_repos_append),
+		OPT_INTEGER(0, "interval", &arg_interval,
+			    N_("seconds to pause between running any jobs")),
 		OPT_END(),
 	};
 
