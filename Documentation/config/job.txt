@@ -1,3 +1,7 @@
+job.loopInterval::
+	The number of seconds to sleep between rounds of running
+	background jobs in `git job-runner`.
+
 job.<job-name>.interval::
 	The minimum number of seconds between runs of
 	`git run-job <job-name>` when running `git job-runner`.

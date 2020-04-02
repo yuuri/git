@@ -261,7 +261,11 @@ static int run_job_loop_step(struct string_list *list)
 static unsigned int get_loop_interval(void)
 {
 	/* Default: 30 minutes */
-	return 30 * 60;
+	timestamp_t interval = 30 * 60;
+
+	try_get_timestamp(NULL, ".", "loopinterval", &interval);
+
+	return interval;
 }
 
 static int initialize_jobs(struct string_list *list)
