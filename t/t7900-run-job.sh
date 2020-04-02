@@ -128,8 +128,10 @@ test_expect_success 'pack-files job' '
 	# the job deletes the two old packs, and does not write
 	# a new one because only one pack remains.
 	git -C client run-job pack-files &&
-	ls client/.git/objects/pack/*.pack >packs-after &&
-	test_line_count = 1 packs-after
+	ls client/$packDir/*.pack >packs-after &&
+	test_line_count = 2 packs-after &&
+	cat packs-after | grep "pack/test-1-" &&
+	cat packs-after | grep "pack/pack-"
 '
 
 test_done

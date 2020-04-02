@@ -9,7 +9,7 @@ git-run-job - Run a maintenance job. Intended for background operation.
 SYNOPSIS
 --------
 [verse]
-'git run-job (commit-graph|fetch|loose-objects|pack-files)'
+'git run-job (commit-graph|fetch|loose-objects|pack-files) [<options>]'
 
 
 DESCRIPTION
@@ -82,9 +82,14 @@ only happens if all objects in the pack-file are also stored in a newer
 pack-file. Second, it selects a group of pack-files whose "expected
 size" is below the batch size until the group has total expected size at
 least the batch size; see the `--batch-size` option for the `repack`
-subcommand in linkgit:git-multi-pack-index[1]. The default batch-size is
-zero, which is a special case that attempts to repack all pack-files
-into a single pack-file.
+subcommand in linkgit:git-multi-pack-index[1].
++
+The default batch size is computed to optimize for having a single large
+pack-file and many small pack-files. When there are two or fewer
+pack-files, the job does not attempt to repack. Otherwise, the batch
+size is the sum of all pack-file sizes minus the largest pack-file size.
+The batch size is capped at two gigabytes. This intends to pack all
+small pack-files into a single pack-file.
 
 
 GIT

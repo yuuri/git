@@ -3,12 +3,18 @@
 #include "commit-graph.h"
 #include "midx.h"
 #include "object-store.h"
+#include "packfile.h"
 #include "parse-options.h"
 #include "repository.h"
 #include "run-command.h"
 
 static char const * const builtin_run_job_usage[] = {
-	N_("git run-job (commit-graph|fetch|loose-objects|pack-files)"),
+	N_("git run-job (commit-graph|fetch|loose-objects|pack-files) [<options>]"),
+	NULL
+};
+
+static char const * const builtin_run_job_pack_file_usage[] = {
+	N_("git run-job pack-files [--batch-size=<size>]"),
 	NULL
 };
 
@@ -278,15 +284,74 @@ static int multi_pack_index_expire(void)
 	return run_command_v_opt(cmd.argv, RUN_GIT_CMD);
 }
 
-static int multi_pack_index_repack(void)
+#define TWO_GIGABYTES (2147483647)
+
+static off_t get_auto_pack_size(int *count)
+{
+	/*
+	 * The "auto" value is special: we optimize for
+	 * one large pack-file (i.e. from a clone) and
+	 * expect the rest to be small and they can be
+	 * repacked quickly. Find the sum of the sizes
+	 * other than the largest pack-file, then use
+	 * that as the batch size.
+	 */
+	off_t total_size = 0;
+	off_t max_size = 0;
+	off_t result_size;
+	struct packed_git *p;
+
+	*count = 0;
+
+	reprepare_packed_git(the_repository);
+	for (p = get_all_packs(the_repository); p; p = p->next) {
+		(*count)++;
+		total_size += p->pack_size;
+
+		if (p->pack_size > max_size)
+			max_size = p->pack_size;
+	}
+
+	result_size = total_size - max_size;
+
+	/* But limit ourselves to a batch size of 2g */
+	if (result_size > TWO_GIGABYTES)
+		result_size = TWO_GIGABYTES;
+
+	return result_size;
+}
+
+#define UNSET_BATCH_SIZE ((unsigned long)-1)
+static int multi_pack_index_repack(unsigned long batch_size)
 {
 	int result;
 	struct argv_array cmd = ARGV_ARRAY_INIT;
+	struct strbuf batch_arg = STRBUF_INIT;
+	int count;
+	off_t default_size = get_auto_pack_size(&count);
+
+	if (count <= 2)
+		return 0;
+
+	strbuf_addstr(&batch_arg, "--batch-size=");
+
+	if (batch_size != UNSET_BATCH_SIZE)
+		strbuf_addf(&batch_arg, "\"%"PRIuMAX"\"", (uintmax_t)batch_size);
+	else
+		strbuf_addf(&batch_arg, "%"PRIuMAX,
+			    (uintmax_t)default_size);
+
 	argv_array_pushl(&cmd, "multi-pack-index", "repack",
-			 "--no-progress", "--batch-size=0", NULL);
+			 "--no-progress", batch_arg.buf, NULL);
 	result = run_command_v_opt(cmd.argv, RUN_GIT_CMD);
 
-	if (result && multi_pack_index_verify()) {
+	strbuf_release(&batch_arg);
+
+	/*
+	 * Verify here to avoid verifying again when there are two
+	 * or fewer pack-files.
+	 */
+	if (!result && multi_pack_index_verify()) {
 		warning(_("multi-pack-index verify failed after repack"));
 		result = rewrite_multi_pack_index();
 	}
@@ -294,8 +359,19 @@ static int multi_pack_index_repack(void)
 	return result;
 }
 
-static int run_pack_files_job(void)
+static int run_pack_files_job(int argc, const char **argv)
 {
+	static unsigned long batch_size = UNSET_BATCH_SIZE;
+	static struct option builtin_run_job_pack_file_options[] = {
+		OPT_MAGNITUDE(0, "batch-size", &batch_size,
+			      N_("specify a batch-size for the incremental repack")),
+		OPT_END(),
+	};
+
+	argc = parse_options(argc, argv, NULL,
+			     builtin_run_job_pack_file_options,
+			     builtin_run_job_pack_file_usage, 0);
+
 	if (multi_pack_index_write()) {
 		error(_("failed to write multi-pack-index"));
 		return 1;
@@ -316,7 +392,7 @@ static int run_pack_files_job(void)
 		return rewrite_multi_pack_index();
 	}
 
-	if (multi_pack_index_repack()) {
+	if (multi_pack_index_repack(batch_size)) {
 		error(_("multi-pack-index repack failed"));
 		return 1;
 	}
@@ -348,7 +424,7 @@ int cmd_run_job(int argc, const char **argv, const char *prefix)
 		if (!strcmp(argv[0], "loose-objects"))
 			return run_loose_objects_job();
 		if (!strcmp(argv[0], "pack-files"))
-			return run_pack_files_job();
+			return run_pack_files_job(argc, argv);
 	}
 
 	usage_with_options(builtin_run_job_usage,
