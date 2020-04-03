@@ -16,6 +16,12 @@ job.<job-name>.lastRun::
 	can manually update this to a later time to delay a specific
 	job on this repository.
 
+job.loose-objects.batchSize::
+	This string value `<count>` limits the number of loose-objects
+	collected into a single pack-file during the `loose-objects`
+	job. Default batch size is fifty thousand. See linkgit:git-run-job[1]
+	for more details.
+
 job.pack-files.batchSize::
 	This string value `<size>` will be passed to the
 	`git multi-pack-index repack --batch-size=<size>` command as

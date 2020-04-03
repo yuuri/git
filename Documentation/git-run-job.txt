@@ -67,9 +67,11 @@ commands, it follows a two-step process. First, it deletes any loose
 objects that already exist in a pack-file; concurrent Git processes will
 examine the pack-file for the object data instead of the loose object.
 Second, it creates a new pack-file (starting with "loose-") containing
-a batch of loose objects. The batch size is limited to 50 thousand
-objects to prevent the job from taking too long on a repository with
-many loose objects.
+a batch of loose objects.
++
+By default, the batch size is limited to 50 thousand objects to prevent
+the job from taking too long on a repository with many loose objects.
+This can be overridden with the `--batch-size=<count>` option.
 
 'pack-files'::
 

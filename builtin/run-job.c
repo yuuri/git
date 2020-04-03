@@ -13,6 +13,11 @@ static char const * const builtin_run_job_usage[] = {
 	NULL
 };
 
+static char const * const builtin_run_job_loose_objects_usage[] = {
+	N_("git run-job loose-objects [--batch-size=<count>]"),
+	NULL
+};
+
 static char const * const builtin_run_job_pack_file_usage[] = {
 	N_("git run-job pack-files [--batch-size=<size>]"),
 	NULL
@@ -183,7 +188,7 @@ static int write_loose_object_to_stdin(const struct object_id *oid,
 	return ++(d->count) > d->batch_size;
 }
 
-static int pack_loose(void)
+static int pack_loose(int batch_size)
 {
 	int result = 0;
 	struct write_loose_object_data data;
@@ -219,7 +224,7 @@ static int pack_loose(void)
 
 	data.in = xfdopen(pack_proc->in, "w");
 	data.count = 0;
-	data.batch_size = 50000;
+	data.batch_size = batch_size;
 
 	for_each_loose_file_in_objdir(the_repository->objects->odb->path,
 				      write_loose_object_to_stdin,
@@ -240,9 +245,25 @@ cleanup:
 	return result;
 }
 
-static int run_loose_objects_job(void)
+static int run_loose_objects_job(int argc, const char **argv)
 {
-	return prune_packed() || pack_loose();
+	static int batch_size;
+	static struct option builtin_run_job_loose_objects_options[] = {
+		OPT_INTEGER(0, "batch-size", &batch_size,
+			    N_("specify the maximum number of loose objects to store in a pack-file")),
+		OPT_END(),
+	};
+
+	if (repo_config_get_int(the_repository,
+				"job.loose-objects.batchsize",
+				&batch_size))
+		batch_size = 50000;
+
+	argc = parse_options(argc, argv, NULL,
+			     builtin_run_job_loose_objects_options,
+			     builtin_run_job_loose_objects_usage, 0);
+
+	return prune_packed() || pack_loose(batch_size);
 }
 
 static int multi_pack_index_write(void)
@@ -427,7 +448,7 @@ int cmd_run_job(int argc, const char **argv, const char *prefix)
 		if (!strcmp(argv[0], "fetch"))
 			return run_fetch_job();
 		if (!strcmp(argv[0], "loose-objects"))
-			return run_loose_objects_job();
+			return run_loose_objects_job(argc, argv);
 		if (!strcmp(argv[0], "pack-files"))
 			return run_pack_files_job(argc, argv);
 	}
