@@ -216,13 +216,31 @@ static int load_active_repos(struct string_list *repos)
 	return 0;
 }
 
+static int job_disabled(const char *job, const char *repo)
+{
+	char *enabled;
+
+	if (!try_get_config(job, repo, "enabled", &enabled)) {
+		int enabled_int = git_parse_maybe_bool(enabled);
+		free(enabled);
+		return !enabled_int;
+	}
+
+	return 0;
+}
+
 static int run_job(const char *job, const char *repo)
 {
 	int result;
 	struct argv_array cmd = ARGV_ARRAY_INIT;
 	timestamp_t now = time(NULL);
-	timestamp_t last_run = get_last_run(job, repo);
-	timestamp_t interval = get_interval(job, repo);
+	timestamp_t last_run, interval;
+
+	if (job_disabled(job, repo))
+		return 0;
+
+	last_run = get_last_run(job, repo);
+	interval = get_interval(job, repo);
 
 	if (last_run + interval > now)
 		return 0;
@@ -247,6 +265,10 @@ static int run_job_loop_step(struct string_list *list)
 	     !result && job && job < list->items + list->nr;
 	     job++) {
 		struct string_list_item *repo;
+
+		if (job_disabled(job->string, "."))
+			continue;
+
 		for (repo = repos.items;
 		     !result && repo && repo < repos.items + repos.nr;
 		     repo++)
