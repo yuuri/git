@@ -129,6 +129,7 @@ struct rev_info {
 			no_walk:2,
 			remove_empty_trees:1,
 			simplify_history:1,
+			diversions:1,
 			topo_order:1,
 			simplify_merges:1,
 			simplify_by_decoration:1,

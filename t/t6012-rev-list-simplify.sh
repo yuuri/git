@@ -154,4 +154,48 @@ test_expect_success '--full-diff is not affected by --parents' '
 	test_cmp expected actual
 '
 
+#
+# Modify the test repo to add a merge whose first parent is not TREESAME
+# but whose second parent is TREESAME
+#
+# A--B----------G--H--I--K--L--N
+#  \  \           /     /     /
+#   \  \         /     /     /
+#    C------E---F     J     /
+#     \  \_/               /
+#      \                  /
+#       M-----------------
+test_expect_success 'expand graph' '
+	git switch -c branchM C &&
+	echo "new data" >file &&
+	git add file &&
+	test_tick &&
+	test_commit M &&
+
+	git checkout master &&
+	git merge -Xtheirs branchM -m "N" &&
+	note N
+'
+
+check_result 'M C A' -- file
+check_result 'N M C A' --include-diversions -- file
+
+check_result 'N M L K J I H F E D C G B A' --full-history --topo-order
+check_result 'N M L K I H G F E D C B J A' --full-history
+check_result 'N M L K I H G F E D C B J A' --full-history --date-order
+check_result 'N M L K I H G F E D B C J A' --full-history --author-date-order
+check_result 'N M K I H E C B A' --full-history -- file
+check_result 'N M K I H E C B A' --full-history --topo-order -- file
+check_result 'N M K I H E C B A' --full-history --date-order -- file
+check_result 'N M K I H E B C A' --full-history --author-date-order -- file
+check_result 'N M I E C B A' --simplify-merges -- file
+check_result 'N M I E C B A' --simplify-merges --topo-order -- file
+check_result 'N M I E C B A' --simplify-merges --date-order -- file
+check_result 'N M I E B C A' --simplify-merges --author-date-order -- file
+check_result 'M C A' --topo-order -- file
+check_result 'M C A' --date-order -- file
+check_result 'M C A' --author-date-order -- file
+check_result 'H' --first-parent -- another-file
+check_result 'H' --first-parent --topo-order -- another-file
+
 test_done

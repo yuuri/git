@@ -342,6 +342,12 @@ Default mode::
 	branches if the end result is the same (i.e. merging branches
 	with the same content)
 
+--include-diversions::
+	Include all commits from the default mode, but also any merge
+	commits that are not TREESAME to the first parent but are
+	TREESAME to a later parent. This mode is helpful for showing
+	the merge commits that "first introduced" a change to a branch.
+
 --full-history::
 	Same as the default mode, but does not prune some history.
 

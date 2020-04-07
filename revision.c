@@ -870,7 +870,19 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 			}
 			parent->next = NULL;
 			commit->parents = parent;
-			commit->object.flags |= TREESAME;
+
+			/*
+			 * A merge commit is a "diversion" if it is not
+			 * TREESAME to its first parent but is TREESAME
+			 * to a later parent. In the simplified history,
+			 * we "divert" the history walk to the later
+			 * parent. These commits are shown when "diversions"
+			 * is enabled, so do not mark the object as
+			 * TREESAME here.
+			 */
+			if (!revs->diversions || !nth_parent)
+				commit->object.flags |= TREESAME;
+
 			return;
 
 		case REV_TREE_NEW:
@@ -2265,6 +2277,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--full-diff")) {
 		revs->diff = 1;
 		revs->full_diff = 1;
+	} else if (!strcmp(arg, "--include-diversions")) {
+		revs->diversions = 1;
 	} else if (!strcmp(arg, "--full-history")) {
 		revs->simplify_history = 0;
 	} else if (!strcmp(arg, "--relative-date")) {
