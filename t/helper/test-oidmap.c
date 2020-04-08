@@ -96,7 +96,7 @@ int cmd__oidmap(int argc, const char **argv)
 
 			struct oidmap_iter iter;
 			oidmap_iter_init(&map, &iter);
-			while ((entry = oidmap_iter_next(&iter)))
+			while ((entry = oidmap_iter_next(&iter, struct test_entry)))
 				printf("%s %s\n", oid_to_hex(&entry->entry.oid), entry->name);
 
 		} else {

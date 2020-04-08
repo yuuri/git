@@ -76,18 +76,21 @@ static inline void oidmap_iter_init(struct oidmap *map, struct oidmap_iter *iter
 	hashmap_iter_init(&map->map, &iter->h_iter);
 }
 
-static inline void *oidmap_iter_next(struct oidmap_iter *iter)
-{
-	/* TODO: this API could be reworked to do compile-time type checks */
-	return (void *)hashmap_iter_next(&iter->h_iter);
-}
+/*
+ * Returns the next entry, or NULL if there are no more entries.
+ *
+ * The entry is of @type (e.g. "struct foo") and has a member of type struct
+ * oidmap_entry.
+ */
+#define oidmap_iter_next(iter, type) \
+	(type *) hashmap_iter_next(&(iter)->h_iter)
 
-static inline void *oidmap_iter_first(struct oidmap *map,
-				      struct oidmap_iter *iter)
-{
-	oidmap_iter_init(map, iter);
-	/* TODO: this API could be reworked to do compile-time type checks */
-	return (void *)oidmap_iter_next(iter);
-}
+/*
+ * Returns the first entry in @map using @iter, where the entry is of @type
+ * (e.g. "struct foo") and has a member of type struct oidmap_entry.
+ */
+#define oidmap_iter_first(map, iter, type) \
+	({oidmap_iter_init(map, iter); \
+	 oidmap_iter_next(iter, type); })
 
 #endif
