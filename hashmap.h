@@ -245,7 +245,7 @@ void hashmap_free_(struct hashmap *map, ssize_t offset);
  * where @member is the hashmap_entry struct used to associate with @map
  */
 #define hashmap_free_entries(map, type, member) \
-	hashmap_free_(map, offsetof(type, member));
+	hashmap_free_(map, offsetof(type, member))
 
 /* hashmap_entry functions */
 

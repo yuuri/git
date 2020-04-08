@@ -26,8 +26,10 @@ void oidmap_free(struct oidmap *map, int free_entries)
 	if (!map)
 		return;
 
-	/* TODO: make oidmap itself not depend on struct layouts */
-	hashmap_free_(&map->map, free_entries ? 0 : -1);
+	if (free_entries)
+		hashmap_free_entries(&map->map, struct oidmap_entry, internal_entry);
+	else
+		hashmap_free(&map->map);
 }
 
 void *oidmap_get(const struct oidmap *map, const struct object_id *key)
