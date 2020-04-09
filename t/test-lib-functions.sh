@@ -1544,7 +1544,7 @@ test_bitmap_traversal () {
 	rm -f "$1.normalized" "$2.normalized"
 }
 
-# Tests for the hidden file attribute on windows
+# Tests for the hidden file attribute on Windows
 test_path_is_hidden () {
 	test_have_prereq MINGW ||
 	BUG "test_path_is_hidden can only be used on Windows"
