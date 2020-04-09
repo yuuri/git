@@ -60,7 +60,7 @@ proc rescan_on_error {err {after {}}} {
 
 	$::main_status stop_all
 	unlock_index
-	rescan [concat $after [list ui_ready]] 0
+	rescan [concat $after {ui_ready;}] 0
 }
 
 proc update_indexinfo {msg path_list after} {
@@ -314,7 +314,7 @@ proc unstage_helper {txt paths} {
 		update_indexinfo \
 			$txt \
 			$path_list \
-			[concat $after [list ui_ready]]
+			[concat $after {ui_ready;}]
 	}
 }
 
