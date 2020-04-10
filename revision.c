@@ -661,6 +661,15 @@ static void prepare_to_use_bloom_filter(struct rev_info *revs)
 	if (!revs->commits)
 	    return;
 
+	if (revs->prune_data.has_wildcard)
+		return;
+	if (revs->prune_data.nr > 1)
+		return;
+	if (revs->prune_data.magic ||
+	    (revs->prune_data.nr &&
+	     revs->prune_data.items[0].magic))
+		return;
+
 	repo_parse_commit(revs->repo, revs->commits->item);
 
 	if (!revs->repo->objects->commit_graph)
