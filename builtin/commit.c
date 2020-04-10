@@ -1701,7 +1701,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		      "not exceeded, and then \"git restore --staged :/\" to recover."));
 
 	if (git_env_bool(GIT_TEST_COMMIT_GRAPH, 0) &&
-	    write_commit_graph_reachable(the_repository->objects->odb, 0, NULL))
+	    write_commit_graph_reachable(the_repository->objects->odb,
+					 git_env_bool(GIT_TEST_COMMIT_GRAPH_CHANGED_PATHS, 0) ? COMMIT_GRAPH_WRITE_BLOOM_FILTERS : 0,
+					 NULL))
 		return 1;
 
 	repo_rerere(the_repository, 0);
