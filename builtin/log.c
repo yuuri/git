@@ -236,7 +236,21 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 	}
 
 	if (decoration_style) {
+		const struct string_list *config_exclude =
+			repo_config_get_value_multi(the_repository,
+						    "log.excludeDecoration");
+
+		if (config_exclude) {
+			struct string_list_item *item;
+			for (item = config_exclude->items;
+			     item && item < config_exclude->items + config_exclude->nr;
+			     item++)
+				string_list_append(&decorate_refs_exclude,
+						item->string);
+		}
+
 		rev->show_decorations = 1;
+
 		load_ref_decorations(&decoration_filter, decoration_style);
 	}
 

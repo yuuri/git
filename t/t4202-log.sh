@@ -787,6 +787,9 @@ test_expect_success 'decorate-refs-exclude with glob' '
 	EOF
 	git log -n6 --decorate=short --pretty="tformat:%f%d" \
 		--decorate-refs-exclude="heads/octopus*" >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="heads/octopus*" log \
+		-n6 --decorate=short --pretty="tformat:%f%d" >actual &&
 	test_cmp expect.decorate actual
 '
 
@@ -801,6 +804,9 @@ test_expect_success 'decorate-refs-exclude without globs' '
 	EOF
 	git log -n6 --decorate=short --pretty="tformat:%f%d" \
 		--decorate-refs-exclude="tags/reach" >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="tags/reach" log \
+		-n6 --decorate=short --pretty="tformat:%f%d" >actual &&
 	test_cmp expect.decorate actual
 '
 
@@ -816,6 +822,14 @@ test_expect_success 'multiple decorate-refs-exclude' '
 	git log -n6 --decorate=short --pretty="tformat:%f%d" \
 		--decorate-refs-exclude="heads/octopus*" \
 		--decorate-refs-exclude="tags/reach" >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="heads/octopus*" \
+		-c log.excludeDecoration="tags/reach" log \
+		-n6 --decorate=short --pretty="tformat:%f%d" >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="heads/octopus*" log \
+		--decorate-refs-exclude="tags/reach" \
+		-n6 --decorate=short --pretty="tformat:%f%d" >actual &&
 	test_cmp expect.decorate actual
 '
 
@@ -831,6 +845,10 @@ test_expect_success 'decorate-refs and decorate-refs-exclude' '
 	git log -n6 --decorate=short --pretty="tformat:%f%d" \
 		--decorate-refs="heads/*" \
 		--decorate-refs-exclude="heads/oc*" >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="heads/oc*" log \
+		--decorate-refs="heads/*" \
+		-n6 --decorate=short --pretty="tformat:%f%d" >actual &&
 	test_cmp expect.decorate actual
 '
 
@@ -845,6 +863,10 @@ test_expect_success 'decorate-refs-exclude and simplify-by-decoration' '
 	EOF
 	git log -n6 --decorate=short --pretty="tformat:%f%d" \
 		--decorate-refs-exclude="*octopus*" \
+		--simplify-by-decoration >actual &&
+	test_cmp expect.decorate actual &&
+	git -c log.excludeDecoration="*octopus*" log \
+		-n6 --decorate=short --pretty="tformat:%f%d" \
 		--simplify-by-decoration >actual &&
 	test_cmp expect.decorate actual
 '
