@@ -51,6 +51,11 @@ endif()
 
 find_program(SH_EXE sh)
 
+find_program(MSGFMT_EXE msgfmt)
+if(NOT MSGFMT_EXE)
+	message(WARNING "Text Translations won't be build")
+endif()
+
 #default behaviour
 include_directories(${CMAKE_SOURCE_DIR})
 add_compile_definitions(GIT_HOST_CPU="${CMAKE_SYSTEM_PROCESSOR}")
@@ -526,3 +531,103 @@ add_custom_command(OUTPUT ${git_links} ${git_http_links}
 		COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/CreateLinks.cmake
 		DEPENDS git git-remote-http)
 add_custom_target(git-links ALL DEPENDS ${git_links} ${git_http_links})
+
+
+#creating required scripts
+set(SHELL_PATH /bin/sh)
+set(PERL_PATH /usr/bin/perl)
+set(LOCALEDIR ${FALLBACK_RUNTIME_PREFIX}/share/locale)
+set(GITWEBDIR ${FALLBACK_RUNTIME_PREFIX}/share/locale)
+set(INSTLIBDIR ${FALLBACK_RUNTIME_PREFIX}/share/perl5)
+
+#shell scripts
+set(git_shell_scripts
+	git-bisect git-difftool--helper git-filter-branch
+	git-merge-octopus git-merge-one-file git-merge-resolve
+	git-mergetool git-quiltimport
+	git-request-pull git-submodule git-web--browse
+	git-mergetool--lib git-parse-remote git-rebase--preserve-merges
+	git-sh-setup git-sh-i18n git-instaweb)
+
+foreach(script ${git_shell_scripts})
+	file(STRINGS ${CMAKE_SOURCE_DIR}/${script}.sh content NEWLINE_CONSUME)
+	string(REPLACE "@SHELL_PATH@" "${SHELL_PATH}" content "${content}")
+	string(REPLACE "@@DIFF@@" "diff" content "${content}")
+	string(REPLACE "@LOCALEDIR@" "${LOCALEDIR}" content "${content}")
+	string(REPLACE "@GITWEBDIR@" "${GITWEBDIR}" content "${content}")
+	string(REPLACE "@@NO_CURL@@" "" content "${content}")
+	string(REPLACE "@@USE_GETTEXT_SCHEME@@" "" content "${content}")
+	string(REPLACE "# @@BROKEN_PATH_FIX@@" "" content "${content}")
+	string(REPLACE "@@PERL@@" "${PERL_PATH}" content "${content}")
+	string(REPLACE "@@SANE_TEXT_GREP@@" "-a" content "${content}")
+	string(REPLACE "@@PAGER_ENV@@" "LESS=FRX LV=-c" content "${content}")
+	file(WRITE ${CMAKE_BINARY_DIR}/${script} ${content})
+endforeach()
+
+#perl scripts
+set(git_perl_scripts
+	git-add--interactive git-archimport git-cvsexportcommit
+	git-cvsimport git-cvsserver git-send-email git-svn)
+
+#create perl header
+file(STRINGS ${CMAKE_SOURCE_DIR}/perl/header_templates/fixed_prefix.template.pl perl_header )
+string(REPLACE "@@PATHSEP@@" ":" perl_header "${perl_header}")
+string(REPLACE "@@INSTLIBDIR@@" "${INSTLIBDIR}" perl_header "${perl_header}")
+
+foreach(script ${git_perl_scripts})
+	file(STRINGS ${CMAKE_SOURCE_DIR}/${script}.perl content NEWLINE_CONSUME)
+	string(REPLACE "#!/usr/bin/perl" "#!/usr/bin/perl\n${perl_header}\n" content "${content}")
+	string(REPLACE "@@GIT_VERSION@@" "${PROJECT_VERSION}" content "${content}")
+	file(WRITE ${CMAKE_BINARY_DIR}/${script} ${content})
+endforeach()
+
+#python script
+file(STRINGS ${CMAKE_SOURCE_DIR}/git-p4.py content NEWLINE_CONSUME)
+string(REPLACE "#!/usr/bin/env python" "#!/usr/bin/python" content "${content}")
+file(WRITE ${CMAKE_BINARY_DIR}/git-p4 ${content})
+
+#perl modules
+file(GLOB_RECURSE perl_modules "${CMAKE_SOURCE_DIR}/perl/*.pm")
+
+foreach(pm ${perl_modules})
+	string(REPLACE "${CMAKE_SOURCE_DIR}/perl/" "" file_path ${pm})
+	file(STRINGS ${pm} content NEWLINE_CONSUME)
+	string(REPLACE "@@LOCALEDIR@@" "${LOCALEDIR}" content "${content}")
+	string(REPLACE "@@NO_PERL_CPAN_FALLBACKS@@" "" content "${content}")
+	file(WRITE ${CMAKE_BINARY_DIR}/perl/build/lib/${file_path} ${content})
+#test-lib.sh requires perl/build/lib to be the build directory of perl modules
+endforeach()
+
+
+#templates
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/templates/blt/branches) #create branches
+set(hooks_templates
+	applypatch-msg.sample pre-applypatch.sample pre-push.sample
+	commit-msg.sample pre-commit.sample pre-rebase.sample
+	fsmonitor-watchman.sample pre-merge-commit.sample pre-receive.sample
+	post-update.sample prepare-commit-msg.sample update.sample)
+
+#templates have @.*@ replacement so use configure_file instead
+#hooks
+foreach(tm ${hooks_templates})
+	configure_file(${CMAKE_SOURCE_DIR}/templates/hooks--${tm} ${CMAKE_BINARY_DIR}/templates/blt/hooks/${tm} @ONLY)
+endforeach()
+
+#info
+configure_file(${CMAKE_SOURCE_DIR}/templates/info--exclude ${CMAKE_BINARY_DIR}/templates/blt/info/exclude @ONLY)
+
+#this
+configure_file(${CMAKE_SOURCE_DIR}/templates/this--description ${CMAKE_BINARY_DIR}/templates/blt/description @ONLY)
+
+
+#translations
+if(MSGFMT_EXE)
+	set(po_files bg  ca  de  el  es  fr  is  it  ko  pt_PT  ru  sv  tr  vi  zh_CN  zh_TW)
+	foreach(po ${po_files})
+		file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/po/build/locale/${po}/LC_MESSAGES)
+		add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/po/build/locale/${po}/LC_MESSAGES/git.mo
+				COMMAND ${MSGFMT_EXE} --check --statistics -o ${CMAKE_BINARY_DIR}/po/build/locale/${po}/LC_MESSAGES/git.mo ${CMAKE_SOURCE_DIR}/po/${po}.po)
+		list(APPEND po_gen ${CMAKE_BINARY_DIR}/po/build/locale/${po}/LC_MESSAGES/git.mo)
+	endforeach()
+	add_custom_target(po-gen ALL DEPENDS ${po_gen})
+endif()
