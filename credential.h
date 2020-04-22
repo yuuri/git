@@ -41,9 +41,13 @@ void credential_write(const struct credential *, FILE *);
  * an error but leave the broken state in the credential object for further
  * examination.  The non-gentle form will issue a warning to stderr and return
  * an empty credential.
+ *
+ * In strict mode, an empty protocol or an empty host name are not allowed.
+ * The credential_from_url() function enforces strict mode.
  */
 void credential_from_url(struct credential *, const char *url);
-int credential_from_url_gently(struct credential *, const char *url, int quiet);
+int credential_from_url_gently(struct credential *, const char *url,
+			       int strict, int quiet);
 
 int credential_match(const struct credential *have,
 		     const struct credential *want);
