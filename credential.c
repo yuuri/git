@@ -344,7 +344,7 @@ static int check_url_component(const char *url, int quiet,
 }
 
 int credential_from_url_gently(struct credential *c, const char *url,
-			       int quiet)
+			       int allow_partial_url, int quiet)
 {
 	const char *at, *colon, *cp, *slash, *host, *proto_end;
 
@@ -357,12 +357,12 @@ int credential_from_url_gently(struct credential *c, const char *url,
 	 *   (3) proto://<user>:<pass>@<host>/...
 	 */
 	proto_end = strstr(url, "://");
-	if (!proto_end || proto_end == url) {
+	if (!allow_partial_url && (!proto_end || proto_end == url)) {
 		if (!quiet)
 			warning(_("url has no scheme: %s"), url);
 		return -1;
 	}
-	cp = proto_end + 3;
+	cp = proto_end ? proto_end + 3 : url;
 	at = strchr(cp, '@');
 	colon = strchr(cp, ':');
 	slash = strchrnul(cp, '/');
@@ -382,8 +382,10 @@ int credential_from_url_gently(struct credential *c, const char *url,
 		host = at + 1;
 	}
 
-	c->protocol = xmemdupz(url, proto_end - url);
-	c->host = url_decode_mem(host, slash - host);
+	if (proto_end && proto_end - url > 0)
+		c->protocol = xmemdupz(url, proto_end - url);
+	if (!allow_partial_url || slash - host > 0)
+		c->host = url_decode_mem(host, slash - host);
 	/* Trim leading and trailing slashes from path */
 	while (*slash == '/')
 		slash++;
@@ -407,6 +409,6 @@ int credential_from_url_gently(struct credential *c, const char *url,
 
 void credential_from_url(struct credential *c, const char *url)
 {
-	if (credential_from_url_gently(c, url, 0) < 0)
+	if (credential_from_url_gently(c, url, 0, 0) < 0)
 		die(_("credential url cannot be parsed: %s"), url);
 }

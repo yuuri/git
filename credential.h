@@ -41,9 +41,33 @@ void credential_write(const struct credential *, FILE *);
  * an error but leave the broken state in the credential object for further
  * examination.  The non-gentle form will issue a warning to stderr and return
  * an empty credential.
+ *
+ * If allow_partial_url is non-zero, partial URLs are allowed, i.e. it can, but
+ * does not have to, contain
+ *
+ * - a protocol (or scheme) of the form "<protocol>://"
+ *
+ * - a host name (the part after the protocol and before the first slash after
+ *   that, if any)
+ *
+ * - a user name and potentially a password (as "<user>[:<password>]@" part of
+ *   the host name)
+ *
+ * - a path (the part after the host name, if any, starting with the slash)
+ *
+ * Missing parts will be left unset in `struct credential`. Thus, `https://`
+ * will have only the `protocol` set, `example.com` only the host name, and
+ * `/git` only the path.
+ *
+ * Note that an empty host name in an otherwise fully-qualified URL will be
+ * treated as unset when allow_partial_url is non-zero (and only then,
+ * otherwise it is treated as the empty string).
+ *
+ * The credential_from_url() function does not allow partial URLs.
  */
 void credential_from_url(struct credential *, const char *url);
-int credential_from_url_gently(struct credential *, const char *url, int quiet);
+int credential_from_url_gently(struct credential *, const char *url,
+			       int allow_partial_url, int quiet);
 
 int credential_match(const struct credential *have,
 		     const struct credential *want);

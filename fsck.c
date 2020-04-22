@@ -1076,7 +1076,7 @@ static int check_submodule_url(const char *url)
 	else if (url_to_curl_url(url, &curl_url)) {
 		struct credential c = CREDENTIAL_INIT;
 		int ret = 0;
-		if (credential_from_url_gently(&c, curl_url, 1) ||
+		if (credential_from_url_gently(&c, curl_url, 0, 1) ||
 		    !*c.host)
 			ret = -1;
 		credential_clear(&c);
