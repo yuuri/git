@@ -53,7 +53,13 @@ static int credential_config_callback(const char *var, const char *value,
 		char *url = xmemdupz(key, dot - key);
 		int matched;
 
-		credential_from_url(&want, url);
+		if (credential_from_url_gently(&want, url, 1, 0) < 0) {
+			warning(_("skipping credential lookup for key: %s"),
+				var);
+			credential_clear(&want);
+			free(url);
+			return 0;
+		}
 		matched = credential_match(&want, c);
 
 		credential_clear(&want);
