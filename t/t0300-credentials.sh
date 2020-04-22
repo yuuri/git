@@ -448,4 +448,17 @@ test_expect_success 'credential system refuses to work with missing protocol' '
 	test_i18ncmp expect stderr
 '
 
+test_expect_success 'credential config accepts partial URLs' '
+	echo url=https://example.com |
+	git -c credential.example.com.username=boo \
+		credential fill >actual &&
+	cat >expect <<-EOF &&
+	protocol=https
+	host=example.com
+	username=boo
+	password=askpass-password
+	EOF
+	test_cmp expect actual
+'
+
 test_done
