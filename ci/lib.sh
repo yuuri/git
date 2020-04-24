@@ -1,6 +1,7 @@
 # Library of functions shared by all CI scripts
 
 skip_branch_tip_with_tag () {
+	test -z "$DONT_SKIP_TAGS" || return 0
 	# Sometimes, a branch is pushed at the same time the tag that points
 	# at the same commit as the tip of the branch is pushed, and building
 	# both at the same time is a waste.
@@ -151,6 +152,7 @@ then
 	CC="${CC:-gcc}"
 
 	cache_dir="$HOME/none"
+	DONT_SKIP_TAGS=t
 
 	export GIT_PROVE_OPTS="--timer --jobs 10"
 	export GIT_TEST_OPTS="--verbose-log -x"
