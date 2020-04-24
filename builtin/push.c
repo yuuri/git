@@ -340,6 +340,7 @@ static int push_with_options(struct transport *transport, struct refspec *rs,
 {
 	int err;
 	unsigned int reject_reasons;
+	char *anon_url = transport_anonymize_url(transport->url);
 
 	transport_set_verbosity(transport, verbosity, progress);
 	transport->family = family;
@@ -364,11 +365,12 @@ static int push_with_options(struct transport *transport, struct refspec *rs,
 	trace2_region_leave("push", "transport_push", the_repository);
 	if (err != 0) {
 		fprintf(stderr, "%s", push_get_color(PUSH_COLOR_ERROR));
-		error(_("failed to push some refs to '%s'"), transport->url);
+		error(_("failed to push some refs to '%s'"), anon_url);
 		fprintf(stderr, "%s", push_get_color(PUSH_COLOR_RESET));
 	}
 
 	err |= transport_disconnect(transport);
+	free(anon_url);
 	if (!err)
 		return 0;
 
