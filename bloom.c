@@ -206,6 +206,9 @@ struct bloom_filter *get_bloom_filter(struct repository *r,
 	diffopt.max_changes = max_changes;
 	diff_setup_done(&diffopt);
 
+	/* ensure commit is parsed so we have parent information */
+	parse_commit(c);
+
 	if (c->parents)
 		diff_tree_oid(&c->parents->item->object.oid, &c->object.oid, "", &diffopt);
 	else
