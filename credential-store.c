@@ -4,10 +4,20 @@
 #include "string-list.h"
 #include "parse-options.h"
 
+#define PARSE_VERBOSE 0x01
+
 static struct lock_file credential_lock;
+
+static int valid_credential(struct credential *entry)
+{
+	return (entry->username && entry->password &&
+		entry->protocol && *entry->protocol &&
+		((entry->host && *entry->host) || entry->path));
+}
 
 static int parse_credential_file(const char *fn,
 				  struct credential *c,
+				  int flags,
 				  void (*match_cb)(struct credential *),
 				  void (*other_cb)(struct strbuf *))
 {
@@ -15,6 +25,7 @@ static int parse_credential_file(const char *fn,
 	struct strbuf line = STRBUF_INIT;
 	struct credential entry = CREDENTIAL_INIT;
 	int found_credential = 0;
+	int lineno = 0;
 
 	fh = fopen(fn, "r");
 	if (!fh) {
@@ -23,17 +34,24 @@ static int parse_credential_file(const char *fn,
 		return found_credential;
 	}
 
-	while (strbuf_getline_lf(&line, fh) != EOF) {
-		credential_from_url(&entry, line.buf);
-		if (entry.username && entry.password &&
-		    credential_match(c, &entry)) {
+	while (strbuf_getline(&line, fh) != EOF) {
+		lineno++;
+
+		if (credential_from_url_gently(&entry, line.buf, 1) ||
+			!valid_credential(&entry)) {
+			if (flags & PARSE_VERBOSE)
+				warning(_("%s:%d: ignoring invalid credential"),
+					fn, lineno);
+		} else if (credential_match(c, &entry)) {
 			found_credential = 1;
 			if (match_cb) {
 				match_cb(&entry);
 				break;
 			}
+			continue;
 		}
-		else if (other_cb)
+
+		if (other_cb)
 			other_cb(&line);
 	}
 
@@ -62,7 +80,7 @@ static void rewrite_credential_file(const char *fn, struct credential *c,
 		die_errno("unable to get credential storage lock");
 	if (extra)
 		print_line(extra);
-	parse_credential_file(fn, c, NULL, print_line);
+	parse_credential_file(fn, c, 0, NULL, print_line);
 	if (commit_lock_file(&credential_lock) < 0)
 		die_errno("unable to write credential store");
 }
@@ -138,7 +156,8 @@ static void lookup_credential(const struct string_list *fns, struct credential *
 	struct string_list_item *fn;
 
 	for_each_string_list_item(fn, fns)
-		if (parse_credential_file(fn->string, c, print_entry, NULL))
+		if (parse_credential_file(fn->string, c, PARSE_VERBOSE,
+						 print_entry, NULL))
 			return; /* Found credential */
 }
 
