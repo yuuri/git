@@ -1984,7 +1984,7 @@ class P4Submit(Command, P4UserMap):
         return (diff + newdiff).replace('\r\n', '\n')
 
     def applyCommit(self, id):
-        """Apply one commit, return True if it succeeded."""
+        """Apply one commit, return True if it should continue processing."""
 
         print("Applying", read_pipe(["git", "show", "-s",
                                      "--format=format:%h %s", id]))
@@ -2222,7 +2222,7 @@ class P4Submit(Command, P4UserMap):
                         print("  " + f)
                 print("")
                 sys.stdout.flush()
-                return True
+                return False
 
             if self.edit_template(fileName):
                 if not self.no_verify:
