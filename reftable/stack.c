@@ -852,6 +852,10 @@ static int stack_compact_range(struct reftable_stack *st, int first, int last,
 		}
 	}
 
+	if (lock_file_fd > 0) {
+		close(lock_file_fd);
+		lock_file_fd = 0;
+	}
 	err = unlink(slice_as_string(&lock_file_name));
 	if (err < 0) {
 		goto exit;
