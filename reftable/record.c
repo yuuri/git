@@ -1005,7 +1005,7 @@ int record_decode(struct record rec, struct slice key, byte extra,
 
 void record_clear(struct record rec)
 {
-	return rec.ops->clear(rec.data);
+	rec.ops->clear(rec.data);
 }
 
 bool record_is_deletion(struct record rec)
