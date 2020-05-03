@@ -289,7 +289,12 @@ static int reftable_stack_reload_maybe_reuse(struct reftable_stack *st,
 		free_names(names_after);
 
 		delay = delay + (delay * rand()) / RAND_MAX + 100;
+#ifdef _MSC_VER
+		sleep_millisec(delay/1000);
+#else
+		/* TODO! fix this, `usleep()` is not portable enough for us to use */
 		usleep(delay);
+#endif
 	}
 
 	return 0;
