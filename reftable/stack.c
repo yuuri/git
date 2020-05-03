@@ -941,6 +941,10 @@ static int stack_compact_range(struct reftable_stack *st, int first, int last,
 	}
 	have_lock = false;
 
+	reftable_merged_table_close(st->merged);
+	merged_table_clear(st->merged);
+	reftable_merged_table_free(st->merged);
+	st->merged = NULL;
 	{
 		char **p = delete_on_success;
 		while (*p) {
