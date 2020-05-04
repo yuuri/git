@@ -5266,8 +5266,17 @@ int todo_list_rearrange_squash(struct todo_list *todo_list)
 				TODO_FIXUP : TODO_SQUASH;
 			if (next[i2] < 0)
 				next[i2] = i;
-			else
+			else if (tail[i2] >= 0)
 				next[tail[i2]] = i;
+			else {
+				/*
+				 * i2 refers to a fixup commit in the middle of
+				 * a fixup chain
+				 */
+				next[i] = next[i2];
+				next[i2] = i;
+				continue;
+			}
 			tail[i2] = i;
 		} else if (!hashmap_get_from_hash(&subject2item,
 						strhash(subject), subject)) {
