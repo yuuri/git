@@ -7,6 +7,7 @@
 struct pattern_list;
 
 char *get_sparse_checkout_filename(void);
+int populate_sparse_checkout_patterns(struct pattern_list *pl);
 void write_patterns_to_file(FILE *fp, struct pattern_list *pl);
 int update_working_directory(struct pattern_list *pl);
 int write_patterns_and_update(struct pattern_list *pl);

@@ -33,6 +33,18 @@ void write_patterns_to_file(FILE *fp, struct pattern_list *pl)
 	}
 }
 
+int populate_sparse_checkout_patterns(struct pattern_list *pl)
+{
+	int result;
+	char *sparse = get_sparse_checkout_filename();
+
+	pl->use_cone_patterns = core_sparse_checkout_cone;
+	result = add_patterns_from_file_to_list(sparse, "", 0, pl, NULL);
+	free(sparse);
+
+	return result;
+}
+
 int update_working_directory(struct pattern_list *pl)
 {
 	enum update_sparsity_result result;
