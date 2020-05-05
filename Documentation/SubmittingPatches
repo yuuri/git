@@ -78,6 +78,11 @@ on open source projects), you can use their Travis CI integration to
 test your changes on Linux, Mac (and hopefully soon Windows).  See
 GitHub-Travis CI hints section for details.
 
+Alternately, you can use GitHub Actions (which supports testing your changes
+on Linux, macOS, and Windows) by pushing into a branch in your fork
+or opening a GitHub Pull Request against
+https://github.com/git/git.git or a fork of that repository.
+
 Do not forget to update the documentation to describe the updated
 behavior and make sure that the resulting documentation set formats
 well (try the Documentation/doc-diff script).
