@@ -1361,6 +1361,10 @@ static int fill_included_packs_batch(struct repository *r,
 	return 0;
 }
 
+static int delta_base_offset = 1;
+static int write_bitmaps = -1;
+static int use_delta_islands;
+
 int midx_repack(struct repository *r, const char *object_dir, size_t batch_size, unsigned flags)
 {
 	int result = 0;
@@ -1381,11 +1385,24 @@ int midx_repack(struct repository *r, const char *object_dir, size_t batch_size,
 	} else if (fill_included_packs_all(m, include_pack))
 		goto cleanup;
 
+  git_config_get_bool("repack.usedeltabaseoffset", &delta_base_offset);
+  git_config_get_bool("repack.writebitmaps", &write_bitmaps);
+  git_config_get_bool("repack.usedeltaislands", &use_delta_islands);
+
 	argv_array_push(&cmd.args, "pack-objects");
 
 	strbuf_addstr(&base_name, object_dir);
 	strbuf_addstr(&base_name, "/pack/pack");
 	argv_array_push(&cmd.args, base_name.buf);
+
+	if (delta_base_offset)
+		argv_array_push(&cmd.args, "--delta-base-offset");
+	if (use_delta_islands)
+		argv_array_push(&cmd.args, "--delta-islands");
+	if (write_bitmaps > 0)
+		argv_array_push(&cmd.args, "--write-bitmap-index");
+	else if (write_bitmaps < 0)
+		argv_array_push(&cmd.args, "--write-bitmap-index-quiet");
 
 	if (flags & MIDX_PROGRESS)
 		argv_array_push(&cmd.args, "--progress");
