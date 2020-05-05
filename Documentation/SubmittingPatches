@@ -79,7 +79,8 @@ test your changes on Linux, Mac (and hopefully soon Windows).  See
 GitHub-Travis CI hints section for details.
 
 Alternately, you can use GitHub Actions (which supports testing your changes
-on Linux, macOS, and Windows) by pushing into a branch in your fork
+on Linux, macOS, and Windows) by pushing into a branch whose name starts
+with "for-ci", or a tag whose name doesn't have `wip`,
 or opening a GitHub Pull Request against
 https://github.com/git/git.git or a fork of that repository.
 

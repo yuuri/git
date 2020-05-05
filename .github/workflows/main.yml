@@ -1,6 +1,18 @@
 name: CI/PR
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - maint
+      - master
+      - next
+      - jch
+      - pu
+      - 'for-ci**'
+    tags:
+      - '**'
+      - '!**wip**'
 
 env:
   DEVELOPER: 1
