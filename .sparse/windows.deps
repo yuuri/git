@@ -1,0 +1,3 @@
+[sparse]
+	inherit = .sparse/base.deps
+	dir = compat
