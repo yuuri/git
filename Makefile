@@ -313,7 +313,8 @@ all::
 #
 # Define NO_PYTHON if you do not want Python scripts or libraries at all.
 #
-# Define NO_TCLTK if you do not want Tcl/Tk GUI.
+# Define NO_TCLTK if you do not want Tcl/Tk GUI. This will also be defined
+# if the git-gui directory is missing.
 #
 # Define SANE_TEXT_GREP to "-a" if you use recent versions of GNU grep
 # and egrep that are pickier when their input contains non-ASCII data.
@@ -1858,6 +1859,12 @@ endif
 
 ifeq ($(TCLTK_PATH),)
 NO_TCLTK = NoThanks
+endif
+
+ifndef NO_TCLTK
+	ifeq ($(ls git-gui),)
+		NO_TCLTK = NoThanks
+	endif
 endif
 
 ifeq ($(PERL_PATH),)
