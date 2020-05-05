@@ -1,0 +1,15 @@
+sparse.inTree::
+	The `core.sparseCheckout` config option enables the `sparse-checkout`
+	feature, but if there are any values for the multi-valued
+	`sparse.inTree` config option, then the sparse-checkout patterns are
+	defined by parsing the files listed in these values. See
+	linkgit:git-sparse-checkout[1] for more information.
+
+sparse.dir::
+	This config setting is ignored if present in the repository config.
+	Instead, this multi-valued option is present in the files listed by
+	`sparse.inTree` and specifies the directories needed in the
+	working directory. The union of all `sparse.dir` values across all
+	`sparse.inTree` files forms the input for `git sparse-checkout set`
+	in cone mode.  See linkgit:git-sparse-checkout[1] for more
+	information.

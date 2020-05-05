@@ -604,4 +604,105 @@ test_expect_success MINGW 'cone mode replaces backslashes with slashes' '
 	check_files repo/deep a deeper1
 '
 
+test_expect_success 'basis of --in-tree' '
+	git -C repo config auto.crlf false &&
+	cat >folder1 <<-\EOF &&
+	[sparse]
+		dir = folder1
+	EOF
+	cat >folder2 <<-\EOF &&
+	[sparse]
+		dir = folder2
+	EOF
+	cat >deep <<-\EOF &&
+	[sparse]
+		dir = deep
+	EOF
+	cat >deeper1 <<-\EOF &&
+	[sparse]
+		dir = deep/deeper1
+	EOF
+	cat >sparse <<-\EOF &&
+	[sparse]
+		dir = .sparse
+	EOF
+	mkdir repo/.sparse &&
+	for file in folder1 folder2 deep deeper1 sparse
+	do
+		cp $file repo/.sparse/ || return 1
+	done &&
+	git -C repo add .sparse &&
+	git -C repo commit -m "Add sparse specifications" &&
+
+	git -C repo sparse-checkout set --in-tree .sparse/folder1 &&
+	check_files repo a folder1 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	echo .sparse/folder1 >expect-config &&
+	test_cmp expect-config actual-config &&
+	check_files repo a folder1 &&
+
+	git -C repo sparse-checkout set --in-tree .sparse/folder2 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	echo .sparse/folder2 >expect-config &&
+	test_cmp expect-config actual-config &&
+	check_files repo a folder2 &&
+
+	git -C repo sparse-checkout set --in-tree .sparse/deeper1 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	echo .sparse/deeper1 >expect-config &&
+	test_cmp expect-config actual-config &&
+	check_files repo a deep &&
+	check_files repo/deep a deeper1 &&
+
+	git -C repo sparse-checkout set --in-tree .sparse/deeper1 .sparse/deep .sparse/folder1 &&
+	check_files repo a deep folder1 &&
+	check_files repo/deep a deeper1 deeper2 &&
+	cat >expect-list <<-EOF &&
+	deep
+	folder1
+	EOF
+	git -C repo sparse-checkout list >actual-list &&
+	test_cmp expect-list actual-list &&
+
+	git -C repo sparse-checkout set --in-tree .sparse/folder1 .sparse/deeper1 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	cat >expect-config <<-\EOF &&
+	.sparse/deeper1
+	.sparse/folder1
+	EOF
+	test_cmp expect-config actual-config &&
+	check_files repo a deep folder1
+'
+
+test_expect_success '"add" with --in-tree' '
+	git -C repo sparse-checkout set --in-tree .sparse/folder1 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	echo .sparse/folder1 >expect-config &&
+	test_cmp expect-config actual-config &&
+	check_files repo a folder1 &&
+	git -C repo sparse-checkout add --in-tree .sparse/deeper1 &&
+	git -C repo config --get-all sparse.inTree >actual-config &&
+	cat >expect-config <<-\EOF &&
+	.sparse/deeper1
+	.sparse/folder1
+	EOF
+	test_cmp expect-config actual-config &&
+	check_files repo a deep folder1
+'
+
+test_expect_success 'reapply after updating in-tree file' '
+	git -C repo sparse-checkout set --in-tree .sparse/sparse &&
+	check_files repo a &&
+	test_path_is_dir repo/.sparse &&
+	echo "\tdir = folder1" >>repo/.sparse/sparse &&
+	git -C repo commit -a -m "Update sparse file" &&
+	git -C repo sparse-checkout reapply &&
+	check_files repo a folder1 &&
+	test_path_is_dir repo/.sparse &&
+	git -C repo checkout HEAD~1 &&
+	git -C repo sparse-checkout reapply &&
+	check_files repo a &&
+	test_path_is_dir repo/.sparse
+'
+
 test_done

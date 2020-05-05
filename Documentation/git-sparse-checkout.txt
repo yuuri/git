@@ -62,13 +62,20 @@ directories (recursively) as well as files that are siblings of ancestor
 directories. The input format matches the output of `git ls-tree --name-only`.
 This includes interpreting pathnames that begin with a double quote (") as
 C-style quoted strings.
++
+When the `--in-tree` option is provided, the paths provided are interpreted
+as files within the working directory that are used to construct the
+`sparse-checkout` patterns. See 'IN-TREE PATTERN SET' below.
 
 'add'::
 	Update the sparse-checkout file to include additional patterns.
 	By default, these patterns are read from the command-line arguments,
 	but they can be read from stdin using the `--stdin` option. When
 	`core.sparseCheckoutCone` is enabled, the given patterns are interpreted
-	as directory names as in the 'set' subcommand.
+	as directory names as in the 'set' subcommand. When the `--in-tree`
+	option is provided, the input is interpreted as locations of files
+	describing a sparse-checkout definition as in the 'set' subcommand
+	and the 'IN-TREE PATTERN SET' section below.
 
 'reapply::
 	Reapply the sparsity pattern rules to paths in the working tree.
@@ -195,6 +202,40 @@ If `core.ignoreCase=true`, then the pattern-matching algorithm will use a
 case-insensitive check. This corrects for case mismatched filenames in the
 'git sparse-checkout set' command to reflect the expected cone in the working
 directory.
+
+
+IN-TREE PATTERN SET
+-------------------
+
+As your project changes, your sparse-checkout pattern sets may also change.
+It is important to be able to construct a valid sparse-checkout pattern set
+when switching between points in history. The in-tree pattern sets allow
+versioning cone-mode sparse-checkout patterns next to your other artifacts.
+
+To enable the feature, create a sparse-checkout definition using the Git
+config format. The file should specify the multi-valued config variable
+`sparse.dir` to a list of directories to include in the sparse-checkout
+definition. If multiple files are specified, the resulting sparse-checkout
+definition is the union of all directories from all such files. For
+example, the following file contains a list of three directories, `A`,
+`B/C`, and `D/E/F`:
+
+----------------------------------
+[sparse]
+	dir = A
+	dir = B/C
+# Comments are allowed to describe
+# why a directory is necessary
+	dir = D/E/F
+----------------------------------
+
+Use `git sparse-checkout set --in-tree <path>` to initialize the patterns
+to those included in the file at `<path>`. This will override any existing
+patterns you have in your sparse-checkout file.
+
+After switching between commits with different versions of this file, run
+`git sparse-checkout reapply` to adjust the sparse-checkout patterns to
+the new definition.
 
 
 SUBMODULES

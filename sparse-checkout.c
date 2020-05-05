@@ -8,6 +8,7 @@
 #include "strbuf.h"
 #include "string-list.h"
 #include "unpack-trees.h"
+#include "object-store.h"
 
 char *get_sparse_checkout_filename(void)
 {
@@ -33,14 +34,113 @@ void write_patterns_to_file(FILE *fp, struct pattern_list *pl)
 	}
 }
 
+int load_in_tree_list_from_config(struct repository *r,
+				  struct string_list *sl)
+{
+	struct string_list_item *item;
+	const struct string_list *cl;
+
+	cl = repo_config_get_value_multi(r, SPARSE_CHECKOUT_IN_TREE);
+
+	if (!cl)
+		return 1;
+
+	for_each_string_list_item(item, cl)
+		string_list_insert(sl, item->string);
+
+	return 0;
+}
+
+static int sparse_dir_cb(const char *var, const char *value, void *data)
+{
+	struct strbuf path = STRBUF_INIT;
+	struct pattern_list *pl = (struct pattern_list *)data;
+
+	if (!strcmp(var, SPARSE_CHECKOUT_DIR)) {
+		strbuf_addstr(&path, value);
+		strbuf_to_cone_pattern(&path, pl);
+		strbuf_release(&path);
+	}
+
+	return 0;
+}
+
+static int load_in_tree_from_blob(struct pattern_list *pl,
+				  struct object_id *oid)
+{
+	return git_config_from_blob_oid(sparse_dir_cb,
+					SPARSE_CHECKOUT_DIR,
+					oid, pl);
+}
+
+int load_in_tree_pattern_list(struct repository *r,
+			      struct string_list *sl,
+			      struct pattern_list *pl)
+{
+	struct index_state *istate = r->index;
+	struct string_list_item *item;
+	struct strbuf path = STRBUF_INIT;
+
+	pl->use_cone_patterns = 1;
+
+	for_each_string_list_item(item, sl) {
+		struct object_id *oid;
+		enum object_type type;
+		int pos = index_name_pos(istate, item->string, strlen(item->string));
+
+		/*
+		 * Exit silently, as this is likely the case where Git
+		 * changed branches to a location where the inherit file
+		 * does not exist. Do not update the sparse-checkout.
+		 */
+		if (pos < 0)
+			return 1;
+
+		oid = &istate->cache[pos]->oid;
+		type = oid_object_info(r, oid, NULL);
+
+		if (type != OBJ_BLOB) {
+			warning(_("expected a file at '%s'; not updating sparse-checkout"),
+				oid_to_hex(oid));
+			return 1;
+		}
+
+		load_in_tree_from_blob(pl, oid);
+	}
+
+	strbuf_release(&path);
+
+	return 0;
+}
+
 int populate_sparse_checkout_patterns(struct pattern_list *pl)
 {
 	int result;
-	char *sparse = get_sparse_checkout_filename();
+	const char *in_tree;
 
-	pl->use_cone_patterns = core_sparse_checkout_cone;
-	result = add_patterns_from_file_to_list(sparse, "", 0, pl, NULL);
-	free(sparse);
+	if (!git_config_get_value(SPARSE_CHECKOUT_IN_TREE, &in_tree) &&
+	    in_tree) {
+		struct string_list paths = STRING_LIST_INIT_DUP;
+		/* If we do not have this config, skip this step! */
+		if (load_in_tree_list_from_config(the_repository, &paths) ||
+		    !paths.nr)
+			return 1;
+
+		/* Check diff for paths over from/to. If any changed, reload. */
+		/* or for now, reload always! */
+		hashmap_init(&pl->recursive_hashmap, pl_hashmap_cmp, NULL, 0);
+		hashmap_init(&pl->parent_hashmap, pl_hashmap_cmp, NULL, 0);
+		pl->use_cone_patterns = 1;
+
+		result = load_in_tree_pattern_list(the_repository, &paths, pl);
+		string_list_clear(&paths, 0);
+	} else {
+		char *sparse = get_sparse_checkout_filename();
+
+		pl->use_cone_patterns = core_sparse_checkout_cone;
+		result = add_patterns_from_file_to_list(sparse, "", 0, pl, NULL);
+		free(sparse);
+	}
 
 	return result;
 }
@@ -242,4 +342,22 @@ void strbuf_to_cone_pattern(struct strbuf *line, struct pattern_list *pl)
 		strbuf_insertstr(line, 0, "/");
 
 	insert_recursive_pattern(pl, line);
+}
+
+int set_sparse_in_tree_config(struct repository *r, struct string_list *sl)
+{
+	struct string_list_item *item;
+	const char *config_path = git_path("config.worktree");
+
+	/* clear existing values */
+	git_config_set_multivar_in_file_gently(config_path,
+					       SPARSE_CHECKOUT_IN_TREE,
+					       NULL, NULL, 1);
+
+	for_each_string_list_item(item, sl)
+		git_config_set_multivar_in_file_gently(
+			config_path, SPARSE_CHECKOUT_IN_TREE,
+			item->string, CONFIG_REGEX_NONE, 0);
+
+	return 0;
 }
