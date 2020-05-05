@@ -72,7 +72,8 @@ all::
 #
 # Define NO_GETTEXT if you don't want Git output to be translated.
 # A translated Git requires GNU libintl or another gettext implementation,
-# plus libintl-perl at runtime.
+# plus libintl-perl at runtime. This will also be defined if the 'po'
+# directory is missing.
 #
 # Define USE_GETTEXT_SCHEME and set it to 'fallthrough', if you don't trust
 # the installed gettext translation of the shell scripts output.
@@ -1859,6 +1860,12 @@ endif
 
 ifeq ($(TCLTK_PATH),)
 NO_TCLTK = NoThanks
+endif
+
+ifndef NO_GETTEXT
+	ifeq ($(ls po),)
+		NO_GETTEXT = NoThanks
+	endif
 endif
 
 ifndef NO_TCLTK

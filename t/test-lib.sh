@@ -1474,7 +1474,12 @@ test -z "$NO_PYTHON" && test_set_prereq PYTHON
 test -n "$USE_LIBPCRE1$USE_LIBPCRE2" && test_set_prereq PCRE
 test -n "$USE_LIBPCRE1" && test_set_prereq LIBPCRE1
 test -n "$USE_LIBPCRE2" && test_set_prereq LIBPCRE2
-test -z "$NO_GETTEXT" && test_set_prereq GETTEXT
+
+GIT_PO_PATH="$GIT_BUILD_DIR/po"
+if test -d "$GIT_PO_PATH"
+then
+	test -z "$NO_GETTEXT" && test_set_prereq GETTEXT
+fi
 
 if test -n "$GIT_TEST_GETTEXT_POISON_ORIG"
 then

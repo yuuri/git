@@ -15,17 +15,17 @@ test_expect_success 'sanity: $TEXTDOMAIN is git' '
     test $TEXTDOMAIN = "git"
 '
 
-test_expect_success 'xgettext sanity: Perl _() strings are not extracted' '
+test_expect_success GETTEXT 'xgettext sanity: Perl _() strings are not extracted' '
     ! grep "A Perl string xgettext will not get" "$GIT_PO_PATH"/is.po
 '
 
-test_expect_success 'xgettext sanity: Comment extraction with --add-comments' '
+test_expect_success GETTEXT 'xgettext sanity: Comment extraction with --add-comments' '
     grep "TRANSLATORS: This is a test" "$TEST_DIRECTORY"/t0200/* | wc -l >expect &&
     grep "TRANSLATORS: This is a test" "$GIT_PO_PATH"/is.po  | wc -l >actual &&
     test_cmp expect actual
 '
 
-test_expect_success 'xgettext sanity: Comment extraction with --add-comments stops at statements' '
+test_expect_success  GETTEXT 'xgettext sanity: Comment extraction with --add-comments stops at statements' '
     ! grep "This is a phony" "$GIT_PO_PATH"/is.po &&
     ! grep "the above comment" "$GIT_PO_PATH"/is.po
 '
