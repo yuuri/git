@@ -209,7 +209,11 @@ bisect_replay () {
 	test "$#" -eq 1 || die "$(gettext "No logfile given")"
 	test -r "$file" || die "$(eval_gettext "cannot read \$file for replaying")"
 	git bisect--helper --bisect-reset || exit
-	while read git bisect command rev
+
+	# We remove any CR in the input to handle bisect log files that have
+	# CRLF line endings. The assumption is that CR within bisect
+	# commands also don't matter.
+	tr -d '\r' <"$file" | while read git bisect command rev
 	do
 		test "$git $bisect" = "git bisect" || test "$git" = "git-bisect" || continue
 		if test "$git" = "git-bisect"
@@ -231,7 +235,9 @@ bisect_replay () {
 		*)
 			die "$(gettext "?? what are you talking about?")" ;;
 		esac
-	done <"$file"
+	done
+
+	get_terms
 	bisect_auto_next
 }
 
