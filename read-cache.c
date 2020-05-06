@@ -25,6 +25,7 @@
 #include "fsmonitor.h"
 #include "thread-utils.h"
 #include "progress.h"
+#include "sparse-checkout.h"
 
 /* Mask for the name length in ce_flags in the on-disk index */
 
@@ -3074,9 +3075,10 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 
 	if (ret)
 		return ret;
-	if (flags & COMMIT_LOCK)
-		ret = commit_locked_index(lock);
-	else
+	if (flags & COMMIT_LOCK) {
+		ret = commit_locked_index(lock) ||
+		      update_in_tree_sparse_checkout();
+	} else
 		ret = close_lock_file_gently(lock);
 
 	run_hook_le(NULL, "post-index-change",

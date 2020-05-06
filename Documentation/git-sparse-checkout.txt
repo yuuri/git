@@ -233,9 +233,10 @@ Use `git sparse-checkout set --in-tree <path>` to initialize the patterns
 to those included in the file at `<path>`. This will override any existing
 patterns you have in your sparse-checkout file.
 
-After switching between commits with different versions of this file, run
-`git sparse-checkout reapply` to adjust the sparse-checkout patterns to
-the new definition.
+As Git switches between commits, it will update the in-tree sparse-checkout
+definition according to the files available at the new commit. If any of
+the specified files do not exist at the new commit, then the sparse-checkout
+definition will not change.
 
 
 SUBMODULES

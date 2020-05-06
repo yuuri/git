@@ -605,6 +605,7 @@ test_expect_success MINGW 'cone mode replaces backslashes with slashes' '
 '
 
 test_expect_success 'basis of --in-tree' '
+	git -C repo branch no-in-tree &&
 	git -C repo config auto.crlf false &&
 	cat >folder1 <<-\EOF &&
 	[sparse]
@@ -690,18 +691,28 @@ test_expect_success '"add" with --in-tree' '
 	check_files repo a deep folder1
 '
 
-test_expect_success 'reapply after updating in-tree file' '
+test_expect_success 'automatically change after updating in-tree file' '
 	git -C repo sparse-checkout set --in-tree .sparse/sparse &&
 	check_files repo a &&
 	test_path_is_dir repo/.sparse &&
-	echo "\tdir = folder1" >>repo/.sparse/sparse &&
+	printf "\tdir = folder1\n" >>repo/.sparse/sparse &&
 	git -C repo commit -a -m "Update sparse file" &&
-	git -C repo sparse-checkout reapply &&
 	check_files repo a folder1 &&
 	test_path_is_dir repo/.sparse &&
 	git -C repo checkout HEAD~1 &&
-	git -C repo sparse-checkout reapply &&
 	check_files repo a &&
+	test_path_is_dir repo/.sparse &&
+	git -C repo checkout - &&
+	check_files repo a folder1 &&
+	test_path_is_dir repo/.sparse
+'
+
+test_expect_success 'keep definition when in-tree file is missing' '
+	git -C repo checkout no-in-tree &&
+	check_files repo a folder1 &&
+	test_path_is_missing repo/.sparse &&
+	git -C repo checkout - &&
+	check_files repo a folder1 &&
 	test_path_is_dir repo/.sparse
 '
 

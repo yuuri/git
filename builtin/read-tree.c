@@ -247,6 +247,10 @@ int cmd_read_tree(int argc, const char **argv, const char *cmd_prefix)
 		parse_tree(tree);
 		init_tree_desc(t+i, tree->buffer, tree->size);
 	}
+
+	if (opts.skip_sparse_checkout)
+		core_apply_sparse_checkout = 0;
+
 	if (unpack_trees(nr_trees, t, &opts))
 		return 128;
 

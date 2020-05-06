@@ -36,6 +36,7 @@
 #include "help.h"
 #include "commit-reach.h"
 #include "commit-graph.h"
+#include "sparse-checkout.h"
 
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [<options>] [--] <pathspec>..."),
@@ -222,7 +223,8 @@ static int commit_index_files(void)
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		err = commit_lock_file(&index_lock);
+		err = commit_lock_file(&index_lock) ||
+		      update_in_tree_sparse_checkout();
 		break;
 	case COMMIT_PARTIAL:
 		err = commit_lock_file(&index_lock);

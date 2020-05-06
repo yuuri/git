@@ -92,9 +92,12 @@ int load_in_tree_pattern_list(struct repository *r,
 		 * Exit silently, as this is likely the case where Git
 		 * changed branches to a location where the inherit file
 		 * does not exist. Do not update the sparse-checkout.
+		 *
+		 * Use -1 return to ensure populate_from_existing_patterns()
+		 * skips the sparse-checkout updates.
 		 */
 		if (pos < 0)
-			return 1;
+			return -1;
 
 		oid = &istate->cache[pos]->oid;
 		type = oid_object_info(r, oid, NULL);
@@ -145,12 +148,17 @@ int populate_sparse_checkout_patterns(struct pattern_list *pl)
 	return result;
 }
 
+static int updating_sparse_checkout = 0;
 int update_working_directory(struct pattern_list *pl)
 {
 	enum update_sparsity_result result;
 	struct unpack_trees_options o;
 	struct lock_file lock_file = LOCK_INIT;
 	struct repository *r = the_repository;
+
+	if (updating_sparse_checkout)
+		return 0;
+	updating_sparse_checkout = 1;
 
 	memset(&o, 0, sizeof(o));
 	o.verbose_update = isatty(2);
@@ -180,7 +188,22 @@ int update_working_directory(struct pattern_list *pl)
 	else
 		rollback_lock_file(&lock_file);
 
+	updating_sparse_checkout = 0;
 	return result;
+}
+
+int update_in_tree_sparse_checkout(void)
+{
+	const char *first_value;
+
+	if (!core_apply_sparse_checkout)
+		return 0;
+
+	/* only update if doing so due to sparse.inTree. */
+	if (!git_config_get_value(SPARSE_CHECKOUT_IN_TREE, &first_value) &&
+	    first_value)
+	    	return update_working_directory(NULL);
+	return 0;
 }
 
 static char *escaped_pattern(char *pattern)
@@ -273,6 +296,7 @@ int write_patterns_and_update(struct pattern_list *pl)
 		free(sparse_filename);
 		clear_pattern_list(pl);
 		update_working_directory(NULL);
+		updating_sparse_checkout = 0;
 		return result;
 	}
 
