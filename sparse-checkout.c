@@ -9,6 +9,7 @@
 #include "string-list.h"
 #include "unpack-trees.h"
 #include "object-store.h"
+#include "oidset.h"
 
 char *get_sparse_checkout_filename(void)
 {
@@ -77,9 +78,12 @@ int load_in_tree_pattern_list(struct repository *r,
 			      struct string_list *sl,
 			      struct pattern_list *pl)
 {
+	int result = 0;
 	struct index_state *istate = r->index;
 	struct string_list_item *item;
 	struct strbuf path = STRBUF_INIT;
+	struct oidset set;
+	oidset_init(&set, 16);
 
 	pl->use_cone_patterns = 1;
 
@@ -96,24 +100,34 @@ int load_in_tree_pattern_list(struct repository *r,
 		 * Use -1 return to ensure populate_from_existing_patterns()
 		 * skips the sparse-checkout updates.
 		 */
-		if (pos < 0)
-			return -1;
+		if (pos < 0) {
+			result = -1;
+			goto cleanup;
+		}
 
 		oid = &istate->cache[pos]->oid;
+
+		if (oidset_contains(&set, oid))
+			continue;
+
+		oidset_insert(&set, oid);
+
 		type = oid_object_info(r, oid, NULL);
 
 		if (type != OBJ_BLOB) {
 			warning(_("expected a file at '%s'; not updating sparse-checkout"),
 				oid_to_hex(oid));
-			return 1;
+			result = 1;
+			goto cleanup;
 		}
 
 		load_in_tree_from_blob(pl, oid);
 	}
 
+cleanup:
 	strbuf_release(&path);
-
-	return 0;
+	oidset_clear(&set);
+	return result;
 }
 
 int populate_sparse_checkout_patterns(struct pattern_list *pl)
