@@ -716,4 +716,35 @@ test_expect_success 'keep definition when in-tree file is missing' '
 	test_path_is_dir repo/.sparse
 '
 
+test_expect_success 'inherit definition from other files' '
+	cat >repo/.sparse/inherit <<-EOF &&
+	[sparse]
+		inherit = .sparse/sparse
+		inherit = .sparse/deep
+		inherit = .sparse/deeper1
+	EOF
+	git -C repo add .sparse &&
+	git -C repo commit -m "Add inherited file" &&
+	git -C repo sparse-checkout set --in-tree .sparse/inherit &&
+	check_files repo a deep folder1 &&
+	check_files repo/deep a deeper1 deeper2 &&
+	test_path_is_dir repo/.sparse &&
+	cat >repo/.sparse/sparse <<-EOF &&
+	[sparse]
+		dir = .sparse
+	EOF
+	git -C repo commit -a -m "drop folder1 from sparse" &&
+	check_files repo a deep &&
+	check_files repo/deep a deeper1 deeper2 &&
+	test_path_is_dir repo/.sparse
+'
+
+test_expect_success 'inherit files can have cycles' '
+	echo "\tinherit = .sparse/inherit" >>repo/.sparse/sparse &&
+	git -C repo commit -a -m "create inherit cycle" &&
+	check_files repo a deep &&
+	check_files repo/deep a deeper1 deeper2 &&
+	test_path_is_dir repo/.sparse
+'
+
 test_done

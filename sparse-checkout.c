@@ -66,12 +66,29 @@ static int sparse_dir_cb(const char *var, const char *value, void *data)
 	return 0;
 }
 
-static int load_in_tree_from_blob(struct pattern_list *pl,
-				  struct object_id *oid)
+static int sparse_inherit_cb(const char *var, const char *value, void *data)
 {
-	return git_config_from_blob_oid(sparse_dir_cb,
-					SPARSE_CHECKOUT_DIR,
-					oid, pl);
+	struct string_list *sl = (struct string_list *)data;
+
+	if (!strcmp(var, SPARSE_CHECKOUT_INHERIT))
+		string_list_append(sl, value);
+
+	return 0;
+}
+
+static int load_in_tree_from_blob(struct pattern_list *pl,
+				  struct object_id *oid,
+				  struct string_list *inherit)
+{
+	if (git_config_from_blob_oid(sparse_dir_cb,
+				     SPARSE_CHECKOUT_DIR,
+				     oid, pl))
+		return 1;
+	if (git_config_from_blob_oid(sparse_inherit_cb,
+				     SPARSE_CHECKOUT_INHERIT,
+				     oid, inherit))
+		return 1;
+	return 0;
 }
 
 int load_in_tree_pattern_list(struct repository *r,
@@ -121,7 +138,7 @@ int load_in_tree_pattern_list(struct repository *r,
 			goto cleanup;
 		}
 
-		load_in_tree_from_blob(pl, oid);
+		load_in_tree_from_blob(pl, oid, sl);
 	}
 
 cleanup:

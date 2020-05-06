@@ -5,6 +5,7 @@
 #include "repository.h"
 
 #define SPARSE_CHECKOUT_DIR "sparse.dir"
+#define SPARSE_CHECKOUT_INHERIT "sparse.inherit"
 #define SPARSE_CHECKOUT_IN_TREE "sparse.intree"
 
 struct pattern_list;

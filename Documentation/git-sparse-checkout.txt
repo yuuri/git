@@ -238,6 +238,32 @@ definition according to the files available at the new commit. If any of
 the specified files do not exist at the new commit, then the sparse-checkout
 definition will not change.
 
+In a very large repository, there may be need to have multiple of these
+in-tree sparse-checkout definitions to fit the roles of multiple types of
+users. As each definition grows and the number of user types grow, it can
+be difficult to manage updating all of the definitions when a common core
+is modified somehow. For this reason, the in-tree pattern sets can inherit
+the directories from other in-tree pattern sets. Use the `sparse.inherit`
+option to specify other files in the tree.
+
+For example, suppose the file listed earlier is at `.sparse/core`. Another
+file could be stored as `.sparse/extra` with contents
+
+----------------------------------
+[sparse]
+	dir = X
+	dir = Y/Z
+	inherit = .sparse/core
+----------------------------------
+
+Then, if you run `git sparse-checkout set --in-tree .sparse/extra`, the
+sparse-checkout definition will include `X` and `Y/Z` from `.sparse/extra`
+as well as `A`, `B/C`, and `D/E/F` from `.sparse/core`. This is similar
+to specifying both `.sparse/core` and `.sparse/extra` in the `set`
+subcommand, but has a slight advantage. If the `.sparse/extra` file changes
+the set of `inherit` files, then your sparse-checkout definition will
+update accordingly as you switch between commits.
+
 
 SUBMODULES
 ----------
