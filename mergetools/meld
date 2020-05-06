@@ -3,34 +3,75 @@ diff_cmd () {
 }
 
 merge_cmd () {
-	if test -z "${meld_has_output_option:+set}"
+	check_meld_for_features
+
+	option_auto_merge=
+	if test "$meld_has_auto_merge_option" = true
 	then
-		check_meld_for_output_version
+		option_auto_merge="--auto-merge"
 	fi
 
 	if test "$meld_has_output_option" = true
 	then
-		"$merge_tool_path" --output="$MERGED" \
+		"$merge_tool_path" $option_auto_merge --output="$MERGED" \
 			"$LOCAL" "$BASE" "$REMOTE"
 	else
-		"$merge_tool_path" "$LOCAL" "$MERGED" "$REMOTE"
+		"$merge_tool_path" $option_auto_merge "$LOCAL" "$MERGED" "$REMOTE"
 	fi
 }
 
-# Check whether we should use 'meld --output <file>'
-check_meld_for_output_version () {
-	meld_path="$(git config mergetool.meld.path)"
-	meld_path="${meld_path:-meld}"
+# Get meld help message
+get_meld_help_msg () {
+	meld_path="$(git config mergetool.meld.path || echo meld)"
+  $meld_path --help 2>&1
+}
 
-	if meld_has_output_option=$(git config --bool mergetool.meld.hasOutput)
+# Check the features and set flags
+check_meld_for_features () {
+	# Check whether we should use 'meld --output <file>'
+	if test -z "${meld_has_output_option:+set}"
 	then
-		: use configured value
-	elif "$meld_path" --help 2>&1 |
-		grep -e '--output=' -e '\[OPTION\.\.\.\]' >/dev/null
+		meld_has_output_option=$(git config --bool mergetool.meld.hasOutput)
+		if test "$meld_has_output_option" = true -o \
+						"$meld_has_output_option" = false
+		then
+			: use configured value
+		else												# treat meld_has_output_option as "auto"
+			if test -z "$meld_help_msg"
+			then
+				meld_help_msg="$(get_meld_help_msg)"
+			fi
+
+			if echo "$meld_help_msg" |
+							grep -e '--output=' -e '\[OPTION\.\.\.\]' >/dev/null
+			then
+				: old ones mention --output and new ones just say OPTION...
+				meld_has_output_option=true
+			else
+				meld_has_output_option=false
+			fi
+		fi
+	fi
+	# Check whether we should use 'meld --auto-merge ...'
+	if test -z "${meld_has_auto_merge_option:+set}"
 	then
-		: old ones mention --output and new ones just say OPTION...
-		meld_has_output_option=true
-	else
-		meld_has_output_option=false
+		meld_has_auto_merge_option=$(git config --bool mergetool.meld.hasAutoMerge)
+		if test "$meld_has_auto_merge_option" = true -o \
+						"$meld_has_auto_merge_option" = false
+		then
+			: use configured value
+		else												# treat meld_has_auto_merge_option as "auto"
+			if test -z "$meld_help_msg"
+			then
+					meld_help_msg="$(get_meld_help_msg)"
+			fi
+
+			if echo "$meld_help_msg" | grep -e '--auto-merge' >/dev/null
+			then
+					meld_has_auto_merge_option=true
+			else
+				meld_has_auto_merge_option=false
+			fi
+		fi
 	fi
 }
