@@ -7,13 +7,23 @@ merge_cmd () {
 	then
 		check_meld_for_output_version
 	fi
+	if test -z "${meld_has_auto_merge_option:+set}"
+	then
+		check_meld_for_auto_merge_version
+	fi
+
+	option_auto_merge=
+	if test "$meld_has_auto_merge_option" = true
+	then
+		option_auto_merge="--auto-merge"
+	fi
 
 	if test "$meld_has_output_option" = true
 	then
-		"$merge_tool_path" --output="$MERGED" \
+		"$merge_tool_path" $option_auto_merge --output="$MERGED" \
 			"$LOCAL" "$BASE" "$REMOTE"
 	else
-		"$merge_tool_path" "$LOCAL" "$MERGED" "$REMOTE"
+		"$merge_tool_path" $option_auto_merge "$LOCAL" "$MERGED" "$REMOTE"
 	fi
 }
 
@@ -32,5 +42,23 @@ check_meld_for_output_version () {
 		meld_has_output_option=true
 	else
 		meld_has_output_option=false
+	fi
+}
+
+# Check whether we should use 'meld --auto-merge ...'
+check_meld_for_auto_merge_version () {
+	meld_path="$(git config mergetool.meld.path)"
+	meld_path="${meld_path:-meld}"
+
+	if meld_has_auto_merge_option=$(git config --bool mergetool.meld.hasAutoMerge)
+	then
+		: use configured value
+	elif "$meld_path" --help 2>&1 |
+		grep -e '--auto-merge' -e '\[OPTION\.\.\.\]' >/dev/null
+	then
+		: old ones mention --auto-merge and new ones just say OPTION...
+		meld_has_auto_merge_option=true
+	else
+		meld_has_auto_merge_option=false
 	fi
 }
