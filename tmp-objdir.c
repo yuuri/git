@@ -123,7 +123,7 @@ static int setup_tmp_objdir(const char *root)
 
 struct tmp_objdir *tmp_objdir_create(void)
 {
-	static int installed_handlers;
+	static int installed_handlers = 0;
 	struct tmp_objdir *t;
 
 	if (the_tmp_objdir)
