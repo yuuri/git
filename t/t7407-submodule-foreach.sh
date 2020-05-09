@@ -80,6 +80,36 @@ test_expect_success 'test basic "submodule foreach" usage' '
 	test_i18ncmp expect actual
 '
 
+cat > expect <<EOF
+Entering 'sub3'
+$pwd/clone-foo3-sub3-$sub3sha1
+EOF
+
+test_expect_success 'test "submodule--helper foreach --active" usage' '
+	test_when_finished "git -C clone config --unset submodule.foo1.active" &&
+	(
+		cd clone &&
+		git config --bool submodule.foo1.active "false" &&
+		git submodule--helper foreach --active "echo \$toplevel-\$name-\$path-\$sha1" > ../actual
+	) &&
+	test_i18ncmp expect actual
+'
+
+cat > expect <<EOF
+Entering 'sub1'
+$pwd/clone-foo1-sub1-$sub1sha1
+EOF
+
+test_expect_success 'test "submodule--helper foreach --no-active" usage' '
+	test_when_finished "git -C clone config --unset submodule.foo1.active" &&
+	(
+		cd clone &&
+		git config --bool submodule.foo1.active "false" &&
+		git submodule--helper foreach --no-active "echo \$toplevel-\$name-\$path-\$sha1" > ../actual
+	) &&
+	test_i18ncmp expect actual
+'
+
 cat >expect <<EOF
 Entering '../sub1'
 $pwd/clone-foo1-sub1-../sub1-$sub1sha1

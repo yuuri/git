@@ -450,13 +450,16 @@ struct foreach_cb {
 	const char *prefix;
 	int quiet;
 	int recursive;
+	int active_only;
 };
-#define FOREACH_CB_INIT { 0 }
 
-static void runcommand_in_submodule_cb(const struct cache_entry *list_item,
-				       void *cb_data)
+#define FOREACH_BOOL_FILTER_NOT_SET -1
+
+#define FOREACH_CB_INIT { .active_only=FOREACH_BOOL_FILTER_NOT_SET }
+
+static void runcommand_in_submodule(const struct cache_entry *list_item,
+				    struct foreach_cb *info)
 {
-	struct foreach_cb *info = cb_data;
 	const char *path = list_item->name;
 	const struct object_id *ce_oid = &list_item->oid;
 
@@ -555,6 +558,22 @@ cleanup:
 	free(displaypath);
 }
 
+static void runcommand_in_submodule_filtered_cb(const struct cache_entry *list_item,
+						void *cb_data)
+{
+	const char *path = list_item->name;
+	struct foreach_cb *info = cb_data;
+	int is_active;
+
+	if (info->active_only != FOREACH_BOOL_FILTER_NOT_SET) {
+		is_active = is_submodule_active(the_repository, path);
+		if (is_active != info->active_only)
+			return;
+	}
+
+	runcommand_in_submodule(list_item, info);
+}
+
 static int module_foreach(int argc, const char **argv, const char *prefix)
 {
 	struct foreach_cb info = FOREACH_CB_INIT;
@@ -565,11 +584,13 @@ static int module_foreach(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&info.quiet, N_("Suppress output of entering each submodule command")),
 		OPT_BOOL(0, "recursive", &info.recursive,
 			 N_("Recurse into nested submodules")),
+		OPT_BOOL(0, "active", &info.active_only,
+			 N_("Call command depending on submodule active state")),
 		OPT_END()
 	};
 
 	const char *const git_submodule_helper_usage[] = {
-		N_("git submodule--helper foreach [--quiet] [--recursive] [--] <command>"),
+		N_("git submodule--helper foreach [--quiet] [--recursive] [--[no-]active] [--] <command>"),
 		NULL
 	};
 
@@ -583,7 +604,7 @@ static int module_foreach(int argc, const char **argv, const char *prefix)
 	info.argv = argv;
 	info.prefix = prefix;
 
-	for_each_listed_submodule(&list, runcommand_in_submodule_cb, &info);
+	for_each_listed_submodule(&list, runcommand_in_submodule_filtered_cb, &info);
 
 	return 0;
 }
