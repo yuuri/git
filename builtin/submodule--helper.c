@@ -450,6 +450,7 @@ struct foreach_cb {
 	const char *prefix;
 	int quiet;
 	int recursive;
+	int only_active;
 };
 #define FOREACH_CB_INIT { 0 }
 
@@ -463,6 +464,9 @@ static void runcommand_in_submodule_cb(const struct cache_entry *list_item,
 	const struct submodule *sub;
 	struct child_process cp = CHILD_PROCESS_INIT;
 	char *displaypath;
+
+	if (info->only_active && !is_submodule_active(the_repository, path))
+		return;
 
 	displaypath = get_submodule_displaypath(path, info->prefix);
 
@@ -565,11 +569,13 @@ static int module_foreach(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&info.quiet, N_("Suppress output of entering each submodule command")),
 		OPT_BOOL(0, "recursive", &info.recursive,
 			 N_("Recurse into nested submodules")),
+		OPT_BOOL(0, "only-active", &info.only_active,
+			 N_("Call command only for active submodules")),
 		OPT_END()
 	};
 
 	const char *const git_submodule_helper_usage[] = {
-		N_("git submodule--helper foreach [--quiet] [--recursive] [--] <command>"),
+		N_("git submodule--helper foreach [--quiet] [--recursive] [--only-active] [--] <command>"),
 		NULL
 	};
 
