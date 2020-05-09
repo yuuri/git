@@ -62,8 +62,8 @@ generate_objects () {
 	} >wide_delta_$iii &&
 	{
 		test-tool genrandom "foo"$i 100 &&
-		test-tool genrandom "foo"$(( $i + 1 )) 100 &&
-		test-tool genrandom "foo"$(( $i + 2 )) 100
+		test-tool genrandom "foo"$(( i + 1 )) 100 &&
+		test-tool genrandom "foo"$(( i + 2 )) 100
 	} >deep_delta_$iii &&
 	{
 		echo $iii &&
@@ -251,21 +251,21 @@ MIDX_BYTE_OID_VERSION=5
 MIDX_BYTE_CHUNK_COUNT=6
 MIDX_HEADER_SIZE=12
 MIDX_BYTE_CHUNK_ID=$MIDX_HEADER_SIZE
-MIDX_BYTE_CHUNK_OFFSET=$(($MIDX_HEADER_SIZE + 4))
+MIDX_BYTE_CHUNK_OFFSET=$((MIDX_HEADER_SIZE + 4))
 MIDX_NUM_CHUNKS=5
 MIDX_CHUNK_LOOKUP_WIDTH=12
-MIDX_OFFSET_PACKNAMES=$(($MIDX_HEADER_SIZE + \
-			 $MIDX_NUM_CHUNKS * $MIDX_CHUNK_LOOKUP_WIDTH))
-MIDX_BYTE_PACKNAME_ORDER=$(($MIDX_OFFSET_PACKNAMES + 2))
-MIDX_OFFSET_OID_FANOUT=$(($MIDX_OFFSET_PACKNAMES + $(test_oid packnameoff)))
+MIDX_OFFSET_PACKNAMES=$((MIDX_HEADER_SIZE + \
+			 MIDX_NUM_CHUNKS * MIDX_CHUNK_LOOKUP_WIDTH))
+MIDX_BYTE_PACKNAME_ORDER=$((MIDX_OFFSET_PACKNAMES + 2))
+MIDX_OFFSET_OID_FANOUT=$((MIDX_OFFSET_PACKNAMES + $(test_oid packnameoff)))
 MIDX_OID_FANOUT_WIDTH=4
-MIDX_BYTE_OID_FANOUT_ORDER=$((MIDX_OFFSET_OID_FANOUT + 250 * $MIDX_OID_FANOUT_WIDTH + $(test_oid fanoutoff)))
-MIDX_OFFSET_OID_LOOKUP=$(($MIDX_OFFSET_OID_FANOUT + 256 * $MIDX_OID_FANOUT_WIDTH))
-MIDX_BYTE_OID_LOOKUP=$(($MIDX_OFFSET_OID_LOOKUP + 16 * $HASH_LEN))
-MIDX_OFFSET_OBJECT_OFFSETS=$(($MIDX_OFFSET_OID_LOOKUP + $NUM_OBJECTS * $HASH_LEN))
+MIDX_BYTE_OID_FANOUT_ORDER=$((MIDX_OFFSET_OID_FANOUT + 250 * MIDX_OID_FANOUT_WIDTH + $(test_oid fanoutoff)))
+MIDX_OFFSET_OID_LOOKUP=$((MIDX_OFFSET_OID_FANOUT + 256 * MIDX_OID_FANOUT_WIDTH))
+MIDX_BYTE_OID_LOOKUP=$((MIDX_OFFSET_OID_LOOKUP + 16 * HASH_LEN))
+MIDX_OFFSET_OBJECT_OFFSETS=$((MIDX_OFFSET_OID_LOOKUP + NUM_OBJECTS * HASH_LEN))
 MIDX_OFFSET_WIDTH=8
-MIDX_BYTE_PACK_INT_ID=$(($MIDX_OFFSET_OBJECT_OFFSETS + 16 * $MIDX_OFFSET_WIDTH + 2))
-MIDX_BYTE_OFFSET=$(($MIDX_OFFSET_OBJECT_OFFSETS + 16 * $MIDX_OFFSET_WIDTH + 6))
+MIDX_BYTE_PACK_INT_ID=$((MIDX_OFFSET_OBJECT_OFFSETS + 16 * MIDX_OFFSET_WIDTH + 2))
+MIDX_BYTE_OFFSET=$((MIDX_OFFSET_OBJECT_OFFSETS + 16 * MIDX_OFFSET_WIDTH + 6))
 
 test_expect_success 'verify bad version' '
 	corrupt_midx_and_verify $MIDX_BYTE_VERSION "\00" $objdir \
@@ -417,10 +417,10 @@ test_expect_success 'verify multi-pack-index with 64-bit offsets' '
 
 NUM_OBJECTS=63
 MIDX_OFFSET_OID_FANOUT=$((MIDX_OFFSET_PACKNAMES + 54))
-MIDX_OFFSET_OID_LOOKUP=$((MIDX_OFFSET_OID_FANOUT + 256 * $MIDX_OID_FANOUT_WIDTH))
-MIDX_OFFSET_OBJECT_OFFSETS=$(($MIDX_OFFSET_OID_LOOKUP + $NUM_OBJECTS * $HASH_LEN))
-MIDX_OFFSET_LARGE_OFFSETS=$(($MIDX_OFFSET_OBJECT_OFFSETS + $NUM_OBJECTS * $MIDX_OFFSET_WIDTH))
-MIDX_BYTE_LARGE_OFFSET=$(($MIDX_OFFSET_LARGE_OFFSETS + 3))
+MIDX_OFFSET_OID_LOOKUP=$((MIDX_OFFSET_OID_FANOUT + 256 * MIDX_OID_FANOUT_WIDTH))
+MIDX_OFFSET_OBJECT_OFFSETS=$((MIDX_OFFSET_OID_LOOKUP + NUM_OBJECTS * HASH_LEN))
+MIDX_OFFSET_LARGE_OFFSETS=$((MIDX_OFFSET_OBJECT_OFFSETS + NUM_OBJECTS * MIDX_OFFSET_WIDTH))
+MIDX_BYTE_LARGE_OFFSET=$((MIDX_OFFSET_LARGE_OFFSETS + 3))
 
 test_expect_success 'verify incorrect 64-bit offset' '
 	corrupt_midx_and_verify $MIDX_BYTE_LARGE_OFFSET "\07" objects64 \
@@ -555,7 +555,7 @@ test_expect_success 'repack respects repack.packKeptObjects=false' '
 		test-tool read-midx .git/objects | grep idx >midx-list &&
 		test_line_count = 5 midx-list &&
 		THIRD_SMALLEST_SIZE=$(test-tool path-utils file-size .git/objects/pack/*pack | sort -n | head -n 3 | tail -n 1) &&
-		BATCH_SIZE=$(($THIRD_SMALLEST_SIZE + 1)) &&
+		BATCH_SIZE=$((THIRD_SMALLEST_SIZE + 1)) &&
 		git multi-pack-index repack --batch-size=$BATCH_SIZE &&
 		ls .git/objects/pack/*idx >idx-list &&
 		test_line_count = 5 idx-list &&
@@ -570,7 +570,7 @@ test_expect_success 'repack creates a new pack' '
 		ls .git/objects/pack/*idx >idx-list &&
 		test_line_count = 5 idx-list &&
 		THIRD_SMALLEST_SIZE=$(test-tool path-utils file-size .git/objects/pack/*pack | sort -n | head -n 3 | tail -n 1) &&
-		BATCH_SIZE=$(($THIRD_SMALLEST_SIZE + 1)) &&
+		BATCH_SIZE=$((THIRD_SMALLEST_SIZE + 1)) &&
 		git multi-pack-index repack --batch-size=$BATCH_SIZE &&
 		ls .git/objects/pack/*idx >idx-list &&
 		test_line_count = 6 idx-list &&
