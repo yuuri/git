@@ -22,6 +22,7 @@ project(git
 include(CheckTypeSize)
 include(CheckCSourceRuns)
 include(CheckCSourceCompiles)
+include(CheckCSourceRuns)
 include(CheckIncludeFile)
 include(CheckFunctionExists)
 include(CheckSymbolExists)
@@ -128,7 +129,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 	include_directories(compat/win32)
 	add_compile_definitions(HAVE_ALLOCA_H NO_POSIX_GOODIES NATIVE_CRLF NO_UNIX_SOCKETS WIN32
 				_CONSOLE DETECT_MSYS_TTY STRIP_EXTENSION=".exe"  NO_SYMLINK_HEAD UNRELIABLE_FSTAT
-				NOGDI OBJECT_CREATION_MODE=1 __USE_MINGW_ANSI_STDIO=0 NO_ST_BLOCKS_IN_STRUCT_STAT
+				NOGDI OBJECT_CREATION_MODE=1 __USE_MINGW_ANSI_STDIO=0
 				USE_NED_ALLOCATOR OVERRIDE_STRDUP MMAP_PREVENTS_DELETE USE_WIN32_MMAP
 				UNICODE _UNICODE HAVE_WPGMPTR ENSURE_MSYSTEM_IS_SET)
 	list(APPEND compat_SOURCES compat/mingw.c compat/winansi.c compat/win32/path-utils.c
@@ -280,6 +281,11 @@ if(HAVE_CLOCK_MONOTONIC)
 	add_compile_definitions(HAVE_CLOCK_MONOTONIC)
 endif()
 
+#check for st_blocks in struct stat
+check_struct_has_member("struct stat" st_blocks "sys/stat.h" STRUCT_STAT_HAS_ST_BLOCKS)
+if(NOT STRUCT_STAT_HAS_ST_BLOCKS)
+	add_compile_definitions(NO_ST_BLOCKS_IN_STRUCT_STAT)
+endif()
 
 #compile checks
 check_c_source_runs("
@@ -344,7 +350,6 @@ if(NOT HAVE_REGEX)
 	add_compile_definitions(NO_REGEX NO_MBSUPPORT GAWK)
 endif()
 
-
 check_c_source_compiles("
 #include <stddef.h>
 #include <sys/types.h>
@@ -367,6 +372,56 @@ HAVE_BSD_SYSCTL)
 if(HAVE_BSD_SYSCTL)
 	add_compile_definitions(HAVE_BSD_SYSCTL)
 endif()
+
+set(CMAKE_REQUIRED_LIBRARIES ${Iconv_LIBRARIES})
+set(CMAKE_REQUIRED_INCLUDES ${Iconv_INCLUDE_DIRS})
+
+check_c_source_compiles("
+#include <iconv.h>
+
+extern size_t iconv(iconv_t cd,
+		char **inbuf, size_t *inbytesleft,
+		char **outbuf, size_t *outbytesleft);
+
+int main(){return 0;}"
+HAVE_NEW_ICONV)
+if(HAVE_NEW_ICONV)
+	set(HAVE_OLD_ICONV 0)
+else()
+	set(HAVE_OLD_ICONV 1)
+endif()
+
+check_c_source_runs("
+#include <iconv.h>
+#if ${HAVE_OLD_ICONV}
+typedef const char *iconv_ibp;
+#else
+typedef char *iconv_ibp;
+#endif
+
+int main()
+{
+	int v;
+	iconv_t conv;
+	char in[] = \"a\"; iconv_ibp pin = in;
+	char out[20] = \"\"; char *pout = out;
+	size_t isz = sizeof in;
+	size_t osz = sizeof out;
+
+	conv = iconv_open(\"UTF-16\", \"UTF-8\");
+	iconv(conv, &pin, &isz, &pout, &osz);
+	iconv_close(conv);
+	v = (unsigned char)(out[0]) + (unsigned char)(out[1]);
+	return v != 0xfe + 0xff;
+}"
+ICONV_DOESNOT_OMIT_BOM)
+if(NOT ICONV_DOESNOT_OMIT_BOM)
+	add_compile_definitions(ICONV_OMITS_BOM)
+endif()
+
+unset(CMAKE_REQUIRED_LIBRARIES)
+unset(CMAKE_REQUIRED_INCLUDES)
+
 
 #programs
 set(PROGRAMS_BUILT
