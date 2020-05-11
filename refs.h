@@ -732,6 +732,17 @@ int update_ref(const char *msg, const char *refname,
 	       const struct object_id *new_oid, const struct object_id *old_oid,
 	       unsigned int flags, enum action_on_err onerr);
 
+/* Pseudorefs (eg. HEAD, CHERRY_PICK_HEAD) have a separate routines for updating
+   and deletion as they cannot take part in normal transactional updates.
+   Pseudorefs should only be written for the main repository.
+*/
+int refs_write_pseudoref(struct ref_store *refs, const char *pseudoref,
+			 const struct object_id *oid,
+			 const struct object_id *old_oid, struct strbuf *err);
+int refs_delete_pseudoref(struct ref_store *refs, const char *pseudoref,
+			  const struct object_id *old_oid);
+int delete_pseudoref(const char *pseudoref, const struct object_id *old_oid);
+
 int parse_hide_refs_config(const char *var, const char *value, const char *);
 
 /*
