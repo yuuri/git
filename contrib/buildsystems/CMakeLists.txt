@@ -4,6 +4,9 @@
 
 cmake_minimum_required(VERSION 3.15)
 
+#set the source directory to root of git
+set(CMAKE_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+
 #Parse GIT-VERSION-GEN to get the version
 file(STRINGS ${CMAKE_SOURCE_DIR}/GIT-VERSION-GEN git_version REGEX "DEF_VER=v(.*)")
 string(REPLACE "DEF_VER=v" "" git_version ${git_version})
@@ -123,10 +126,10 @@ endif()
 #Platform Specific
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 	if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
-		include_directories(compat/vcbuild/include)
+		include_directories(${CMAKE_SOURCE_DIR}/compat/vcbuild/include)
 		add_compile_definitions(_CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
 	endif()
-	include_directories(compat/win32)
+	include_directories(${CMAKE_SOURCE_DIR}/compat/win32)
 	add_compile_definitions(HAVE_ALLOCA_H NO_POSIX_GOODIES NATIVE_CRLF NO_UNIX_SOCKETS WIN32
 				_CONSOLE DETECT_MSYS_TTY STRIP_EXTENSION=".exe"  NO_SYMLINK_HEAD UNRELIABLE_FSTAT
 				NOGDI OBJECT_CREATION_MODE=1 __USE_MINGW_ANSI_STDIO=0
@@ -224,7 +227,7 @@ foreach(f ${function_checks})
 endforeach()
 
 if(NOT HAVE_POLL_H OR NOT HAVE_SYS_POLL_H OR NOT HAVE_POLL)
-	include_directories(compat/poll)
+	include_directories(${CMAKE_SOURCE_DIR}/compat/poll)
 	add_compile_definitions(NO_POLL)
 	list(APPEND compat_SOURCES compat/poll/poll.c)
 endif()
@@ -345,7 +348,7 @@ check_c_source_compiles("
 int main(){return 0;}"
 HAVE_REGEX)
 if(NOT HAVE_REGEX)
-	include_directories(compat/regex )
+	include_directories(${CMAKE_SOURCE_DIR}/compat/regex)
 	list(APPEND compat_SOURCES compat/regex/regex.c )
 	add_compile_definitions(NO_REGEX NO_MBSUPPORT GAWK)
 endif()
@@ -467,20 +470,22 @@ endforeach()
 list(APPEND EXCLUSION_PROGS empty)
 set(EXCLUSION_PROGS_CACHE ${EXCLUSION_PROGS} CACHE STRING "Programs not built" FORCE)
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/command-list.h OR NOT EXCLUSION_PROGS_CACHE STREQUAL EXCLUSION_PROGS)
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/command-list.h OR NOT EXCLUSION_PROGS_CACHE STREQUAL EXCLUSION_PROGS)
 	list(REMOVE_ITEM EXCLUSION_PROGS empty)
 	message("Generating command-list.h")
 	execute_process(COMMAND ${SH_EXE} ${CMAKE_SOURCE_DIR}/generate-cmdlist.sh ${EXCLUSION_PROGS} command-list.txt
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			OUTPUT_FILE ${CMAKE_SOURCE_DIR}/command-list.h)
+			OUTPUT_FILE ${CMAKE_BINARY_DIR}/command-list.h)
 endif()
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/config-list.h)
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/config-list.h)
 	message("Generating config-list.h")
 	execute_process(COMMAND ${SH_EXE} ${CMAKE_SOURCE_DIR}/generate-configlist.sh
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			OUTPUT_FILE ${CMAKE_SOURCE_DIR}/config-list.h)
+			OUTPUT_FILE ${CMAKE_BINARY_DIR}/config-list.h)
 endif()
+
+include_directories(${CMAKE_BINARY_DIR})
 
 
 #build
@@ -521,16 +526,22 @@ set(libgit_SOURCES
 	worktree.c wrapper.c write-or-die.c ws.c wt-status.c xdiff-interface.c
 	zlib.c)
 
+list(TRANSFORM libgit_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
+list(TRANSFORM compat_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
 add_library(libgit ${libgit_SOURCES} ${compat_SOURCES})
 
 set(libxdiff_SOURCES
 	xdiff/xdiffi.c xdiff/xprepare.c xdiff/xutils.c xdiff/xemit.c
 	xdiff/xmerge.c xdiff/xpatience.c xdiff/xhistogram.c)
+
+list(TRANSFORM libxdiff_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
 add_library(xdiff STATIC ${libxdiff_SOURCES})
 
 set(libvcs-svn_SOURCES
 	vcs-svn/line_buffer.c vcs-svn/sliding_window.c vcs-svn/fast_export.c
 	vcs-svn/svndiff.c vcs-svn/svndump.c)
+
+list(TRANSFORM libvcs-svn_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
 add_library(vcs-svn STATIC ${libvcs-svn_SOURCES})
 
 if(WIN32)
@@ -553,7 +564,7 @@ if(WIN32)
 endif()
 
 #link all required libraries to common-main
-add_library(common-main OBJECT common-main.c)
+add_library(common-main OBJECT ${CMAKE_SOURCE_DIR}/common-main.c)
 
 target_link_libraries(common-main libgit xdiff ${ZLIB_LIBRARIES})
 if(Intl_FOUND)
@@ -612,56 +623,57 @@ set(git_SOURCES
 	builtin/upload-pack.c builtin/var.c builtin/verify-commit.c builtin/verify-pack.c
 	builtin/verify-tag.c builtin/worktree.c builtin/write-tree.c)
 
-add_executable(git git.c ${git_SOURCES})
+list(TRANSFORM git_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
+add_executable(git ${CMAKE_SOURCE_DIR}/git.c ${git_SOURCES})
 target_link_libraries(git common-main )
 
-add_executable(git-bugreport bugreport.c)
+add_executable(git-bugreport ${CMAKE_SOURCE_DIR}/bugreport.c)
 target_link_libraries(git-bugreport common-main)
 
-add_executable(git-credential-store credential-store.c)
+add_executable(git-credential-store ${CMAKE_SOURCE_DIR}/credential-store.c)
 target_link_libraries(git-credential-store common-main)
 
-add_executable(git-daemon daemon.c)
+add_executable(git-daemon ${CMAKE_SOURCE_DIR}/daemon.c)
 target_link_libraries(git-daemon common-main)
 
-add_executable(git-fast-import fast-import.c)
+add_executable(git-fast-import ${CMAKE_SOURCE_DIR}/fast-import.c)
 target_link_libraries(git-fast-import common-main)
 
-add_executable(git-http-backend http-backend.c)
+add_executable(git-http-backend ${CMAKE_SOURCE_DIR}/http-backend.c)
 target_link_libraries(git-http-backend common-main)
 
-add_executable(git-sh-i18n--envsubst sh-i18n--envsubst.c)
+add_executable(git-sh-i18n--envsubst ${CMAKE_SOURCE_DIR}/sh-i18n--envsubst.c)
 target_link_libraries(git-sh-i18n--envsubst common-main)
 
-add_executable(git-shell shell.c)
+add_executable(git-shell ${CMAKE_SOURCE_DIR}/shell.c)
 target_link_libraries(git-shell common-main)
 
 if(CURL_FOUND)
-	add_library(http_obj OBJECT http.c)
+	add_library(http_obj OBJECT ${CMAKE_SOURCE_DIR}/http.c)
 
-	add_executable(git-imap-send imap-send.c)
+	add_executable(git-imap-send ${CMAKE_SOURCE_DIR}/imap-send.c)
 	target_link_libraries(git-imap-send http_obj common-main ${CURL_LIBRARIES})
 
-	add_executable(git-http-fetch http-walker.c http-fetch.c)
+	add_executable(git-http-fetch ${CMAKE_SOURCE_DIR}/http-walker.c ${CMAKE_SOURCE_DIR}/http-fetch.c)
 	target_link_libraries(git-http-fetch http_obj common-main ${CURL_LIBRARIES})
 
-	add_executable(git-remote-http http-walker.c remote-curl.c)
+	add_executable(git-remote-http ${CMAKE_SOURCE_DIR}/http-walker.c ${CMAKE_SOURCE_DIR}/remote-curl.c)
 	target_link_libraries(git-remote-http http_obj common-main ${CURL_LIBRARIES} )
 
 	if(EXPAT_FOUND)
-		add_executable(git-http-push http-push.c)
+		add_executable(git-http-push ${CMAKE_SOURCE_DIR}/http-push.c)
 		target_link_libraries(git-http-push http_obj common-main ${CURL_LIBRARIES} ${EXPAT_LIBRARIES})
 	endif()
 endif()
 
-add_executable(git-remote-testsvn remote-testsvn.c)
+add_executable(git-remote-testsvn ${CMAKE_SOURCE_DIR}/remote-testsvn.c)
 target_link_libraries(git-remote-testsvn common-main vcs-svn)
 
 if(NOT NO_UNIX_SOCKETS)
-	add_executable(git-credential-cache credential-cache.c)
+	add_executable(git-credential-cache ${CMAKE_SOURCE_DIR}/credential-cache.c)
 	target_link_libraries(git-credential-cache common-main)
 
-	add_executable(git-credential-cache--daemon credential-cache--daemon.c)
+	add_executable(git-credential-cache--daemon ${CMAKE_SOURCE_DIR}/credential-cache--daemon.c)
 	target_link_libraries(git-credential-cache--daemon common-main)
 endif()
 
@@ -673,7 +685,7 @@ set(git_builtin_extra
 
 #Creating hardlinks
 foreach(s ${git_SOURCES} ${git_builtin_extra})
-	string(REPLACE "builtin/" "" s ${s})
+	string(REPLACE "${CMAKE_SOURCE_DIR}/builtin/" "" s ${s})
 	string(REPLACE ".c" "" s ${s})
 	file(APPEND ${CMAKE_BINARY_DIR}/CreateLinks.cmake "file(CREATE_LINK git${EXE_EXTENSION} git-${s}${EXE_EXTENSION})\n")
 	list(APPEND git_links ${CMAKE_BINARY_DIR}/git-${s}${EXE_EXTENSION})
@@ -831,7 +843,7 @@ endforeach()
 install(PROGRAMS ${git_shell_scripts} ${git_perl_scripts} ${CMAKE_BINARY_DIR}/git-p4
 	DESTINATION libexec/git-core)
 
-install(DIRECTORY mergetools DESTINATION libexec/git-core)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/mergetools DESTINATION libexec/git-core)
 install(DIRECTORY ${CMAKE_BINARY_DIR}/perl/build/lib/ DESTINATION share/perl5
 	FILES_MATCHING PATTERN "*.pm")
 install(DIRECTORY ${CMAKE_BINARY_DIR}/templates/blt/ DESTINATION share/git-core/templates)
@@ -844,13 +856,13 @@ endif()
 if(BUILD_TESTING)
 
 #tests-helpers
-add_executable(test-fake-ssh t/helper/test-fake-ssh.c)
+add_executable(test-fake-ssh ${CMAKE_SOURCE_DIR}/t/helper/test-fake-ssh.c)
 target_link_libraries(test-fake-ssh common-main)
 
-add_executable(test-line-buffer t/helper/test-line-buffer.c)
+add_executable(test-line-buffer ${CMAKE_SOURCE_DIR}/t/helper/test-line-buffer.c)
 target_link_libraries(test-line-buffer common-main vcs-svn)
 
-add_executable(test-svn-fe t/helper/test-svn-fe.c)
+add_executable(test-svn-fe ${CMAKE_SOURCE_DIR}/t/helper/test-svn-fe.c)
 target_link_libraries(test-svn-fe common-main vcs-svn)
 
 set(test-tool_SOURCES
@@ -875,6 +887,7 @@ set(test-tool_SOURCES
 	t/helper/test-trace2.c t/helper/test-urlmatch-normalization.c t/helper/test-xml-encode.c
 	t/helper/test-wildmatch.c t/helper/test-windows-named-pipe.c t/helper/test-write-cache.c)
 
+list(TRANSFORM test-tool_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/")
 add_executable(test-tool ${test-tool_SOURCES})
 target_link_libraries(test-tool common-main)
 
@@ -978,7 +991,8 @@ file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "RUNTIME_PREFIX='${RUNTIME_PRE
 file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "NO_PYTHON='${NO_PYTHON}'\n")
 
 #Make the tests work when building out of the source tree
-if(NOT ${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+get_filename_component(CACHE_PATH ${CMAKE_CURRENT_LIST_DIR}/../../CMakeCache.txt ABSOLUTE)
+if(NOT ${CMAKE_BINARY_DIR}/CMakeCache.txt STREQUAL ${CACHE_PATH})
 	file(RELATIVE_PATH BUILD_DIR_RELATIVE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/CMakeCache.txt)
 	string(REPLACE "/CMakeCache.txt" "" BUILD_DIR_RELATIVE ${BUILD_DIR_RELATIVE})
 	#Setting the build directory in test-lib.sh before running tests
