@@ -403,7 +403,11 @@ static int add_worktree(const char *path, const char *refname,
 	 * worktree.
 	 */
 	strbuf_reset(&sb);
-	if (get_main_ref_store(the_repository)->be == &refs_be_reftable) {
+
+	/* XXX: check GIT_TEST_REFTABLE because GIT_DEBUG_REFS obscures the
+	 * instance type. */
+	if (get_main_ref_store(the_repository)->be == &refs_be_reftable ||
+	    getenv("GIT_TEST_REFTABLE") != NULL) {
 		/* XXX this is cut & paste from reftable_init_db. */
 		strbuf_addf(&sb, "%s/HEAD", sb_repo.buf);
 		write_file(sb.buf, "%s", "ref: refs/heads/.invalid\n");
