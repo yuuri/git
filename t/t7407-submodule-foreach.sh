@@ -80,6 +80,21 @@ test_expect_success 'test basic "submodule foreach" usage' '
 	test_i18ncmp expect actual
 '
 
+sub2sha1=$(cd super/sub2 && git rev-parse HEAD)
+
+cat > expect <<EOF
+Entering 'sub2'
+$pwd/clone-foo2-sub2-$sub2sha1
+EOF
+
+test_expect_success 'test "submodule--helper foreach --no-populated" usage' '
+	(
+		cd clone &&
+		git submodule--helper foreach --no-populated "echo \$toplevel-\$name-\$path-\$sha1" > ../actual
+	) &&
+	test_i18ncmp expect actual
+'
+
 cat > expect <<EOF
 Entering 'sub3'
 $pwd/clone-foo3-sub3-$sub3sha1
