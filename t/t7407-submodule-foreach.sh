@@ -125,6 +125,21 @@ test_expect_success 'test "submodule--helper foreach --no-active" usage' '
 	test_i18ncmp expect actual
 '
 
+cat > expect <<EOF
+Entering 'sub1'
+$pwd/clone-foo1-sub1-$sub1sha1
+EOF
+
+test_expect_success 'test "submodule--helper foreach --branch" usage' '
+	test_when_finished "git -C clone config  -f .gitmodules --unset submodule.foo1.branch" &&
+	(
+		cd clone &&
+		git config -f .gitmodules --add submodule.foo1.branch test &&
+		git submodule--helper foreach --branch test "echo \$toplevel-\$name-\$path-\$sha1" > ../actual
+	) &&
+	test_i18ncmp expect actual
+'
+
 cat >expect <<EOF
 Entering '../sub1'
 $pwd/clone-foo1-sub1-../sub1-$sub1sha1
