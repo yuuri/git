@@ -362,8 +362,19 @@ proc _is_git {path {outdir_var ""}} {
 		gets $fp line
 		close $fp
 		if {[regexp "^gitdir: (.+)$" $line line link_target]} {
+			set check_path [file normalize $path]
 			set path [file join [file dirname $path] $link_target]
 			set path [file normalize $path]
+
+			if {[file exists [file join $path gitdir]]} {
+				set fp [open [file join $path gitdir] r]
+				gets $fp worktree_path
+				close $fp
+				if {[string equal $check_path $worktree_path]} {
+					set outdir $path
+					return 1
+				}
+			}
 		}
 	}
 
