@@ -1028,7 +1028,7 @@ Michael Haggerty's alternate format
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Michael Haggerty proposed
-https://public-inbox.org/git/CAMy9T_HCnyc1g8XWOOWhe7nN0aEFyyBskV2aOMb_fe+wGvEJ7A@mail.gmail.com/[an
+link:https://lore.kernel.org/git/CAMy9T_HCnyc1g8XWOOWhe7nN0aEFyyBskV2aOMb_fe%2BwGvEJ7A%40mail.gmail.com/[an
 alternate] format to reftable on the Git mailing list. This format uses
 smaller chunks, without the restart table, and avoids block alignment
 with padding. Reflog entries immediately follow each ref, and are thus
@@ -1050,7 +1050,7 @@ JGit Ketch RefTree
 
 https://dev.eclipse.org/mhonarc/lists/jgit-dev/msg03073.html[JGit Ketch]
 proposed
-https://public-inbox.org/git/CAJo=hJvnAPNAdDcAAwAvU9C4RVeQdoS3Ev9WTguHx4fD0V_nOg@mail.gmail.com/[RefTree],
+link:https://lore.kernel.org/git/CAJo%3DhJvnAPNAdDcAAwAvU9C4RVeQdoS3Ev9WTguHx4fD0V_nOg%40mail.gmail.com/[RefTree],
 an encoding of references inside Git tree objects stored as part of the
 repository's object database.
 
@@ -1070,7 +1070,7 @@ LMDB
 ^^^^
 
 David Turner proposed
-https://public-inbox.org/git/1455772670-21142-26-git-send-email-dturner@twopensource.com/[using
+https://lore.kernel.org/git/1455772670-21142-26-git-send-email-dturner@twopensource.com/[using
 LMDB], as LMDB is lightweight (64k of runtime code) and GPL-compatible
 license.
 
