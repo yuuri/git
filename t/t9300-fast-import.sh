@@ -410,6 +410,23 @@ test_expect_success 'B: accept empty committer' '
 	test -z "$out"
 '
 
+test_expect_success 'B: accept invalid timezone' '
+	cat >input <<-INPUT_END &&
+	commit refs/heads/invalid-timezone
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1234567890 +051800
+	data <<COMMIT
+	empty commit
+	COMMIT
+	INPUT_END
+
+	test_when_finished "git update-ref -d refs/heads/invalid-timezone
+		git gc
+		git prune" &&
+	git fast-import <input &&
+	git cat-file -p invalid-timezone >out &&
+	grep "1234567890 [+]051800" out
+'
+
 test_expect_success 'B: accept and fixup committer with no name' '
 	cat >input <<-INPUT_END &&
 	commit refs/heads/empty-committer-2
