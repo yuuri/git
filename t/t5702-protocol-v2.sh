@@ -829,8 +829,8 @@ test_expect_success 'fetching with valid packfile URI but invalid hash fails' '
 		"uploadpack.blobpackfileuri" \
 		"$(cat objh) $(cat objh) $HTTPD_URL/dumb/mypack-$(cat packh).pack" &&
 
-	GIT_TEST_SIDEBAND_ALL=1 \
-	test_must_fail git -c protocol.version=2 \
+	test_must_fail env GIT_TEST_SIDEBAND_ALL=1 \
+		git -c protocol.version=2 \
 		-c fetch.uriprotocols=http,https \
 		clone "$HTTPD_URL/smart/http_parent" http_child 2>err &&
 	test_i18ngrep "pack downloaded from.*does not match expected hash" err
