@@ -259,8 +259,8 @@ test_expect_success 'i-t-a files shown as new for "diff", "diff-files"; not-new 
 	 create mode 100644 not-empty
 	EOF
 	cat >expect.diff_a <<-EOF &&
-	:000000 100644 0000000 $(git rev-parse --short $hash_t) A$(printf "\t")empty
-	:000000 100644 0000000 $(git rev-parse --short $hash_t) A$(printf "\t")not-empty
+	:000000 100644 0000000 $(git rev-parse --short $hash_e) A$(printf "\t")empty
+	:000000 100644 0000000 $(git rev-parse --short $hash_n) A$(printf "\t")not-empty
 	EOF
 
 	git add -N empty not-empty &&
