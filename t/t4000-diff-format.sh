@@ -89,4 +89,14 @@ test_expect_success 'git diff-files --patch --no-patch does not show the patch' 
 	test_must_be_empty err
 '
 
+test_expect_success 'git diff-files --raw handles intent-to-add files correctly' '
+	echo 123 >ita &&
+	git add -N ita &&
+	printf ":000000 100644 %s %s A\\tita\n" \
+		$ZERO_OID $(git hash-object --stdin <ita) >expect &&
+	git diff-files --raw ita >actual &&
+	test_cmp expect actual
+'
+
+
 test_done
