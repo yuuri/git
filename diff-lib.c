@@ -223,6 +223,20 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 					       the_hash_algo->empty_blob, 0,
 					       ce->name, 0);
 				continue;
+			} else if (ce_intent_to_add(ce) &&
+				   !(revs->diffopt.output_format &
+				     ~(DIFF_FORMAT_RAW | DIFF_FORMAT_NAME_STATUS))) {
+				struct object_id oid;
+				int ret = lstat(ce->name, &st);
+
+				if (ret < 0)
+					oidclr(&oid);
+				else
+					ret = index_path(istate, &oid,
+						 ce->name, &st, 0);
+				diff_addremove(&revs->diffopt, '+', ce->ce_mode,
+					       &oid, ret >= 0, ce->name, 0);
+				continue;
 			}
 
 			changed = match_stat_with_submodule(&revs->diffopt, ce, &st,
