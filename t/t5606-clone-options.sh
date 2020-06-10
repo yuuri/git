@@ -35,4 +35,21 @@ test_expect_success 'redirected clone -v does show progress' '
 
 '
 
+test_expect_success 'chooses correct default main branch name' '
+	git init --bare empty &&
+	git -c init.defaultBranch=up clone empty whats-up &&
+	test refs/heads/up = $(git -C whats-up symbolic-ref HEAD) &&
+	test up = $(git -C whats-up config core.mainBranch) &&
+	test refs/heads/up = $(git -C whats-up config branch.up.merge)
+'
+
+test_expect_success 'guesses main branch name correctly' '
+	git init --main-branch=guess main-branch &&
+	test_commit -C main-branch no-spoilers &&
+	git -C main-branch branch abc guess &&
+	git clone main-branch is-it &&
+	test guess = $(git -C is-it config core.mainBranch) &&
+	test refs/heads/guess = $(git -C is-it symbolic-ref HEAD)
+'
+
 test_done
