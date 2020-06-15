@@ -1996,8 +1996,18 @@ int write_commit_graph(struct object_directory *odb,
 	ctx->split = flags & COMMIT_GRAPH_WRITE_SPLIT ? 1 : 0;
 	ctx->check_oids = flags & COMMIT_GRAPH_WRITE_CHECK_OIDS ? 1 : 0;
 	ctx->split_opts = split_opts;
-	ctx->changed_paths = flags & COMMIT_GRAPH_WRITE_BLOOM_FILTERS ? 1 : 0;
 	ctx->total_bloom_filter_data_size = 0;
+
+	if (flags & COMMIT_GRAPH_WRITE_BLOOM_FILTERS)
+		ctx->changed_paths = 1;
+	else if (!(flags & COMMIT_GRAPH_NO_WRITE_BLOOM_FILTERS)) {
+		prepare_commit_graph_one(ctx->r, ctx->odb);
+
+		/* We have changed-paths already. Keep them in the next graph */
+		if (ctx->r->objects->commit_graph &&
+		    ctx->r->objects->commit_graph->chunk_bloom_data)
+			ctx->changed_paths = 1;
+	}
 
 	if (ctx->split) {
 		struct commit_graph *g;
