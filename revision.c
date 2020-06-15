@@ -670,9 +670,10 @@ static void prepare_to_use_bloom_filter(struct rev_info *revs)
 {
 	struct pathspec_item *pi;
 	char *path_alloc = NULL;
-	const char *path;
+	const char *path, *p;
 	int last_index;
-	int len;
+	size_t len;
+	int path_component_nr = 1;
 
 	if (!revs->commits)
 		return;
@@ -709,8 +710,28 @@ static void prepare_to_use_bloom_filter(struct rev_info *revs)
 		return;
 	}
 
-	revs->bloom_key = xmalloc(sizeof(struct bloom_key));
-	fill_bloom_key(path, len, revs->bloom_key, revs->bloom_filter_settings);
+	p = path;
+	while (*p) {
+		if (is_dir_sep(*p))
+			path_component_nr++;
+		p++;
+	}
+
+	revs->bloom_keys_nr = path_component_nr;
+	ALLOC_ARRAY(revs->bloom_keys, revs->bloom_keys_nr);
+
+	fill_bloom_key(path, len, &revs->bloom_keys[0],
+		       revs->bloom_filter_settings);
+	path_component_nr = 1;
+
+	p = path + len - 1;
+	while (p > path) {
+		if (is_dir_sep(*p))
+			fill_bloom_key(path, p - path,
+				       &revs->bloom_keys[path_component_nr++],
+				       revs->bloom_filter_settings);
+		p--;
+	}
 
 	if (trace2_is_enabled() && !bloom_filter_atexit_registered) {
 		atexit(trace2_bloom_filter_statistics_atexit);
@@ -724,7 +745,7 @@ static int check_maybe_different_in_bloom_filter(struct rev_info *revs,
 						 struct commit *commit)
 {
 	struct bloom_filter *filter;
-	int result;
+	int result = 1, j;
 
 	if (!revs->repo->objects->commit_graph)
 		return -1;
@@ -744,9 +765,11 @@ static int check_maybe_different_in_bloom_filter(struct rev_info *revs,
 		return -1;
 	}
 
-	result = bloom_filter_contains(filter,
-				       revs->bloom_key,
-				       revs->bloom_filter_settings);
+	for (j = 0; result && j < revs->bloom_keys_nr; j++) {
+		result = bloom_filter_contains(filter,
+					       &revs->bloom_keys[j],
+					       revs->bloom_filter_settings);
+	}
 
 	if (result)
 		count_bloom_filter_maybe++;
@@ -786,7 +809,7 @@ static int rev_compare_tree(struct rev_info *revs,
 			return REV_TREE_SAME;
 	}
 
-	if (revs->bloom_key && !nth_parent) {
+	if (revs->bloom_keys_nr && !nth_parent) {
 		bloom_ret = check_maybe_different_in_bloom_filter(revs, commit);
 
 		if (bloom_ret == 0)
