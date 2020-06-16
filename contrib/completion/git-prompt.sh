@@ -421,6 +421,11 @@ __git_ps1 ()
 		return $exit
 	fi
 
+	local sparse=""
+	if [ "$(git config --bool core.sparseCheckout)" == "true" ]; then
+	    sparse="|SPARSE"
+	fi
+
 	local r=""
 	local b=""
 	local step=""
@@ -543,7 +548,7 @@ __git_ps1 ()
 	fi
 
 	local f="$w$i$s$u"
-	local gitstring="$c$b${f:+$z$f}$r$p"
+	local gitstring="$c$b${f:+$z$f}${sparse}$r$p"
 
 	if [ $pcmode = yes ]; then
 		if [ "${__git_printf_supports_v-}" != yes ]; then
