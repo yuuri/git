@@ -90,6 +90,7 @@ struct wt_status_state {
 	int bisect_in_progress;
 	int revert_in_progress;
 	int detached_at;
+	int sparse_checkout_percentage; /* -1 == not in sparse checkout */
 	char *branch;
 	char *onto;
 	char *detached_from;
