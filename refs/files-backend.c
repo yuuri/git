@@ -1228,7 +1228,6 @@ static int files_delete_refs(struct ref_store *ref_store, const char *msg,
 
 	for (i = 0; i < refnames->nr; i++) {
 		const char *refname = refnames->items[i].string;
-
 		if (refs_delete_ref(&refs->base, msg, refname, NULL, flags))
 			result |= error(_("could not remove reference %s"), refname);
 	}
@@ -2436,7 +2435,9 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 	update->backend_data = lock;
 
 	if (update->type & REF_ISSYMREF) {
-		if (update->flags & REF_NO_DEREF) {
+		if (update->flags & REF_NO_DEREF ||
+		    (ref_type(update->refname) == REF_TYPE_PSEUDOREF &&
+		     strcmp(update->refname, "HEAD"))) {
 			/*
 			 * We won't be reading the referent as part of
 			 * the transaction, so we have to read it here
@@ -2782,8 +2783,10 @@ static int files_transaction_finish(struct ref_store *ref_store,
 		struct ref_update *update = transaction->updates[i];
 		struct ref_lock *lock = update->backend_data;
 
-		if (update->flags & REF_NEEDS_COMMIT ||
-		    update->flags & REF_LOG_ONLY) {
+		if ((ref_type(lock->ref_name) != REF_TYPE_PSEUDOREF ||
+		     !strcmp(lock->ref_name, "HEAD")) &&
+		    (update->flags & REF_NEEDS_COMMIT ||
+		     update->flags & REF_LOG_ONLY)) {
 			if (files_log_ref_write(refs,
 						lock->ref_name,
 						&lock->old_oid,
