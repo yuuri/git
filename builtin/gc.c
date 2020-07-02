@@ -29,6 +29,7 @@
 #include "tree.h"
 #include "promisor-remote.h"
 #include "remote.h"
+#include "midx.h"
 
 #define FAILED_RUN "failed to run %s"
 
@@ -924,6 +925,112 @@ static int maintenance_task_loose_objects(void)
 	return prune_packed() || pack_loose();
 }
 
+static int multi_pack_index_write(void)
+{
+	struct child_process child = CHILD_PROCESS_INIT;
+
+	child.git_cmd = 1;
+	strvec_pushl(&child.args, "multi-pack-index", "write", NULL);
+
+	if (opts.quiet)
+		strvec_push(&child.args, "--no-progress");
+
+	if (run_command(&child))
+		return error(_("failed to write multi-pack-index"));
+
+	return 0;
+}
+
+static int rewrite_multi_pack_index(void)
+{
+	struct repository *r = the_repository;
+	char *midx_name = get_midx_filename(r->objects->odb->path);
+
+	unlink(midx_name);
+	free(midx_name);
+
+	return multi_pack_index_write();
+}
+
+static int multi_pack_index_verify(const char *message)
+{
+	struct child_process child = CHILD_PROCESS_INIT;
+
+	child.git_cmd = 1;
+	strvec_pushl(&child.args, "multi-pack-index", "verify", NULL);
+
+	if (opts.quiet)
+		strvec_push(&child.args, "--no-progress");
+
+	if (run_command(&child)) {
+		warning(_("'git multi-pack-index verify' failed %s"), message);
+		return 1;
+	}
+
+	return 0;
+}
+
+static int multi_pack_index_expire(void)
+{
+	struct child_process child = CHILD_PROCESS_INIT;
+
+	child.git_cmd = 1;
+	strvec_pushl(&child.args, "multi-pack-index", "expire", NULL);
+
+	if (opts.quiet)
+		strvec_push(&child.args, "--no-progress");
+
+	close_object_store(the_repository->objects);
+
+	if (run_command(&child))
+		return error(_("'git multi-pack-index expire' failed"));
+
+	return 0;
+}
+
+static int multi_pack_index_repack(void)
+{
+	struct child_process child = CHILD_PROCESS_INIT;
+
+	child.git_cmd = 1;
+	strvec_pushl(&child.args, "multi-pack-index", "repack", NULL);
+
+	if (opts.quiet)
+		strvec_push(&child.args, "--no-progress");
+
+	strvec_push(&child.args, "--batch-size=0");
+
+	close_object_store(the_repository->objects);
+
+	if (run_command(&child))
+		return error(_("'git multi-pack-index repack' failed"));
+
+	return 0;
+}
+
+static int maintenance_task_incremental_repack(void)
+{
+	prepare_repo_settings(the_repository);
+	if (!the_repository->settings.core_multi_pack_index) {
+		warning(_("skipping incremental-repack task because core.multiPackIndex is disabled"));
+		return 0;
+	}
+
+	if (multi_pack_index_write())
+		return 1;
+	if (multi_pack_index_verify("after initial write"))
+		return rewrite_multi_pack_index();
+	if (multi_pack_index_expire())
+		return 1;
+	if (multi_pack_index_verify("after expire step"))
+		return !!rewrite_multi_pack_index();
+	if (multi_pack_index_repack())
+		return 1;
+	if (multi_pack_index_verify("after repack step"))
+		return !!rewrite_multi_pack_index();
+	return 0;
+}
+
 typedef int maintenance_task_fn(void);
 
 struct maintenance_task {
@@ -937,6 +1044,7 @@ struct maintenance_task {
 enum maintenance_task_label {
 	TASK_PREFETCH,
 	TASK_LOOSE_OBJECTS,
+	TASK_INCREMENTAL_REPACK,
 	TASK_GC,
 	TASK_COMMIT_GRAPH,
 
@@ -952,6 +1060,10 @@ static struct maintenance_task tasks[] = {
 	[TASK_LOOSE_OBJECTS] = {
 		"loose-objects",
 		maintenance_task_loose_objects,
+	},
+	[TASK_INCREMENTAL_REPACK] = {
+		"incremental-repack",
+		maintenance_task_incremental_repack,
 	},
 	[TASK_GC] = {
 		"gc",
