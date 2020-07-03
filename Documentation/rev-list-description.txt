@@ -14,12 +14,12 @@ Thus, the following command:
 
 ifdef::git-rev-list[]
 -----------------------------------------------------------------------
-	$ git rev-list foo bar ^baz
+$ git rev-list foo bar ^baz
 -----------------------------------------------------------------------
 endif::git-rev-list[]
 ifdef::git-log[]
 -----------------------------------------------------------------------
-	$ git log foo bar ^baz
+$ git log foo bar ^baz
 -----------------------------------------------------------------------
 endif::git-log[]
 
@@ -27,19 +27,19 @@ means "list all the commits which are reachable from 'foo' or 'bar', but
 not from 'baz'".
 
 A special notation "'<commit1>'..'<commit2>'" can be used as a
-short-hand for "{caret}'<commit1>' '<commit2>'". For example, either of
+short-hand for "^'<commit1>' '<commit2>'". For example, either of
 the following may be used interchangeably:
 
 ifdef::git-rev-list[]
 -----------------------------------------------------------------------
-	$ git rev-list origin..HEAD
-	$ git rev-list HEAD ^origin
+$ git rev-list origin..HEAD
+$ git rev-list HEAD ^origin
 -----------------------------------------------------------------------
 endif::git-rev-list[]
 ifdef::git-log[]
 -----------------------------------------------------------------------
-	$ git log origin..HEAD
-	$ git log HEAD ^origin
+$ git log origin..HEAD
+$ git log HEAD ^origin
 -----------------------------------------------------------------------
 endif::git-log[]
 
@@ -49,13 +49,13 @@ between the two operands.  The following two commands are equivalent:
 
 ifdef::git-rev-list[]
 -----------------------------------------------------------------------
-	$ git rev-list A B --not $(git merge-base --all A B)
-	$ git rev-list A...B
+$ git rev-list A B --not $(git merge-base --all A B)
+$ git rev-list A...B
 -----------------------------------------------------------------------
 endif::git-rev-list[]
 ifdef::git-log[]
 -----------------------------------------------------------------------
-	$ git log A B --not $(git merge-base --all A B)
-	$ git log A...B
+$ git log A B --not $(git merge-base --all A B)
+$ git log A...B
 -----------------------------------------------------------------------
 endif::git-log[]
