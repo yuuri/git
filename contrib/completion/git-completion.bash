@@ -2999,12 +2999,14 @@ _git_stash ()
 				__git_complete_refs
 			else
 				__gitcomp_nl "$(__git stash list \
-						| sed -n -e 's/:.*//p')"
+						| sed -n -e 's/:.*//p' \
+						| sed 's/@/\\@/')"
 			fi
 			;;
 		show,*|apply,*|drop,*|pop,*)
 			__gitcomp_nl "$(__git stash list \
-					| sed -n -e 's/:.*//p')"
+					| sed -n -e 's/:.*//p' \
+					| sed 's/@/\\@/')"
 			;;
 		*)
 			;;
