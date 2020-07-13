@@ -68,6 +68,15 @@ test_expect_success 'git sparse-checkout init' '
 	check_files repo a
 '
 
+test_expect_success 'warning about core.repositoryFormatVersion' '
+	test_when_finished git -C repo config core.repositoryFormatVersion 1 &&
+	git -C repo status 2>err &&
+	test_must_be_empty err &&
+	git -C repo config --local core.repositoryFormatVersion 0 &&
+	git -C repo status 2>err &&
+	test_i18ngrep "some extensions are enabled, but core.repositoryFormatVersion=0" err
+'
+
 test_expect_success 'git sparse-checkout list after init' '
 	git -C repo sparse-checkout list >actual &&
 	cat >expect <<-\EOF &&

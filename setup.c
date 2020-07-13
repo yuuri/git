@@ -542,6 +542,11 @@ static int check_repository_format_gently(const char *gitdir, struct repository_
 		}
 	}
 
+	if (candidate->version == 0 && candidate->has_extensions) {
+		warning(_("some extensions are enabled, but core.repositoryFormatVersion=0"));
+		warning(_("if you intended to use extensions, run 'git config core.repositoryFormatVersion 1'"));
+	}
+
 	return 0;
 }
 
