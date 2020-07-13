@@ -78,4 +78,19 @@ test_expect_success 'config.worktree no longer read without extension' '
 	test_cmp_config -C wt2 shared this.is
 '
 
+test_expect_success 'show advice when extensions.* are not enabled' '
+	test_config core.repositoryformatversion 1 &&
+	test_config extensions.worktreeConfig true &&
+	git status 2>err &&
+	test_i18ngrep ! "git config core.repositoryFormatVersion 1" err &&
+
+	test_config core.repositoryformatversion 0 &&
+	git status 2>err &&
+	test_i18ngrep "git config core.repositoryFormatVersion 1" err &&
+
+	git config --unset core.repositoryformatversion &&
+	git status 2>err &&
+	test_i18ngrep "git config core.repositoryFormatVersion 1" err
+'
+
 test_done

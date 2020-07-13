@@ -489,6 +489,15 @@ static int check_repository_format_gently(const char *gitdir, struct repository_
 	read_repository_format(candidate, sb.buf);
 	strbuf_release(&sb);
 
+	if (candidate->version < 1 &&
+	    (candidate->saw_extensions || candidate->has_extensions))
+		advise(_("extensions.* settings require a positive repository "
+			 "format version greater than zero.\n"
+			 "\n"
+			 "Please use the following call to enable extensions.* "
+			 "config settings:\n"
+			 "\"git config core.repositoryFormatVersion 1\""));
+
 	/*
 	 * For historical use of check_repository_format() in git-init,
 	 * we treat a missing config as a silent "ok", even when nongit_ok
@@ -584,8 +593,13 @@ int read_repository_format(struct repository_format *format, const char *path)
 {
 	clear_repository_format(format);
 	git_config_from_file(check_repo_format, path, format);
-	if (format->version == -1)
+	if (format->version == -1) {
+		int saw_extensions = format->has_extensions;
+
 		clear_repository_format(format);
+
+		format->saw_extensions = saw_extensions;
+	}
 	return format->version;
 }
 
