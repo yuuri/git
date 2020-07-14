@@ -264,6 +264,11 @@ test_expect_success 'maintenance.incremental-repack.auto' '
 	done
 '
 
+test_expect_success '--auto and --scheduled incompatible' '
+	test_must_fail git maintenance run --auto --scheduled 2>err &&
+	test_i18ngrep "at most one" err
+'
+
 test_expect_success 'tasks update maintenance.<task>.lastRun' '
 	git config --unset maintenance.commit-graph.lastrun &&
 	GIT_TRACE2_EVENT="$(pwd)/run.txt" \
@@ -272,6 +277,21 @@ test_expect_success 'tasks update maintenance.<task>.lastRun' '
 	test_subcommand git commit-graph write --split --reachable \
 		--no-progress <run.txt &&
 	test_cmp_config 1595000000 maintenance.commit-graph.lastrun
+'
+
+test_expect_success '--scheduled with specific time' '
+	git config maintenance.commit-graph.schedule 100 &&
+	GIT_TRACE2_EVENT="$(pwd)/too-soon.txt" \
+		GIT_TEST_DATE_NOW=1595000099 \
+		git maintenance run --scheduled 2>/dev/null &&
+	test_subcommand ! git commit-graph write --split --reachable \
+		--no-progress <too-soon.txt &&
+	GIT_TRACE2_EVENT="$(pwd)/long-enough.txt" \
+		GIT_TEST_DATE_NOW=1595000100 \
+		git maintenance run --scheduled 2>/dev/null &&
+	test_subcommand git commit-graph write --split --reachable \
+		--no-progress <long-enough.txt &&
+	test_cmp_config 1595000100 maintenance.commit-graph.lastrun
 '
 
 test_done
