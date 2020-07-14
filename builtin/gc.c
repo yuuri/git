@@ -711,6 +711,7 @@ static const char * const builtin_maintenance_usage[] = {
 
 struct maintenance_opts {
 	int auto_flag;
+	int scheduled;
 	int quiet;
 };
 
@@ -1226,7 +1227,8 @@ struct maintenance_task {
 	const char *name;
 	maintenance_task_fn *fn;
 	maintenance_auto_fn *auto_condition;
-	unsigned enabled:1;
+	unsigned enabled:1,
+		 scheduled:1;
 
 	/* -1 if not selected. */
 	int selected_order;
@@ -1337,6 +1339,9 @@ static int maintenance_run(struct maintenance_opts *opts)
 		     !tasks[i].auto_condition()))
 			continue;
 
+		if (opts->scheduled && !tasks[i].scheduled)
+			continue;
+
 		update_last_run(&tasks[i]);
 
 		trace2_region_enter("maintenance", tasks[i].name, r);
@@ -1351,6 +1356,29 @@ static int maintenance_run(struct maintenance_opts *opts)
 	return result;
 }
 
+static void fill_schedule_info(struct maintenance_task *task,
+			       const char *config_name,
+			       timestamp_t schedule_delay)
+{
+	timestamp_t now = approxidate("now");
+	char *value = NULL;
+	struct strbuf last_run = STRBUF_INIT;
+	int64_t previous_run;
+
+	strbuf_addf(&last_run, "maintenance.%s.lastrun", task->name);
+
+	if (git_config_get_string(last_run.buf, &value))
+		task->scheduled = 1;
+	else {
+		previous_run = git_config_int64(last_run.buf, value);
+		if (now >= previous_run + schedule_delay)
+			task->scheduled = 1;
+	}
+
+	free(value);
+	strbuf_release(&last_run);
+}
+
 static void initialize_task_config(void)
 {
 	int i;
@@ -1359,6 +1387,7 @@ static void initialize_task_config(void)
 
 	for (i = 0; i < TASK__COUNT; i++) {
 		int config_value;
+		char *config_str;
 
 		strbuf_setlen(&config_name, 0);
 		strbuf_addf(&config_name, "maintenance.%s.enabled",
@@ -1366,6 +1395,20 @@ static void initialize_task_config(void)
 
 		if (!git_config_get_bool(config_name.buf, &config_value))
 			tasks[i].enabled = config_value;
+
+		strbuf_setlen(&config_name, 0);
+		strbuf_addf(&config_name, "maintenance.%s.schedule",
+			    tasks[i].name);
+
+		if (!git_config_get_string(config_name.buf, &config_str)) {
+			timestamp_t schedule_delay = git_config_int64(
+							config_name.buf,
+							config_str);
+			fill_schedule_info(&tasks[i],
+						config_name.buf,
+						schedule_delay);
+			free(config_str);
+		}
 	}
 
 	strbuf_release(&config_name);
@@ -1409,6 +1452,8 @@ int cmd_maintenance(int argc, const char **argv, const char *prefix)
 	struct option builtin_maintenance_options[] = {
 		OPT_BOOL(0, "auto", &opts.auto_flag,
 			 N_("run tasks based on the state of the repository")),
+		OPT_BOOL(0, "scheduled", &opts.scheduled,
+			 N_("run tasks based on time intervals")),
 		OPT_BOOL(0, "quiet", &opts.quiet,
 			 N_("do not report progress or other information over stderr")),
 		OPT_CALLBACK_F(0, "task", NULL, N_("task"),
@@ -1433,6 +1478,9 @@ int cmd_maintenance(int argc, const char **argv, const char *prefix)
 			     builtin_maintenance_options,
 			     builtin_maintenance_usage,
 			     PARSE_OPT_KEEP_UNKNOWN);
+
+	if (opts.auto_flag + opts.scheduled > 1)
+		die(_("use at most one of the --auto and --scheduled options"));
 
 	if (argc != 1)
 		usage_with_options(builtin_maintenance_usage,
