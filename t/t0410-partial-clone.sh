@@ -42,7 +42,7 @@ test_expect_success 'convert shallow clone to partial clone' '
 	test_cmp_config -C client 1 core.repositoryformatversion
 '
 
-test_expect_success 'convert shallow clone to partial clone must fail with any extension' '
+test_expect_success 'convert shallow clone to partial clone is OK with a grandfathered extension' '
 	rm -fr server client &&
 	test_create_repo server &&
 	test_commit -C server my_commit 1 &&
@@ -50,7 +50,21 @@ test_expect_success 'convert shallow clone to partial clone must fail with any e
 	git clone --depth=1 "file://$(pwd)/server" client &&
 	test_cmp_config -C client 0 core.repositoryformatversion &&
 	git -C client config extensions.partialclone origin &&
-	test_must_fail git -C client fetch --unshallow --filter="blob:none"
+	git -C client fetch --unshallow --filter="blob:none" &&
+	test_cmp_config -C client 1 core.repositoryformatversion
+'
+
+test_expect_success 'convert shallow clone to partial clone must fail with an unknown extension' '
+	rm -fr server client &&
+	test_create_repo server &&
+	test_commit -C server my_commit 1 &&
+	test_commit -C server my_commit2 1 &&
+	git clone --depth=1 "file://$(pwd)/server" client &&
+	test_cmp_config -C client 0 core.repositoryformatversion &&
+	git -C client config extensions.partialclone origin &&
+	git -C client config extensions.unknown true &&
+	test_must_fail git -C client fetch --unshallow --filter="blob:none" &&
+	test_cmp_config -C client 0 core.repositoryformatversion
 '
 
 test_expect_success 'missing reflog object, but promised by a commit, passes fsck' '

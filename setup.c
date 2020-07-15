@@ -456,27 +456,35 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 		data->version = git_config_int(var, value);
 	else if (skip_prefix(var, "extensions.", &ext)) {
 		/*
-		 * record any known extensions here; otherwise,
-		 * we fall through to recording it as unknown, and
-		 * check_repository_format will complain
+		 * Grandfather extensions that were known in 2.27 and
+		 * were honored by mistake even in v0 repositories; it
+		 * shoudn't be an error to upgrade v0 to v1 with them
+		 * in the repository, as they couldn't have been used
+		 * for incompatible purposes by the end user.
+		 *
+		 * When adding new extensions support in this if/elseif/...
+		 * cascade, do not mark them as allowed in v0!
 		 */
-		int is_unallowed_extension = 1;
+		int unallowed_in_v0 = 1;
 
-		if (!strcmp(ext, "noop"))
-			;
-		else if (!strcmp(ext, "preciousobjects"))
+		if (!strcmp(ext, "noop")) {
+			unallowed_in_v0 = 0;
+		} else if (!strcmp(ext, "preciousobjects")) {
 			data->precious_objects = git_config_bool(var, value);
-		else if (!strcmp(ext, "partialclone")) {
+			unallowed_in_v0 = 0;
+		} else if (!strcmp(ext, "partialclone")) {
 			if (!value)
 				return config_error_nonbool(var);
 			data->partial_clone = xstrdup(value);
+			unallowed_in_v0 = 0;
 		} else if (!strcmp(ext, "worktreeconfig")) {
 			data->worktree_config = git_config_bool(var, value);
-			is_unallowed_extension = 0;
-		} else
+			unallowed_in_v0 = 0;
+		} else {
 			string_list_append(&data->unknown_extensions, ext);
+		}
 
-		data->has_unallowed_extensions |= is_unallowed_extension;
+		data->has_unallowed_extensions |= unallowed_in_v0;
 	}
 
 	return read_worktree_config(var, value, vdata);
