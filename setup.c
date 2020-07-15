@@ -455,28 +455,37 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 	if (strcmp(var, "core.repositoryformatversion") == 0)
 		data->version = git_config_int(var, value);
 	else if (skip_prefix(var, "extensions.", &ext)) {
-		/*
-		 * record any known extensions here; otherwise,
-		 * we fall through to recording it as unknown, and
-		 * check_repository_format will complain
-		 */
-		int is_unallowed_extension = 1;
+		int unallowed_in_v0 = 1;
 
-		if (!strcmp(ext, "noop"))
-			;
-		else if (!strcmp(ext, "preciousobjects"))
+		/*
+		 * The early ones are grandfathered---they existed in
+		 * 2.27 which mistakenly honored even in repositories
+		 * whose version is before v1 (where extensions are
+		 * officially introduced).
+		 */
+		if (!strcmp(ext, "noop")) {
+			unallowed_in_v0 = 0;
+		} else if (!strcmp(ext, "preciousobjects")) {
 			data->precious_objects = git_config_bool(var, value);
-		else if (!strcmp(ext, "partialclone")) {
+			unallowed_in_v0 = 0;
+		} else if (!strcmp(ext, "partialclone")) {
 			if (!value)
 				return config_error_nonbool(var);
 			data->partial_clone = xstrdup(value);
+			unallowed_in_v0 = 0;
 		} else if (!strcmp(ext, "worktreeconfig")) {
 			data->worktree_config = git_config_bool(var, value);
-			is_unallowed_extension = 0;
-		} else
+			unallowed_in_v0 = 0;
+		/*
+		 * Extensions are added by more "} else if (...) {"
+		 * lines here, but do NOT mark them as allowed in v0
+		 * by copy-pasting without thinking.
+		 */
+		} else {
 			string_list_append(&data->unknown_extensions, ext);
+		}
 
-		data->has_unallowed_extensions |= is_unallowed_extension;
+		data->has_unallowed_extensions |= unallowed_in_v0;
 	}
 
 	return read_worktree_config(var, value, vdata);
@@ -511,15 +520,16 @@ static int check_repository_format_gently(const char *gitdir, struct repository_
 		die("%s", err.buf);
 	}
 
-	if (candidate->version >= 1) {
-		repository_format_precious_objects = candidate->precious_objects;
-		set_repository_format_partial_clone(candidate->partial_clone);
-		repository_format_worktree_config = candidate->worktree_config;
-	} else {
-		repository_format_precious_objects = 0;
-		set_repository_format_partial_clone(NULL);
-		repository_format_worktree_config = 0;
-	}
+	/*
+	 * Now we know the extensions in "candidate" repository are
+	 * OK, let's copy them to the final place.  Note that this is
+	 * done even in v0 repositories, as long as the extensions are
+	 * the grandfathered ones that used to be honored by mistake.
+	 */
+	repository_format_precious_objects = candidate->precious_objects;
+	set_repository_format_partial_clone(candidate->partial_clone);
+	repository_format_worktree_config = candidate->worktree_config;
+
 	string_list_clear(&candidate->unknown_extensions, 0);
 
 	if (repository_format_worktree_config) {

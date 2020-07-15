@@ -77,7 +77,7 @@ test_expect_success 'config.worktree no longer read without extension' '
 	test_cmp_config -C wt1 shared this.is &&
 	test_cmp_config -C wt2 shared this.is
 '
-test_expect_success 'show advice when extensions.* are not enabled' '
+test_expect_failure 'show advice when extensions.* are not enabled' '
 	test_config core.repositoryformatversion 1 &&
 	test_config extensions.worktreeConfig true &&
 	git config --worktree test.one true &&
