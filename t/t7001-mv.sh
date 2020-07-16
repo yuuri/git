@@ -248,6 +248,24 @@ test_expect_success 'git mv should not change sha1 of moved cache entry' '
 
 rm -f dirty dirty2
 
+# NB: This test is about the error message
+# as well as the failure.
+test_expect_success 'git mv error on conflicted file' '
+	rm -fr .git &&
+	git init &&
+	touch conflicted &&
+	cfhash=$(git hash-object -w conflicted) &&
+	git update-index --index-info <<-EOF &&
+	$(printf "0 $cfhash 0\tconflicted\n")
+	$(printf "100644 $cfhash 1\tconflicted\n")
+	EOF
+
+	test_must_fail git mv conflicted newname 2>actual &&
+	test_i18ngrep "merge.conflict" actual
+'
+
+rm -f conflicted
+
 test_expect_success 'git mv should overwrite symlink to a file' '
 
 	rm -fr .git &&

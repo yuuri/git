@@ -220,9 +220,18 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 				}
 				argc += last - first;
 			}
-		} else if (cache_name_pos(src, length) < 0)
-			bad = _("not under version control");
-		else if (lstat(dst, &st) == 0 &&
+		} else if (cache_name_pos(src, length) < 0) {
+			/*
+			 * This occurs for both untracked files *and*
+			 * files that are in merge-conflict state, so
+			 * let's distinguish between those two.
+			 */
+			struct cache_entry *ce = cache_file_exists(src, length, ignore_case);
+			if (ce == NULL)
+				bad = _("not under version control");
+			else
+				bad = _("must resolve merge conflict first");
+		} else if (lstat(dst, &st) == 0 &&
 			 (!ignore_case || strcasecmp(src, dst))) {
 			bad = _("destination exists");
 			if (force) {
