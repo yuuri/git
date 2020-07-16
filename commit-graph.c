@@ -38,11 +38,12 @@ void git_test_write_commit_graph_or_die(void)
 #define GRAPH_CHUNKID_OIDFANOUT 0x4f494446 /* "OIDF" */
 #define GRAPH_CHUNKID_OIDLOOKUP 0x4f49444c /* "OIDL" */
 #define GRAPH_CHUNKID_DATA 0x43444154 /* "CDAT" */
+#define GRAPH_CHUNKID_GENERATION_DATA 0x47444154 /* "GDAT" */
 #define GRAPH_CHUNKID_EXTRAEDGES 0x45444745 /* "EDGE" */
 #define GRAPH_CHUNKID_BLOOMINDEXES 0x42494458 /* "BIDX" */
 #define GRAPH_CHUNKID_BLOOMDATA 0x42444154 /* "BDAT" */
 #define GRAPH_CHUNKID_BASE 0x42415345 /* "BASE" */
-#define MAX_NUM_CHUNKS 7
+#define MAX_NUM_CHUNKS 8
 
 #define GRAPH_DATA_WIDTH (the_hash_algo->rawsz + 16)
 
@@ -387,6 +388,13 @@ struct commit_graph *parse_commit_graph(void *graph_map, size_t graph_size)
 				chunk_repeated = 1;
 			else
 				graph->chunk_commit_data = data + chunk_offset;
+			break;
+
+		case GRAPH_CHUNKID_GENERATION_DATA:
+			if (graph->chunk_generation_data)
+				chunk_repeated = 1;
+			else
+				graph->chunk_generation_data = data + chunk_offset;
 			break;
 
 		case GRAPH_CHUNKID_EXTRAEDGES:
@@ -768,7 +776,10 @@ static void fill_commit_graph_info(struct commit *item, struct commit_graph *g, 
 	date_low = get_be32(commit_data + g->hash_len + 12);
 	item->date = (timestamp_t)((date_high << 32) | date_low);
 
-	graph_data->generation = get_be32(commit_data + g->hash_len + 8) >> 2;
+	if (g->chunk_generation_data)
+		graph_data->generation = get_be32(g->chunk_generation_data + sizeof(uint32_t) * lex_index);
+	else
+		graph_data->generation = get_be32(commit_data + g->hash_len + 8) >> 2;
 }
 
 static inline void set_commit_tree(struct commit *c, struct tree *t)
@@ -1097,6 +1108,17 @@ static void write_graph_chunk_data(struct hashfile *f, int hash_len,
 		hashwrite(f, packedDate, 8);
 
 		list++;
+	}
+}
+
+static void write_graph_chunk_generation_data(struct hashfile *f,
+					      struct write_commit_graph_context *ctx)
+{
+	struct commit **list = ctx->commits.list;
+	int count;
+	for (count = 0; count < ctx->commits.nr; count++, list++) {
+		display_progress(ctx->progress, ++ctx->progress_cnt);
+		hashwrite_be32(f, commit_graph_data_at(*list)->generation);
 	}
 }
 
@@ -1605,7 +1627,7 @@ static int write_commit_graph_file(struct write_commit_graph_context *ctx)
 	uint64_t chunk_offsets[MAX_NUM_CHUNKS + 1];
 	const unsigned hashsz = the_hash_algo->rawsz;
 	struct strbuf progress_title = STRBUF_INIT;
-	int num_chunks = 3;
+	int num_chunks = 4;
 	struct object_id file_hash;
 	const struct bloom_filter_settings bloom_settings = DEFAULT_BLOOM_FILTER_SETTINGS;
 
@@ -1656,6 +1678,7 @@ static int write_commit_graph_file(struct write_commit_graph_context *ctx)
 	chunk_ids[0] = GRAPH_CHUNKID_OIDFANOUT;
 	chunk_ids[1] = GRAPH_CHUNKID_OIDLOOKUP;
 	chunk_ids[2] = GRAPH_CHUNKID_DATA;
+	chunk_ids[3] = GRAPH_CHUNKID_GENERATION_DATA;
 	if (ctx->num_extra_edges) {
 		chunk_ids[num_chunks] = GRAPH_CHUNKID_EXTRAEDGES;
 		num_chunks++;
@@ -1677,8 +1700,9 @@ static int write_commit_graph_file(struct write_commit_graph_context *ctx)
 	chunk_offsets[1] = chunk_offsets[0] + GRAPH_FANOUT_SIZE;
 	chunk_offsets[2] = chunk_offsets[1] + hashsz * ctx->commits.nr;
 	chunk_offsets[3] = chunk_offsets[2] + (hashsz + 16) * ctx->commits.nr;
+	chunk_offsets[4] = chunk_offsets[3] + sizeof(uint32_t) * ctx->commits.nr;
 
-	num_chunks = 3;
+	num_chunks = 4;
 	if (ctx->num_extra_edges) {
 		chunk_offsets[num_chunks + 1] = chunk_offsets[num_chunks] +
 						4 * ctx->num_extra_edges;
@@ -1728,6 +1752,7 @@ static int write_commit_graph_file(struct write_commit_graph_context *ctx)
 	write_graph_chunk_fanout(f, ctx);
 	write_graph_chunk_oids(f, hashsz, ctx);
 	write_graph_chunk_data(f, hashsz, ctx);
+	write_graph_chunk_generation_data(f, ctx);
 	if (ctx->num_extra_edges)
 		write_graph_chunk_extra_edges(f, ctx);
 	if (ctx->changed_paths) {
