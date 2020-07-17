@@ -112,6 +112,21 @@ uint32_t commit_graph_generation(const struct commit *c)
 	return data->generation;
 }
 
+int compare_commits_by_gen(const void *_a, const void *_b)
+{
+	const struct commit *a = _a, *b = _b;
+	const uint32_t generation_a = commit_graph_generation(a);
+	const uint32_t generation_b = commit_graph_generation(b);
+
+	/* older commits first */
+	if (generation_a < generation_b)
+		return -1;
+	else if (generation_a > generation_b)
+		return 1;
+
+	return 0;
+}
+
 static struct commit_graph_data *commit_graph_data_at(const struct commit *c)
 {
 	unsigned int i, nth_slab;
