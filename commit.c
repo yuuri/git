@@ -731,14 +731,11 @@ int compare_commits_by_author_date(const void *a_, const void *b_,
 int compare_commits_by_gen_then_commit_date(const void *a_, const void *b_, void *unused)
 {
 	const struct commit *a = a_, *b = b_;
-	const uint32_t generation_a = commit_graph_generation(a),
-		       generation_b = commit_graph_generation(b);
+	int ret_val = compare_commits_by_gen(a_, b_);
 
 	/* newer commits first */
-	if (generation_a < generation_b)
-		return 1;
-	else if (generation_a > generation_b)
-		return -1;
+	if (ret_val)
+		return -ret_val;
 
 	/* use date as a heuristic when generations are equal */
 	if (a->date < b->date)
