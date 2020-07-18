@@ -15,6 +15,9 @@
 #define GENERATION_NUMBER_MAX 0x3FFFFFFF
 #define GENERATION_NUMBER_ZERO 0
 
+#define GENERATION_NUMBER_V2_INFINITY ((1ULL << 63) - 1)
+#define GENERATION_NUMBER_V2_OFFSET_MAX 0xFFFFFFFF
+
 struct commit_list {
 	struct commit *item;
 	struct commit_list *next;
