@@ -102,6 +102,29 @@ void *mem_pool_calloc(struct mem_pool *mem_pool, size_t count, size_t size)
 	return r;
 }
 
+char *mem_pool_xstrdup(struct mem_pool *pool, const char *str)
+{
+	size_t len = strlen(str) + 1;
+	char *ret = mem_pool_alloc(pool, len);
+
+	if (!ret)
+		die(_("mem_pool_xstrdup: out of memory"));
+
+	return memcpy(ret, str, len);
+}
+
+char *mem_pool_xstrndup(struct mem_pool *pool, const char *str, size_t len)
+{
+	size_t minlen = strnlen(str, len);
+	char *ret = mem_pool_alloc(pool, minlen+1);
+
+	if (!ret)
+		die(_("mem_pool_xstrndup: out of memory"));
+
+	ret[minlen] = '\0';
+	return memcpy(ret, str, minlen);
+}
+
 int mem_pool_contains(struct mem_pool *mem_pool, void *mem)
 {
 	struct mp_block *p;
