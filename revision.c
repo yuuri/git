@@ -3365,6 +3365,9 @@ static void indegree_walk_step(struct rev_info *revs)
 		struct commit *parent = p->item;
 		int *pi = indegree_slab_at(&info->indegree, parent);
 
+		if (parse_commit_gently(parent, 1) < 0)
+			return;
+
 		if (*pi)
 			(*pi)++;
 		else
