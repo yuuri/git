@@ -66,6 +66,8 @@ int estimate_bisect_steps(int all);
 
 void read_bisect_terms(const char **bad, const char **good);
 
+int read_first_parent_option(void);
+
 int bisect_clean_state(void);
 
 #endif
