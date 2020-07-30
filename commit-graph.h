@@ -94,6 +94,12 @@ enum commit_graph_write_flags {
 	COMMIT_GRAPH_WRITE_BLOOM_FILTERS = (1 << 3),
 };
 
+enum commit_graph_verify_flags {
+	COMMIT_GRAPH_VERIFY_SHALLOW       = (1 << 0),
+	COMMIT_GRAPH_VERIFY_CHANGED_PATHS = (1 << 1),
+	COMMIT_GRAPH_VERIFY_PROGRESS      = (1 << 2),
+};
+
 enum commit_graph_split_flags {
 	COMMIT_GRAPH_SPLIT_UNSPECIFIED      = 0,
 	COMMIT_GRAPH_SPLIT_MERGE_PROHIBITED = 1,
@@ -122,9 +128,9 @@ int write_commit_graph(struct object_directory *odb,
 		       enum commit_graph_write_flags flags,
 		       const struct split_commit_graph_opts *split_opts);
 
-#define COMMIT_GRAPH_VERIFY_SHALLOW	(1 << 0)
-
-int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags);
+int verify_commit_graph(struct repository *r,
+			struct commit_graph *g,
+			enum commit_graph_verify_flags flags);
 
 void close_commit_graph(struct raw_object_store *);
 void free_commit_graph(struct commit_graph *);

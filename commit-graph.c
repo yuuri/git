@@ -250,7 +250,7 @@ struct commit_graph *load_commit_graph_one_fd_st(int fd, struct stat *st,
 	return ret;
 }
 
-static int verify_commit_graph_lite(struct commit_graph *g)
+static int verify_commit_graph_lite(struct commit_graph *g, int verify_changed_path)
 {
 	/*
 	 * Basic validation shared between parse_commit_graph()
@@ -275,6 +275,16 @@ static int verify_commit_graph_lite(struct commit_graph *g)
 	if (!g->chunk_commit_data) {
 		error("commit-graph is missing the Commit Data chunk");
 		return 1;
+	}
+	if (verify_changed_path) {
+		if (!g->chunk_bloom_indexes) {
+			error("commit-graph is missing Bloom Index chunk");
+			return 1;
+		}
+		if (!g->chunk_bloom_data) {
+			error("commit-graph is missing Bloom Data chunk");
+			return 1;
+		}
 	}
 
 	return 0;
@@ -439,7 +449,7 @@ struct commit_graph *parse_commit_graph(void *graph_map, size_t graph_size)
 
 	hashcpy(graph->oid.hash, graph->data + graph->data_len - graph->hash_len);
 
-	if (verify_commit_graph_lite(graph))
+	if (verify_commit_graph_lite(graph, 0))
 		goto free_and_return;
 
 	return graph;
@@ -2216,7 +2226,9 @@ static void graph_report(const char *fmt, ...)
 #define GENERATION_ZERO_EXISTS 1
 #define GENERATION_NUMBER_EXISTS 2
 
-int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
+int verify_commit_graph(struct repository *r,
+			struct commit_graph *g,
+			enum commit_graph_verify_flags flags)
 {
 	uint32_t i, cur_fanout_pos = 0;
 	struct object_id prev_oid, cur_oid, checksum;
@@ -2231,7 +2243,7 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 		return 1;
 	}
 
-	verify_commit_graph_error = verify_commit_graph_lite(g);
+	verify_commit_graph_error = verify_commit_graph_lite(g, flags & COMMIT_GRAPH_VERIFY_CHANGED_PATHS);
 	if (verify_commit_graph_error)
 		return verify_commit_graph_error;
 
@@ -2284,7 +2296,7 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 	if (verify_commit_graph_error & ~VERIFY_COMMIT_GRAPH_ERROR_HASH)
 		return verify_commit_graph_error;
 
-	if (flags & COMMIT_GRAPH_WRITE_PROGRESS)
+	if (flags & COMMIT_GRAPH_VERIFY_PROGRESS)
 		progress = start_progress(_("Verifying commits in commit graph"),
 					g->num_commits);
 

@@ -18,7 +18,8 @@ static char const * const builtin_commit_graph_usage[] = {
 };
 
 static const char * const builtin_commit_graph_verify_usage[] = {
-	N_("git commit-graph verify [--object-dir <objdir>] [--shallow] [--[no-]progress]"),
+	N_("git commit-graph verify [--object-dir <objdir>] [--shallow] "
+	    "[--has-changed-paths] [--[no-]progress]"),
 	NULL
 };
 
@@ -37,6 +38,7 @@ static struct opts_commit_graph {
 	int append;
 	int split;
 	int shallow;
+	int has_changed_paths;
 	int progress;
 	int enable_changed_paths;
 } opts;
@@ -71,12 +73,14 @@ static int graph_verify(int argc, const char **argv)
 	int open_ok;
 	int fd;
 	struct stat st;
-	int flags = 0;
+	enum commit_graph_verify_flags flags = 0;
 
 	static struct option builtin_commit_graph_verify_options[] = {
 		OPT_STRING(0, "object-dir", &opts.obj_dir,
 			   N_("dir"),
 			   N_("The object directory to store the graph")),
+		OPT_BOOL(0, "has-changed-paths", &opts.has_changed_paths,
+			 N_("verify that the commit-graph includes changed paths")),
 		OPT_BOOL(0, "shallow", &opts.shallow,
 			 N_("if the commit-graph is split, only verify the tip file")),
 		OPT_BOOL(0, "progress", &opts.progress, N_("force progress reporting")),
@@ -94,8 +98,10 @@ static int graph_verify(int argc, const char **argv)
 		opts.obj_dir = get_object_directory();
 	if (opts.shallow)
 		flags |= COMMIT_GRAPH_VERIFY_SHALLOW;
+	if (opts.has_changed_paths)
+		flags |= COMMIT_GRAPH_VERIFY_CHANGED_PATHS;
 	if (opts.progress)
-		flags |= COMMIT_GRAPH_WRITE_PROGRESS;
+		flags |= COMMIT_GRAPH_VERIFY_PROGRESS;
 
 	odb = find_odb(the_repository, opts.obj_dir);
 	graph_name = get_commit_graph_filename(odb);
