@@ -1304,6 +1304,33 @@ done:
 	return err;
 }
 
+static int read_fetch_head(struct git_reftable_ref_store *refs,
+			   const char *refname, struct object_id *oid,
+			   struct strbuf *referent, unsigned int *type)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct strbuf path_sb = STRBUF_INIT;
+	int ret = -1;
+	int fd;
+	strbuf_addf(&path_sb, "%s/%s", refs->repo_dir, refname);
+	fd = open(path_sb.buf, O_RDONLY);
+	if (fd < 0) {
+		goto out;
+	}
+	strbuf_reset(&sb);
+	if (strbuf_read(&sb, fd, 256) < 0) {
+		ret = -1;
+	}
+	strbuf_rtrim(&sb);
+
+	ret = parse_loose_ref_contents(sb.buf, oid, referent, type);
+out:
+	close(fd);
+	strbuf_release(&sb);
+	strbuf_release(&path_sb);
+	return ret;
+}
+
 static int git_reftable_read_raw_ref(struct ref_store *ref_store,
 				     const char *refname, struct object_id *oid,
 				     struct strbuf *referent,
@@ -1317,6 +1344,10 @@ static int git_reftable_read_raw_ref(struct ref_store *ref_store,
 	int err = 0;
 	if (refs->err < 0) {
 		return refs->err;
+	}
+
+	if (!strcmp(refname, "FETCH_HEAD")) {
+		return read_fetch_head(refs, refname, oid, referent, type);
 	}
 
 	/* This is usually not needed, but Git doesn't signal to ref backend if

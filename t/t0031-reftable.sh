@@ -169,5 +169,12 @@ test_expect_success 'worktrees 2' '
 	git worktree add --detach existing_empty master
 '
 
-test_done
+test_expect_success 'FETCH_HEAD' '
+        initialize &&
+	test_commit one &&
+	(git init sub && cd sub && test_commit two) &&
+	git fetch sub &&
+	git checkout FETCH_HEAD
+'
 
+test_done
