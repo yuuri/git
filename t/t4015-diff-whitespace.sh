@@ -789,13 +789,19 @@ test_expect_success 'checkdiff allows new blank lines' '
 	git diff --check
 '
 
-test_expect_success 'whitespace-only changes not reported' '
+test_expect_success 'whitespace-only changes not reported (diff)' '
 	git reset --hard &&
 	echo >x "hello world" &&
 	git add x &&
 	git commit -m "hello 1" &&
 	echo >x "hello  world" &&
 	git diff -b >actual &&
+	test_must_be_empty actual
+'
+
+test_expect_success 'whitespace-only changes not reported (diffstat)' '
+	# reuse state from previous test
+	git diff --stat -b >actual &&
 	test_must_be_empty actual
 '
 
