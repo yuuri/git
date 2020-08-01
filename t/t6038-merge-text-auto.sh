@@ -189,7 +189,7 @@ test_expect_failure 'checkout -m addition of text=auto' '
 '
 
 test_expect_failure 'cherry-pick patch from after text=auto was added' '
-	append_cr <<-\EOF >expected &&
+	cat <<-\EOF >expected &&
 	first line
 	same line
 	EOF
@@ -197,9 +197,9 @@ test_expect_failure 'cherry-pick patch from after text=auto was added' '
 	git config merge.renormalize true &&
 	git rm -fr . &&
 	git reset --hard b &&
-	test_must_fail git cherry-pick a >err 2>&1 &&
-	grep "[Nn]othing added" err &&
-	compare_files expected file
+	git cherry-pick a &&
+	git cat-file -p HEAD:file >actual &&
+	compare_files expected actual
 '
 
 test_expect_success 'Test delete/normalize conflict' '
