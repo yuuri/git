@@ -100,7 +100,7 @@ uint32_t commit_graph_position(const struct commit *c)
 	return data ? data->graph_pos : COMMIT_NOT_FROM_GRAPH;
 }
 
-uint32_t commit_graph_generation(const struct commit *c)
+timestamp_t commit_graph_generation(const struct commit *c)
 {
 	struct commit_graph_data *data =
 		commit_graph_data_slab_peek(&commit_graph_data_slab, c);
@@ -116,8 +116,8 @@ uint32_t commit_graph_generation(const struct commit *c)
 int compare_commits_by_gen(const void *_a, const void *_b)
 {
 	const struct commit *a = _a, *b = _b;
-	const uint32_t generation_a = commit_graph_generation(a);
-	const uint32_t generation_b = commit_graph_generation(b);
+	const timestamp_t generation_a = commit_graph_generation(a);
+	const timestamp_t generation_b = commit_graph_generation(b);
 
 	/* older commits first */
 	if (generation_a < generation_b)
@@ -160,8 +160,8 @@ static int commit_gen_cmp(const void *va, const void *vb)
 	const struct commit *a = *(const struct commit **)va;
 	const struct commit *b = *(const struct commit **)vb;
 
-	uint32_t generation_a = commit_graph_data_at(a)->generation;
-	uint32_t generation_b = commit_graph_data_at(b)->generation;
+	const timestamp_t generation_a = commit_graph_data_at(a)->generation;
+	const timestamp_t generation_b = commit_graph_data_at(b)->generation;
 	/* lower generation commits first */
 	if (generation_a < generation_b)
 		return -1;
@@ -1363,7 +1363,7 @@ static void compute_generation_numbers(struct write_commit_graph_context *ctx)
 		uint32_t generation = commit_graph_data_at(ctx->commits.list[i])->generation;
 
 		display_progress(ctx->progress, i + 1);
-		if (generation != GENERATION_NUMBER_INFINITY &&
+		if (generation != GENERATION_NUMBER_V1_INFINITY &&
 		    generation != GENERATION_NUMBER_ZERO)
 			continue;
 
@@ -1377,7 +1377,7 @@ static void compute_generation_numbers(struct write_commit_graph_context *ctx)
 			for (parent = current->parents; parent; parent = parent->next) {
 				generation = commit_graph_data_at(parent->item)->generation;
 
-				if (generation == GENERATION_NUMBER_INFINITY ||
+				if (generation == GENERATION_NUMBER_V1_INFINITY ||
 				    generation == GENERATION_NUMBER_ZERO) {
 					all_parents_computed = 0;
 					commit_list_insert(parent->item, &list);
@@ -2387,8 +2387,8 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 	for (i = 0; i < g->num_commits; i++) {
 		struct commit *graph_commit, *odb_commit;
 		struct commit_list *graph_parents, *odb_parents;
-		uint32_t max_generation = 0;
-		uint32_t generation;
+		timestamp_t max_generation = 0;
+		timestamp_t generation;
 
 		display_progress(progress, i + 1);
 		hashcpy(cur_oid.hash, g->chunk_oid_lookup + g->hash_len * i);
