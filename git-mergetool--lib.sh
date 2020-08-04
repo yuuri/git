@@ -289,6 +289,9 @@ list_merge_tool_candidates () {
 		if is_desktop "GNOME" || test -n "$GNOME_DESKTOP_SESSION_ID"
 		then
 			tools="meld opendiff kdiff3 tkdiff xxdiff $tools"
+		elif is_desktop "KDE" || test x"$KDE_FULL_SESSION" = x"true"
+		then
+			tools="kdiff3 opendiff tkdiff xxdiff meld $tools"
 		else
 			tools="opendiff kdiff3 tkdiff xxdiff meld $tools"
 		fi
