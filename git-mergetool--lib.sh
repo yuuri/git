@@ -266,6 +266,17 @@ run_merge_cmd () {
 	fi
 }
 
+is_desktop () {
+	case ":$XDG_CURRENT_DESKTOP:" in
+	*:$1:*)
+		return 0
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
 list_merge_tool_candidates () {
 	if merge_mode
 	then
@@ -275,7 +286,7 @@ list_merge_tool_candidates () {
 	fi
 	if test -n "$DISPLAY"
 	then
-		if test -n "$GNOME_DESKTOP_SESSION_ID"
+		if is_desktop "GNOME" || test -n "$GNOME_DESKTOP_SESSION_ID"
 		then
 			tools="meld opendiff kdiff3 tkdiff xxdiff $tools"
 		else
