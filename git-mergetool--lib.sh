@@ -288,11 +288,12 @@ list_merge_tool_candidates () {
 	fi
 	if test -n "$DISPLAY"
 	then
+		cross_desktop_tools="opendiff kdiff3 tkdiff xxdiff"
 		if is_desktop "GNOME"
 		then
-			tools="meld opendiff kdiff3 tkdiff xxdiff $tools"
+			tools="meld $cross_desktop_tools $tools"
 		else
-			tools="opendiff kdiff3 tkdiff xxdiff meld $tools"
+			tools="$cross_desktop_tools meld $tools"
 		fi
 		tools="$tools gvimdiff diffuse diffmerge ecmerge"
 		tools="$tools p4merge araxis bc codecompare"
