@@ -6,6 +6,8 @@ endif
 
 INSTALL ?= install
 TAR ?= tar
+TAR_CF ?= tar cf
+TAR_XF ?= tar xof
 RM ?= rm -f
 prefix ?= $(HOME)
 template_instdir ?= $(prefix)/share/git-core/templates
@@ -62,5 +64,5 @@ clean:
 
 install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(template_instdir_SQ)'
-	(cd blt && $(TAR) cf - .) | \
-	(cd '$(DESTDIR_SQ)$(template_instdir_SQ)' && umask 022 && $(TAR) xof -)
+	(cd blt && $(TAR_CF) - .) | \
+	(cd '$(DESTDIR_SQ)$(template_instdir_SQ)' && umask 022 && $(TAR_XF) -)

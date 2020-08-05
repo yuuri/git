@@ -547,6 +547,8 @@ AR = ar
 RM = rm -f
 DIFF = diff
 TAR = tar
+TAR_CF = $(TAR) cf
+TAR_XF = $(TAR) xof
 FIND = find
 INSTALL = install
 TCL_PATH = tclsh
@@ -2926,13 +2928,13 @@ endif
 	$(INSTALL) -m 644 mergetools/* '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
 ifndef NO_GETTEXT
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(localedir_SQ)'
-	(cd po/build/locale && $(TAR) cf - .) | \
-	(cd '$(DESTDIR_SQ)$(localedir_SQ)' && umask 022 && $(TAR) xof -)
+	(cd po/build/locale && $(TAR_CF) - .) | \
+	(cd '$(DESTDIR_SQ)$(localedir_SQ)' && umask 022 && $(TAR_XF) -)
 endif
 ifndef NO_PERL
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(perllibdir_SQ)'
-	(cd perl/build/lib && $(TAR) cf - .) | \
-	(cd '$(DESTDIR_SQ)$(perllibdir_SQ)' && umask 022 && $(TAR) xof -)
+	(cd perl/build/lib && $(TAR_CF) - .) | \
+	(cd '$(DESTDIR_SQ)$(perllibdir_SQ)' && umask 022 && $(TAR_XF) -)
 	$(MAKE) -C gitweb install
 endif
 ifndef NO_TCLTK
@@ -2999,8 +3001,8 @@ install-man: install-man-perl
 
 install-man-perl: man-perl
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mandir_SQ)/man3'
-	(cd perl/build/man/man3 && $(TAR) cf - .) | \
-	(cd '$(DESTDIR_SQ)$(mandir_SQ)/man3' && umask 022 && $(TAR) xof -)
+	(cd perl/build/man/man3 && $(TAR_CF) - .) | \
+	(cd '$(DESTDIR_SQ)$(mandir_SQ)/man3' && umask 022 && $(TAR_XF) -)
 
 install-html:
 	$(MAKE) -C Documentation install-html
