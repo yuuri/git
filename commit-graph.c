@@ -674,6 +674,14 @@ int generation_numbers_enabled(struct repository *r)
 	if (!g->num_commits)
 		return 0;
 
+	/* We cannot compare topological levels and corrected commit dates */
+	while (g->base_graph) {
+		warning(_("commit-graph-chain contains mixed generation versions"));
+		if ((g->chunk_generation_data == NULL) ^ (g->base_graph->chunk_generation_data == NULL))
+			return 0;
+		g = g->base_graph;
+	}
+
 	first_generation = get_be32(g->chunk_commit_data +
 				    g->hash_len + 8) >> 2;
 
@@ -2186,6 +2194,9 @@ int write_commit_graph(struct object_directory *odb,
 
 		g = ctx->r->objects->commit_graph;
 
+		if (g && !g->chunk_generation_data)
+			ctx->write_generation_data = 0;
+
 		while (g) {
 			ctx->num_commit_graphs_before++;
 			g = g->base_graph;
@@ -2204,6 +2215,9 @@ int write_commit_graph(struct object_directory *odb,
 
 		if (ctx->split_opts)
 			replace = ctx->split_opts->flags & COMMIT_GRAPH_SPLIT_REPLACE;
+
+		if (replace)
+			ctx->write_generation_data = 1;
 	}
 
 	ctx->approx_nr_objects = approximate_object_count();

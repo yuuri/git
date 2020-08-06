@@ -425,4 +425,70 @@ done <<\EOF
 0600 -r--------
 EOF
 
+test_expect_success 'setup repo for mixed generation commit-graph-chain' '
+	mkdir mixed &&
+	graphdir=".git/objects/info/commit-graphs" &&
+	cd "$TRASH_DIRECTORY/mixed" &&
+	git init &&
+	git config core.commitGraph true &&
+	git config gc.writeCommitGraph false &&
+	for i in $(test_seq 3)
+	do
+		test_commit $i &&
+		git branch commits/$i || return 1
+	done &&
+	git reset --hard commits/1 &&
+	for i in $(test_seq 4 5)
+	do
+		test_commit $i &&
+		git branch commits/$i || return 1
+	done &&
+	git reset --hard commits/2 &&
+	for i in $(test_seq 6 10)
+	do
+		test_commit $i &&
+		git branch commits/$i || return 1
+	done &&
+	git reset --hard commits/2 &&
+	git merge commits/4 &&
+	git branch merge/1 &&
+	git reset --hard commits/4 &&
+	git merge commits/6 &&
+	git branch merge/2 &&
+	GIT_TEST_COMMIT_GRAPH_NO_GDAT=1 git commit-graph write --reachable --split &&
+	test-tool read-graph >output &&
+	cat >expect <<-EOF &&
+	header: 43475048 1 1 3 0
+	num_commits: 12
+	chunks: oid_fanout oid_lookup commit_metadata
+	EOF
+	test_cmp expect output
+'
+
+test_expect_success 'does not write generation data chunk if not present on existing tip' '
+	cd "$TRASH_DIRECTORY/mixed" &&
+	git reset --hard commits/3 &&
+	git merge merge/1 &&
+	git merge commits/5 &&
+	git merge merge/2 &&
+	git branch merge/3 &&
+	git commit-graph write --reachable --split &&
+	test-tool read-graph >output &&
+	cat >expect <<-EOF &&
+	header: 43475048 1 1 4 1
+	num_commits: 3
+	chunks: oid_fanout oid_lookup commit_metadata
+	EOF
+	test_cmp expect output
+'
+
+test_expect_success 'writes generation data chunk when commit-graph chain is replaced' '
+	cd "$TRASH_DIRECTORY/mixed" &&
+	git commit-graph write --reachable --split='replace' &&
+	test_path_is_file $graphdir/commit-graph-chain &&
+	test_line_count = 1 $graphdir/commit-graph-chain &&
+	verify_chain_files_exist $graphdir &&
+	graph_read_expect 15
+'
+
 test_done
