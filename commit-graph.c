@@ -597,6 +597,27 @@ static struct commit_graph *load_commit_graph_chain(struct repository *r,
 	return graph_chain;
 }
 
+static void validate_mixed_generation_chain(struct repository *r)
+{
+	struct commit_graph *g = r->objects->commit_graph;
+	int read_generation_data = 1;
+
+	while (g) {
+		if (!g->chunk_generation_data) {
+			read_generation_data = 0;
+			break;
+		}
+		g = g->base_graph;
+	}
+
+	g = r->objects->commit_graph;
+
+	while (g) {
+		g->read_generation_data = read_generation_data;
+		g = g->base_graph;
+	}
+}
+
 struct commit_graph *read_commit_graph_one(struct repository *r,
 					   struct object_directory *odb)
 {
@@ -604,6 +625,8 @@ struct commit_graph *read_commit_graph_one(struct repository *r,
 
 	if (!g)
 		g = load_commit_graph_chain(r, odb);
+
+	validate_mixed_generation_chain(r);
 
 	return g;
 }
@@ -763,7 +786,7 @@ static void fill_commit_graph_info(struct commit *item, struct commit_graph *g, 
 	date_low = get_be32(commit_data + g->hash_len + 12);
 	item->date = (timestamp_t)((date_high << 32) | date_low);
 
-	if (g->chunk_generation_data)
+	if (g->chunk_generation_data && g->read_generation_data)
 		graph_data->generation = item->date +
 			(timestamp_t) get_be32(g->chunk_generation_data + sizeof(uint32_t) * lex_index);
 	else
@@ -885,6 +908,7 @@ void load_commit_graph_info(struct repository *r, struct commit *item)
 	uint32_t pos;
 	if (!prepare_commit_graph(r))
 		return;
+
 	if (find_commit_in_graph(item, r->objects->commit_graph, &pos))
 		fill_commit_graph_info(item, r->objects->commit_graph, pos);
 }
@@ -2192,6 +2216,9 @@ int write_commit_graph(struct object_directory *odb,
 
 		g = ctx->r->objects->commit_graph;
 
+		if (g && !g->chunk_generation_data)
+			ctx->write_generation_data = 0;
+
 		while (g) {
 			ctx->num_commit_graphs_before++;
 			g = g->base_graph;
@@ -2210,6 +2237,9 @@ int write_commit_graph(struct object_directory *odb,
 
 		if (ctx->split_opts)
 			replace = ctx->split_opts->flags & COMMIT_GRAPH_SPLIT_REPLACE;
+
+		if (replace)
+			ctx->write_generation_data = 1;
 	}
 
 	ctx->approx_nr_objects = approximate_object_count();
