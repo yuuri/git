@@ -38,14 +38,27 @@ A consumer may load the following info for a commit from the graph:
 
 Values 1-4 satisfy the requirements of parse_commit_gently().
 
-Define the "generation number" of a commit recursively as follows:
+There are two definitions of generation number:
+1. Corrected committer dates
+2. Topological levels
+
+Define "corrected committer date" of a commit recursively as follows:
+
+  * A commit with no parents (a root commit) has corrected committer date
+    equal to its committer date.
+
+  * A commit with at least one parent has corrected committer date equal to
+    the maximum of its commiter date and one more than the largest corrected
+    committer date among its parents.
+
+Define the "topological level" of a commit recursively as follows:
 
  * A commit with no parents (a root commit) has generation number one.
 
- * A commit with at least one parent has generation number one more than
-   the largest generation number among its parents.
+ * A commit with at least one parent has topological level one more than
+   the largest topological level among its parents.
 
-Equivalently, the generation number of a commit A is one more than the
+Equivalently, the topological level of a commit A is one more than the
 length of a longest path from A to a root commit. The recursive definition
 is easier to use for computation and observing the following property:
 
@@ -67,17 +80,12 @@ numbers, the general heuristic is the following:
     If A and B are commits with commit time X and Y, respectively, and
     X < Y, then A _probably_ cannot reach B.
 
-This heuristic is currently used whenever the computation is allowed to
-violate topological relationships due to clock skew (such as "git log"
-with default order), but is not used when the topological order is
-required (such as merge base calculations, "git log --graph").
-
 In practice, we expect some commits to be created recently and not stored
 in the commit graph. We can treat these commits as having "infinite"
 generation number and walk until reaching commits with known generation
 number.
 
-We use the macro GENERATION_NUMBER_INFINITY = 0xFFFFFFFF to mark commits not
+We use the macro GENERATION_NUMBER_INFINITY to mark commits not
 in the commit-graph file. If a commit-graph file was written by a version
 of Git that did not compute generation numbers, then those commits will
 have generation number represented by the macro GENERATION_NUMBER_ZERO = 0.
@@ -93,12 +101,11 @@ fully-computed generation numbers. Using strict inequality may result in
 walking a few extra commits, but the simplicity in dealing with commits
 with generation number *_INFINITY or *_ZERO is valuable.
 
-We use the macro GENERATION_NUMBER_MAX = 0x3FFFFFFF to for commits whose
-generation numbers are computed to be at least this value. We limit at
-this value since it is the largest value that can be stored in the
-commit-graph file using the 30 bits available to generation numbers. This
-presents another case where a commit can have generation number equal to
-that of a parent.
+We use the macro GENERATION_NUMBER_MAX for commits whose generation numbers
+are computed to be at least this value. We limit at this value since it is
+the largest value that can be stored in the commit-graph file using the
+available to generation numbers. This presents another case where a
+commit can have generation number equal to that of a parent.
 
 Design Details
 --------------
@@ -266,6 +273,12 @@ partially reads the previous stack.
 The merge strategy values (2 for the size multiple, 64,000 for the maximum
 number of commits) could be extracted into config settings for full
 flexibility.
+
+We also merge commit-graph chains when we try to write a commit graph with
+two different generation number definitions as they cannot be compared directly.
+We overwrite the existing chain and create a commit-graph with the newer or more
+efficient defintion. For example, overwriting topological levels commit graph
+chain to create a corrected commit dates commit graph chain.
 
 ## Deleting graph-{hash} files
 
