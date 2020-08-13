@@ -420,6 +420,14 @@ static const char *anonymize_oid(const char *oid_hex)
 	return anonymize_str(&objs, generate_fake_oid, oid_hex, len, NULL);
 }
 
+static void print_oid(const struct object_id *oid, int anonymize)
+{
+	const char *oid_hex = oid_to_hex(oid);
+	if (anonymize)
+		oid_hex = anonymize_oid(oid_hex);
+	fputs(oid_hex, stdout);
+}
+
 static void show_filemodify(struct diff_queue_struct *q,
 			    struct diff_options *options, void *data)
 {
@@ -470,21 +478,19 @@ static void show_filemodify(struct diff_queue_struct *q,
 		case DIFF_STATUS_TYPE_CHANGED:
 		case DIFF_STATUS_MODIFIED:
 		case DIFF_STATUS_ADDED:
+			printf("M %06o ", spec->mode);
 			/*
 			 * Links refer to objects in another repositories;
 			 * output the SHA-1 verbatim.
 			 */
 			if (no_data || S_ISGITLINK(spec->mode))
-				printf("M %06o %s ", spec->mode,
-				       anonymize ?
-				       anonymize_oid(oid_to_hex(&spec->oid)) :
-				       oid_to_hex(&spec->oid));
+				print_oid(&spec->oid, anonymize);
 			else {
 				struct object *object = lookup_object(the_repository,
 								      &spec->oid);
-				printf("M %06o :%d ", spec->mode,
-				       get_object_mark(object));
+				printf(":%d", get_object_mark(object));
 			}
+			putchar(' ');
 			print_path(spec->path);
 			string_list_insert(changed, spec->path);
 			putchar('\n');
@@ -724,12 +730,10 @@ static void handle_commit(struct commit *commit, struct rev_info *rev,
 		else
 			printf("merge ");
 		if (mark)
-			printf(":%d\n", mark);
+			printf(":%d", mark);
 		else
-			printf("%s\n",
-			       anonymize ?
-			       anonymize_oid(oid_to_hex(&obj->oid)) :
-			       oid_to_hex(&obj->oid));
+			print_oid(&obj->oid, anonymize);
+		putchar('\n');
 		i++;
 	}
 
