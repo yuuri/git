@@ -169,11 +169,6 @@ static int commit_gen_cmp(const void *va, const void *vb)
 	else if (generation_a > generation_b)
 		return 1;
 
-	/* use date as a heuristic when generations are equal */
-	if (a->date < b->date)
-		return -1;
-	else if (a->date > b->date)
-		return 1;
 	return 0;
 }
 
@@ -1342,10 +1337,14 @@ static void compute_generation_numbers(struct write_commit_graph_context *ctx)
 					ctx->commits.nr);
 	for (i = 0; i < ctx->commits.nr; i++) {
 		uint32_t level = *topo_level_slab_at(ctx->topo_levels, ctx->commits.list[i]);
+		timestamp_t corrected_commit_date = commit_graph_data_at(ctx->commits.list[i])->generation;
 
 		display_progress(ctx->progress, i + 1);
 		if (level != GENERATION_NUMBER_V1_INFINITY &&
-		    level != GENERATION_NUMBER_ZERO)
+		    level != GENERATION_NUMBER_ZERO &&
+		    corrected_commit_date != GENERATION_NUMBER_INFINITY &&
+		    corrected_commit_date != GENERATION_NUMBER_ZERO
+		    )
 			continue;
 
 		commit_list_insert(ctx->commits.list[i], &list);
@@ -1354,17 +1353,26 @@ static void compute_generation_numbers(struct write_commit_graph_context *ctx)
 			struct commit_list *parent;
 			int all_parents_computed = 1;
 			uint32_t max_level = 0;
+			timestamp_t max_corrected_commit_date = 0;
 
 			for (parent = current->parents; parent; parent = parent->next) {
 				level = *topo_level_slab_at(ctx->topo_levels, parent->item);
+				corrected_commit_date = commit_graph_data_at(parent->item)->generation;
 
 				if (level == GENERATION_NUMBER_V1_INFINITY ||
-				    level == GENERATION_NUMBER_ZERO) {
+				    level == GENERATION_NUMBER_ZERO ||
+				    corrected_commit_date == GENERATION_NUMBER_INFINITY ||
+				    corrected_commit_date == GENERATION_NUMBER_ZERO
+				    ) {
 					all_parents_computed = 0;
 					commit_list_insert(parent->item, &list);
 					break;
-				} else if (level > max_level) {
-					max_level = level;
+				} else {
+					if (level > max_level)
+						max_level = level;
+
+					if (corrected_commit_date > max_corrected_commit_date)
+						max_corrected_commit_date = corrected_commit_date;
 				}
 			}
 
@@ -1374,6 +1382,10 @@ static void compute_generation_numbers(struct write_commit_graph_context *ctx)
 				if (max_level > GENERATION_NUMBER_MAX - 1)
 					max_level = GENERATION_NUMBER_MAX - 1;
 				*topo_level_slab_at(ctx->topo_levels, current) = max_level + 1;
+
+				if (current->date > max_corrected_commit_date)
+					max_corrected_commit_date = current->date - 1;
+				commit_graph_data_at(current)->generation = max_corrected_commit_date + 1;
 			}
 		}
 	}
@@ -2372,8 +2384,8 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 	for (i = 0; i < g->num_commits; i++) {
 		struct commit *graph_commit, *odb_commit;
 		struct commit_list *graph_parents, *odb_parents;
-		timestamp_t max_generation = 0;
-		timestamp_t generation;
+		timestamp_t max_corrected_commit_date = 0;
+		timestamp_t corrected_commit_date;
 
 		display_progress(progress, i + 1);
 		hashcpy(cur_oid.hash, g->chunk_oid_lookup + g->hash_len * i);
@@ -2412,9 +2424,9 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 					     oid_to_hex(&graph_parents->item->object.oid),
 					     oid_to_hex(&odb_parents->item->object.oid));
 
-			generation = commit_graph_generation(graph_parents->item);
-			if (generation > max_generation)
-				max_generation = generation;
+			corrected_commit_date = commit_graph_generation(graph_parents->item);
+			if (corrected_commit_date > max_corrected_commit_date)
+				max_corrected_commit_date = corrected_commit_date;
 
 			graph_parents = graph_parents->next;
 			odb_parents = odb_parents->next;
@@ -2436,20 +2448,12 @@ int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags)
 		if (generation_zero == GENERATION_ZERO_EXISTS)
 			continue;
 
-		/*
-		 * If one of our parents has generation GENERATION_NUMBER_MAX, then
-		 * our generation is also GENERATION_NUMBER_MAX. Decrement to avoid
-		 * extra logic in the following condition.
-		 */
-		if (max_generation == GENERATION_NUMBER_MAX)
-			max_generation--;
-
-		generation = commit_graph_generation(graph_commit);
-		if (generation != max_generation + 1)
-			graph_report(_("commit-graph generation for commit %s is %u != %u"),
+		corrected_commit_date = commit_graph_generation(graph_commit);
+		if (corrected_commit_date < max_corrected_commit_date + 1)
+			graph_report(_("commit-graph generation for commit %s is %"PRItime" < %"PRItime),
 				     oid_to_hex(&cur_oid),
-				     generation,
-				     max_generation + 1);
+				     corrected_commit_date,
+				     max_corrected_commit_date + 1);
 
 		if (graph_commit->date != odb_commit->date)
 			graph_report(_("commit date for commit %s in commit-graph is %"PRItime" != %"PRItime),
