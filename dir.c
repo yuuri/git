@@ -3012,10 +3012,7 @@ int remove_path(const char *name)
 	return 0;
 }
 
-/*
- * Frees memory within dir which was allocated for exclude lists and
- * the exclude_stack.  Does not free dir itself.
- */
+/* Frees memory within dir which was allocated.  Does not free dir itself. */
 void clear_directory(struct dir_struct *dir)
 {
 	int i, j;
@@ -3033,6 +3030,13 @@ void clear_directory(struct dir_struct *dir)
 		}
 		free(group->pl);
 	}
+
+	for (i = 0; i < dir->ignored_nr; i++)
+		free(dir->ignored[i]);
+	for (i = 0; i < dir->nr; i++)
+		free(dir->entries[i]);
+	free(dir->ignored);
+	free(dir->entries);
 
 	stk = dir->exclude_stack;
 	while (stk) {
