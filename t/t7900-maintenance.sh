@@ -264,4 +264,14 @@ test_expect_success 'maintenance.incremental-repack.auto' '
 	done
 '
 
+test_expect_success 'tasks update maintenance.<task>.lastRun' '
+	git config --unset maintenance.commit-graph.lastrun &&
+	GIT_TRACE2_EVENT="$(pwd)/run.txt" \
+		GIT_TEST_DATE_NOW=1595000000 \
+		git maintenance run --task=commit-graph 2>/dev/null &&
+	test_subcommand git commit-graph write --split --reachable \
+		--no-progress <run.txt &&
+	test_cmp_config 1595000000 maintenance.commit-graph.lastrun
+'
+
 test_done
