@@ -1212,6 +1212,20 @@ static int compare_tasks_by_selection(const void *a_, const void *b_)
 	return b->selected_order - a->selected_order;
 }
 
+static void update_last_run(struct maintenance_task *task)
+{
+	timestamp_t now = approxidate("now");
+	struct strbuf config = STRBUF_INIT;
+	struct strbuf value = STRBUF_INIT;
+	strbuf_addf(&config, "maintenance.%s.lastrun", task->name);
+	strbuf_addf(&value, "%"PRItime"", now);
+
+	git_config_set(config.buf, value.buf);
+
+	strbuf_release(&config);
+	strbuf_release(&value);
+}
+
 static int maintenance_run_tasks(struct maintenance_run_opts *opts)
 {
 	int i, found_selected = 0;
@@ -1253,6 +1267,8 @@ static int maintenance_run_tasks(struct maintenance_run_opts *opts)
 		    (!tasks[i].auto_condition ||
 		     !tasks[i].auto_condition()))
 			continue;
+
+		update_last_run(&tasks[i]);
 
 		trace2_region_enter("maintenance", tasks[i].name, r);
 		if (tasks[i].fn(opts)) {
