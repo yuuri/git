@@ -27,7 +27,7 @@ void strmap_init(struct strmap *map)
 	hashmap_init(&map->map, cmp_str_entry, NULL, 0);
 }
 
-void strmap_clear(struct strmap *map, int free_util)
+void strmap_free(struct strmap *map, int free_util)
 {
 	struct hashmap_iter iter;
 	struct str_entry *e;
@@ -35,12 +35,19 @@ void strmap_clear(struct strmap *map, int free_util)
 	if (!map)
 		return;
 
-	hashmap_for_each_entry(&map->map, &iter, e, ent /* member name */) {
-		free(e->item.string);
-		if (free_util)
-			free(e->item.util);
+	if (free_util) {
+		hashmap_for_each_entry(&map->map, &iter, e, ent) {
+			free(e->item.string);
+			if (free_util)
+				free(e->item.util);
+		}
 	}
 	hashmap_free_entries(&map->map, struct str_entry, ent);
+}
+
+void strmap_clear(struct strmap *map, int free_util)
+{
+	strmap_free(map, free_util);
 	strmap_init(map);
 }
 
@@ -69,6 +76,13 @@ void *strmap_put(struct strmap *map, const char *str, void *data)
 	return old;
 }
 
+struct string_list_item *strmap_get_item(struct strmap *map,
+					 const char *str)
+{
+	struct str_entry *entry = find_str_entry(map, str);
+	return entry ? &entry->item : NULL;
+}
+
 void *strmap_get(struct strmap *map, const char *str)
 {
 	struct str_entry *entry = find_str_entry(map, str);
@@ -78,4 +92,15 @@ void *strmap_get(struct strmap *map, const char *str)
 int strmap_contains(struct strmap *map, const char *str)
 {
 	return find_str_entry(map, str) != NULL;
+}
+
+void strmap_remove(struct strmap *map, const char *str, int free_util)
+{
+	struct str_entry entry, *ret;
+	hashmap_entry_init(&entry.ent, strhash(str));
+	entry.item.string = (char *)str;
+	ret = hashmap_remove_entry(&map->map, &entry, ent, NULL);
+	if (ret && free_util)
+		free(ret->item.util);
+	free(ret);
 }
