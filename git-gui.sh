@@ -863,6 +863,7 @@ proc apply_config {} {
 			set NS ttk
 			bind [winfo class .] <<ThemeChanged>> [list InitTheme]
 			pave_toplevel .
+			Color::syncColorsWithTheme
 		}
 	}
 }
@@ -3270,9 +3271,13 @@ pack .vpane -anchor n -side top -fill both -expand 1
 # -- Working Directory File List
 
 textframe .vpane.files.workdir -height 100 -width 200
-tlabel .vpane.files.workdir.title -text [mc "Unstaged Changes"] \
-	-background lightsalmon -foreground black
-ttext $ui_workdir -background white -foreground black \
+tlabel .vpane.files.workdir.title \
+	-text [mc "Unstaged Changes"] \
+	-background $Color::lightRed \
+	-foreground $Color::textOnLight
+ttext $ui_workdir \
+	-background $Color::textBg \
+	-foreground $Color::textColor \
 	-borderwidth 0 \
 	-width 20 -height 10 \
 	-wrap none \
@@ -3293,8 +3298,8 @@ pack $ui_workdir -side left -fill both -expand 1
 textframe .vpane.files.index -height 100 -width 200
 tlabel .vpane.files.index.title \
 	-text [mc "Staged Changes (Will Commit)"] \
-	-background lightgreen -foreground black
-ttext $ui_index -background white -foreground black \
+	-background $Color::lightGreen -foreground $Color::textOnLight
+ttext $ui_index -background $Color::textBg -foreground $Color::textColor \
 	-borderwidth 0 \
 	-width 20 -height 10 \
 	-wrap none \
@@ -3429,7 +3434,7 @@ if {![is_enabled nocommit]} {
 }
 
 textframe .vpane.lower.commarea.buffer.frame
-ttext $ui_comm -background white -foreground black \
+ttext $ui_comm -background $Color::textBg -foreground $Color::textColor \
 	-borderwidth 1 \
 	-undo true \
 	-maxundo 20 \
@@ -3516,19 +3521,19 @@ trace add variable current_diff_path write trace_current_diff_path
 
 gold_frame .vpane.lower.diff.header
 tlabel .vpane.lower.diff.header.status \
-	-background gold \
-	-foreground black \
+	-background $Color::lightGold \
+	-foreground $Color::textOnLight \
 	-width $max_status_desc \
 	-anchor w \
 	-justify left
 tlabel .vpane.lower.diff.header.file \
-	-background gold \
-	-foreground black \
+	-background $Color::lightGold \
+	-foreground $Color::textOnLight \
 	-anchor w \
 	-justify left
 tlabel .vpane.lower.diff.header.path \
-	-background gold \
-	-foreground blue \
+	-background $Color::lightGold \
+	-foreground $Color::lightBlue \
 	-anchor w \
 	-justify left \
 	-font [eval font create [font configure font_ui] -underline 1] \
@@ -3558,7 +3563,7 @@ bind .vpane.lower.diff.header.path <Button-1> {do_file_open $current_diff_path}
 #
 textframe .vpane.lower.diff.body
 set ui_diff .vpane.lower.diff.body.t
-ttext $ui_diff -background white -foreground black \
+ttext $ui_diff -background $Color::textBg -foreground $Color::textColor \
 	-borderwidth 0 \
 	-width 80 -height 5 -wrap none \
 	-font font_diff \
@@ -3586,7 +3591,7 @@ foreach {n c} {0 black 1 red4 2 green4 3 yellow4 4 blue4 5 magenta4 6 cyan4 7 gr
 $ui_diff tag configure clr1 -font font_diffbold
 $ui_diff tag configure clr4 -underline 1
 
-$ui_diff tag conf d_info -foreground blue -font font_diffbold
+$ui_diff tag conf d_info -foreground $Color::lightBlue -font font_diffbold
 
 $ui_diff tag conf d_cr -elide true
 $ui_diff tag conf d_@ -font font_diffbold
