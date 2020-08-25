@@ -3,6 +3,10 @@ remote.pushDefault::
 	`branch.<name>.remote` for all branches, and is overridden by
 	`branch.<name>.pushRemote` for specific branches.
 
+remote.cloneDefault::
+	The name of the remote to create during `git clone <url>`.
+	Defaults to "origin".
+
 remote.<name>.url::
 	The URL of a remote repository.  See linkgit:git-fetch[1] or
 	linkgit:git-push[1].

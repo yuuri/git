@@ -19,6 +19,20 @@ test_expect_success 'clone -o' '
 
 '
 
+test_expect_success 'clone respects remote.cloneDefault' '
+
+	git -c remote.cloneDefault=bar clone parent clone-config &&
+	(cd clone-config && git rev-parse --verify refs/remotes/bar/master)
+
+'
+
+test_expect_success 'clone chooses correct remote name' '
+
+	git -c remote.cloneDefault=bar clone -o foo parent clone-o-and-config &&
+	(cd clone-o-and-config && git rev-parse --verify refs/remotes/foo/master)
+
+'
+
 test_expect_success 'redirected clone does not show progress' '
 
 	git clone "file://$(pwd)/parent" clone-redirected >out 2>err &&

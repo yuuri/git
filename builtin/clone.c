@@ -941,6 +941,29 @@ static int path_exists(const char *path)
 	return !stat(path, &sb);
 }
 
+struct clone_default_info
+{
+	enum config_scope scope;
+	struct strbuf remote_name;
+	int linenr;
+};
+
+static int config_read_clone_default(const char *key, const char *value,
+	void *cb)
+{
+	struct clone_default_info* info = cb;
+	if (strcmp(key, "remote.clonedefault") || !value) {
+		return 0;
+	}
+
+	info->scope = current_config_scope();
+	strbuf_reset(&info->remote_name);
+	strbuf_addstr(&info->remote_name, value);
+	info->linenr = current_config_line();
+
+	return 0;
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
@@ -992,8 +1015,15 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		option_no_checkout = 1;
 	}
 
-	if (!option_origin)
-		option_origin = "origin";
+	if (!option_origin) {
+		struct clone_default_info clone_default = { CONFIG_SCOPE_UNKNOWN, STRBUF_INIT, -1 };
+		git_config(config_read_clone_default, &clone_default);
+		if (strcmp("", (const char*) clone_default.remote_name.buf))
+			option_origin = clone_default.remote_name.buf;
+		else
+			option_origin = "origin";
+	}
+
 
 	repo_name = argv[0];
 
