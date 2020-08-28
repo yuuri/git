@@ -1748,6 +1748,10 @@ struct ref_store *get_main_ref_store(struct repository *r)
 		BUG("attempting to get main_ref_store outside of repository");
 
 	r->refs_private = ref_store_init(r->gitdir, REF_STORE_ALL_CAPS);
+	if (getenv("GIT_DEBUG_REFS")) {
+		// XXX - how to hook this up with the trace2 framework?
+		r->refs_private = debug_wrap(r->gitdir, r->refs_private);
+	}
 	return r->refs_private;
 }
 
