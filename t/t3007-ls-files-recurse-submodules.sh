@@ -34,6 +34,43 @@ test_expect_success 'ls-files correctly outputs files in submodule' '
 	test_cmp expect actual
 '
 
+test_expect_success 'ls-files respects submodule.recurse' '
+	cat >expect <<-\EOF &&
+	.gitmodules
+	a
+	b/b
+	submodule/c
+	EOF
+
+	git -c submodule.recurse ls-files >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--[no-]recurse-submodule and submodule.recurse' '
+	cat >expect-recurse <<-\EOF &&
+	.gitmodules
+	a
+	b/b
+	submodule/c
+	EOF
+
+	cat >expect-no-recurse <<-\EOF &&
+	.gitmodules
+	a
+	b/b
+	submodule
+	EOF
+
+	git -c submodule.recurse ls-files --no-recurse-submodules >actual &&
+	test_cmp expect-no-recurse actual &&
+	git -c submodule.recurse=false ls-files --recurse-submodules >actual &&
+	test_cmp expect-recurse actual &&
+	git -c submodule.recurse=false ls-files --no-recurse-submodules >actual &&
+	test_cmp expect-no-recurse actual &&
+	git -c submodule.recurse ls-files --recurse-submodules >actual &&
+	test_cmp expect-recurse actual
+'
+
 test_expect_success 'ls-files correctly outputs files in submodule with -z' '
 	lf_to_nul >expect <<-\EOF &&
 	.gitmodules

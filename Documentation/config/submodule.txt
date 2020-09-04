@@ -60,8 +60,8 @@ submodule.active::
 submodule.recurse::
 	Specifies if commands recurse into submodules by default. This
 	applies to all commands that have a `--recurse-submodules` option
-	(`checkout`, `fetch`, `grep`, `pull`, `push`, `read-tree`, `reset`,
-	`restore` and `switch`) except `clone` and `ls-files`.
+	(`checkout`, `fetch`, `grep`, `ls-files`, `pull`, `push`, `read-tree`,
+	`reset`, `restore` and `switch`) except `clone` .
 	Defaults to false.
 	When set to true, it can be deactivated via the
 	`--no-recurse-submodules` option. Note that some Git commands

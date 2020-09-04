@@ -512,6 +512,20 @@ static int option_parse_exclude_standard(const struct option *opt,
 	return 0;
 }
 
+/**
+ * Read config variables.
+ */
+static int git_ls_files_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "submodule.recurse")) {
+		recurse_submodules = git_config_bool(var, value) ?
+			RECURSE_SUBMODULES_ON : RECURSE_SUBMODULES_OFF;
+		return 0;
+	}
+
+	return git_default_config(var, value, cb);
+}
+
 int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 {
 	int require_work_tree = 0, show_tag = 0, i;
@@ -588,7 +602,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	prefix = cmd_prefix;
 	if (prefix)
 		prefix_len = strlen(prefix);
-	git_config(git_default_config, NULL);
+	git_config(git_ls_files_config, NULL);
 
 	if (repo_read_index(the_repository) < 0)
 		die("index file corrupt");
