@@ -840,9 +840,12 @@ static void collect_changed_submodules(struct repository *r,
 {
 	struct rev_info rev;
 	const struct commit *commit;
+	struct setup_revision_opt s_r_opt = {
+		.assume_dashdash = 1,
+	};
 
 	repo_init_revisions(r, &rev, NULL);
-	setup_revisions(argv->nr, argv->v, &rev, NULL);
+	setup_revisions(argv->nr, argv->v, &rev, &s_r_opt);
 	if (prepare_revision_walk(&rev))
 		die(_("revision walk setup failed"));
 
