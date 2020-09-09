@@ -10,7 +10,7 @@ command_list () {
 }
 
 get_categories () {
-	tr ' ' '\n'|
+	tr ' ' '\012'|
 	grep -v '^$' |
 	sort |
 	uniq
@@ -24,7 +24,7 @@ category_list () {
 
 get_synopsis () {
 	sed -n '
-		/^NAME/,/'"$1"'/H
+		/^NAME/,/'"$1"'/h
 		${
 			x
 			s/.*'"$1"' - \(.*\)/N_("\1")/
