@@ -69,6 +69,7 @@ ifeq ($(uname_S),GNU/kFreeBSD)
 endif
 ifeq ($(uname_S),UnixWare)
 	CC = cc
+	LD = $(CC)
 	NEEDS_SOCKET = YesPlease
 	NEEDS_NSL = YesPlease
 	NEEDS_SSL_WITH_CRYPTO = YesPlease
@@ -90,6 +91,7 @@ ifeq ($(uname_S),SCO_SV)
 	endif
 	ifeq ($(uname_R),5)
 		CC = cc
+		LD = $(CC)
 		BASIC_CFLAGS += -Kthread
 	endif
 	NEEDS_SOCKET = YesPlease
@@ -435,6 +437,7 @@ ifeq ($(uname_S),Windows)
 	DEFAULT_HELP_FORMAT = html
 
 	CC = compat/vcbuild/scripts/clink.pl
+	LD = $(CC)
 	AR = compat/vcbuild/scripts/lib.pl
 	CFLAGS =
 	BASIC_CFLAGS = -nologo -I. -Icompat/vcbuild/include -DWIN32 -D_CONSOLE -DHAVE_STRING_H -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE
@@ -525,6 +528,7 @@ ifeq ($(uname_S),NONSTOP_KERNEL)
 	ifeq ($(uname_R).$(uname_V),L17.02)
 		CC += -WRVU=L16.05
 	endif
+	LD = $(CC)
 	# Disable all optimization, seems to result in bad code, with -O or -O2
 	# or even -O1 (default), /usr/local/libexec/git-core/git-pack-objects
 	# abends on "git push". Needs more investigation.
@@ -665,8 +669,10 @@ else
 			BASIC_LDFLAGS += -Wl,--large-address-aware
 		endif
 		CC = gcc
+		LD = $(CC)
 		COMPAT_CFLAGS += -D__USE_MINGW_ANSI_STDIO=0 -DDETECT_MSYS_TTY \
 			-fstack-protector-strong
+		BASIC_LDFLAGS += -fstack-protector-strong
 		EXTLIBS += -lntdll
 		INSTALL = /bin/install
 		NO_R_TO_GCC_LINKER = YesPlease
