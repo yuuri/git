@@ -990,8 +990,8 @@ NORETURN
 static void die_bad_number(const char *name, const char *value)
 {
 	const char *error_type = (errno == ERANGE) ?
-		N_("out of range") : N_("invalid unit");
-	const char *bad_numeric = N_("bad numeric config value '%s' for '%s': %s");
+		_("out of range") : _("invalid unit");
+	const char *bad_numeric = _("bad numeric config value '%s' for '%s': %s");
 
 	if (!value)
 		value = "";
