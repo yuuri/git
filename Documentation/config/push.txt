@@ -114,3 +114,8 @@ push.recurseSubmodules::
 	specifying '--recurse-submodules=check|on-demand|no'.
 	If not set, 'no' is used by default, unless 'submodule.recurse' is
 	set (in which case a 'true' value means 'on-demand').
+
+push.useForceIfIncludes::
+	If set to "true", it is equivalent to specifying "--force-if-includes"
+	as an argument to linkgit:git-push[1]. Adding "--no-force-if-includes"
+	the time of push overrides this configuration setting.
