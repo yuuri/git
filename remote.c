@@ -2259,6 +2259,11 @@ int parseopt_push_cas_option(const struct option *opt, const char *arg, int unse
 	return parse_push_cas_option(opt->value, arg, unset);
 }
 
+void push_set_force_if_includes(struct push_cas_option *cas)
+{
+	cas->use_force_if_includes = 1;
+}
+
 int is_empty_cas(const struct push_cas_option *cas)
 {
 	return !cas->use_tracking_for_rest && !cas->nr;

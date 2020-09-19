@@ -350,4 +350,10 @@ int parseopt_push_cas_option(const struct option *, const char *arg, int unset);
 int is_empty_cas(const struct push_cas_option *);
 void apply_push_cas(struct push_cas_option *, struct remote *, struct ref *);
 
+/*
+ * Sets "use_force_if_includes" for "compare-and-swap"
+ * when "--force-if-includes" is specified.
+ */
+void push_set_force_if_includes(struct push_cas_option *);
+
 #endif
