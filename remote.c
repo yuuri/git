@@ -1569,12 +1569,23 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 * with the remote-tracking branch to find the value
 		 * to expect, but we did not have such a tracking
 		 * branch.
+		 *
+		 * If the tip of the remote-tracking ref is unreachable
+		 * from any reflog entry of its local ref indicating a
+		 * possible update since checkout; reject the push.
 		 */
 		if (ref->expect_old_sha1) {
 			if (!oideq(&ref->old_oid, &ref->old_oid_expect))
 				reject_reason = REF_STATUS_REJECT_STALE;
+			else if (ref->if_includes && ref->unreachable)
+				reject_reason =
+					REF_STATUS_REJECT_REMOTE_UPDATED;
 			else
-				/* If the ref isn't stale then force the update. */
+				/*
+				 * If the ref isn't stale, and is reachable
+				 * from from one of the reflog entries of
+				 * the local branch, force the update.
+				 */
 				force_ref_update = 1;
 		}
 
@@ -2417,6 +2428,11 @@ int parseopt_push_cas_option(const struct option *opt, const char *arg, int unse
 	return parse_push_cas_option(opt->value, arg, unset);
 }
 
+void push_set_force_if_includes(struct push_cas_option *cas)
+{
+	cas->use_force_if_includes = 1;
+}
+
 int is_empty_cas(const struct push_cas_option *cas)
 {
 	return !cas->use_tracking_for_rest && !cas->nr;
@@ -2441,6 +2457,70 @@ static int remote_tracking(struct remote *remote, const char *refname,
 	return 0;
 }
 
+/* Checks if the ref exists in the reflog entry. */
+static int reflog_entry_exists(struct object_id *o_oid,
+				  struct object_id *n_oid,
+				  const char *ident, timestamp_t timestamp,
+				  int tz, const char *message, void *cb_data)
+{
+	struct object_id *remote_oid = cb_data;
+	return oideq(n_oid, remote_oid);
+}
+
+/* Checks if the ref is reachable from the reflog entry. */
+static int reflog_entry_reachable(struct object_id *o_oid,
+			       struct object_id *n_oid,
+			       const char *ident, timestamp_t timestamp,
+			       int tz, const char *message, void *cb_data)
+{
+	struct commit *local_commit;
+	struct commit *remote_commit = cb_data;
+
+	local_commit = lookup_commit_reference(the_repository, n_oid);
+	if (local_commit)
+		return in_merge_bases(remote_commit, local_commit);
+
+	return 0;
+}
+
+/*
+ * Iterate through he reflog entries of the local branch to check
+ * if the remote-tracking ref exists in on of the entries; if not,
+ * go through the entries once more, but this time check if the
+ * remote-tracking ref is reachable from any of the entries.
+ */
+static int is_reachable_in_reflog(const char *local_ref_name,
+				  const struct object_id *remote_oid)
+{
+	struct commit *remote_commit;
+
+	if (for_each_reflog_ent_reverse(local_ref_name, reflog_entry_exists,
+					(struct object_id *)remote_oid))
+		return 1;
+
+	remote_commit = lookup_commit_reference(the_repository, remote_oid);
+	if (remote_commit)
+		return for_each_reflog_ent_reverse(local_ref_name,
+						   reflog_entry_reachable,
+						   remote_commit);
+	return 0;
+}
+
+/*
+ * Check for reachability of a remote-tracking
+ * ref in the reflog entries of its local ref.
+ */
+static void check_if_includes_upstream(struct ref *remote_ref)
+{
+	struct ref *local_ref = get_local_ref(remote_ref->name);
+
+	if (!local_ref)
+		return;
+
+	if (!is_reachable_in_reflog(local_ref->name, &remote_ref->old_oid))
+		remote_ref->unreachable = 1;
+}
+
 static void apply_cas(struct push_cas_option *cas,
 		      struct remote *remote,
 		      struct ref *ref)
@@ -2457,6 +2537,8 @@ static void apply_cas(struct push_cas_option *cas,
 			oidcpy(&ref->old_oid_expect, &entry->expect);
 		else if (remote_tracking(remote, ref->name, &ref->old_oid_expect))
 			oidclr(&ref->old_oid_expect);
+		else
+			ref->if_includes = cas->use_force_if_includes;
 		return;
 	}
 
@@ -2467,6 +2549,8 @@ static void apply_cas(struct push_cas_option *cas,
 	ref->expect_old_sha1 = 1;
 	if (remote_tracking(remote, ref->name, &ref->old_oid_expect))
 		oidclr(&ref->old_oid_expect);
+	else
+		ref->if_includes = cas->use_force_if_includes;
 }
 
 void apply_push_cas(struct push_cas_option *cas,
@@ -2474,6 +2558,15 @@ void apply_push_cas(struct push_cas_option *cas,
 		    struct ref *remote_refs)
 {
 	struct ref *ref;
-	for (ref = remote_refs; ref; ref = ref->next)
+	for (ref = remote_refs; ref; ref = ref->next) {
 		apply_cas(cas, remote, ref);
+
+		/*
+		 * If "compare-and-swap" is in "use_tracking[_for_rest]"
+		 * mode, and if "--foce-if-includes" was specified, run
+		 * the check.
+		 */
+		if (ref->if_includes)
+			check_if_includes_upstream(ref);
+	}
 }
